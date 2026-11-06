@@ -1,0 +1,6 @@
+{
+  "name": "Ghi chú nội bộ",
+  "description": "Hệ thống quản lý ghi chú cá nhân, tài liệu công ty và biên bản cuộc họp tối giản chuẩn Notion & Lark.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
