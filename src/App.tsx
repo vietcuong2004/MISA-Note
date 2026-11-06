@@ -29,7 +29,7 @@ import { FolderModal } from './components/modals/FolderModal';
 import { MoveModal } from './components/modals/MoveModal';
 import { NewChatModal } from './components/modals/NewChatModal';
 import { SpotlightSearchModal } from './components/modals/SpotlightSearchModal';
-import { Clock, Star, FileText } from 'lucide-react';
+import { Clock, Star, FileText, SquarePen, Search, HelpCircle, MoreHorizontal } from 'lucide-react';
 
 export default function App() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -84,8 +84,8 @@ export default function App() {
     setDocuments(storedDocs);
     setFolders(storedFlds);
 
-    // Default to 'doc_week_plan' if exists, else first document
-    const targetDoc = storedDocs.find((d) => d.id === 'doc_week_plan' && !d.isTrash) || storedDocs[0];
+    // Default to 'doc_untitled' if exists, else first document
+    const targetDoc = storedDocs.find((d) => d.id === 'doc_untitled' && !d.isTrash) || storedDocs.find((d) => d.id === 'doc_week_plan' && !d.isTrash) || storedDocs[0];
     if (targetDoc) {
       setViewState({ type: 'document', documentId: targetDoc.id });
     }
@@ -353,8 +353,58 @@ export default function App() {
       : null;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-[#1D1D1F] select-none font-sans">
-      {/* Sidebar matching screenshot */}
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-[#1D1D1F] select-none font-sans">
+      {/* Full-width Top Header (Navbar) matching image_8502d593.png */}
+      <header className="h-12 bg-[#1463DF] px-4 flex items-center justify-between text-white shrink-0 z-30 select-none shadow-xs">
+        {/* Left: Brand Logo & Title */}
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white/20 border border-white/25 flex items-center justify-center text-white shadow-2xs">
+            <SquarePen className="w-4.5 h-4.5 stroke-[2] text-white" />
+          </div>
+          <span className="text-white font-bold text-base tracking-tight">Ghi chép AI</span>
+        </div>
+
+        {/* Center: Search input */}
+        <div className="flex-1 max-w-md mx-4 sm:mx-8">
+          <button
+            type="button"
+            onClick={() => setIsSpotlightOpen(true)}
+            className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-lg bg-[#0E51BF]/80 hover:bg-[#0E51BF] border border-white/20 text-white/90 text-xs transition-colors shadow-inner cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <Search className="w-3.5 h-3.5 text-white/75 shrink-0" />
+              <span className="text-white/80 text-xs truncate">Tìm kiếm ghi chú...</span>
+            </div>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/15 text-white/90 border border-white/20 shrink-0">
+              Ctrl K
+            </span>
+          </button>
+        </div>
+
+        {/* Right: Help & More Options */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setIsSpotlightOpen(true)}
+            className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+            title="Trợ giúp & Phím tắt"
+          >
+            <HelpCircle className="w-4.5 h-4.5 stroke-[1.75]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSpotlightOpen(true)}
+            className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/90 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+            title="Tùy chọn khác"
+          >
+            <MoreHorizontal className="w-4.5 h-4.5 stroke-[1.75]" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace below header */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar matching screenshot */}
       <Sidebar
         documents={documents}
         folders={folders}
@@ -526,6 +576,7 @@ export default function App() {
           />
         )}
       </main>
+      </div>
 
       {/* Spotlight Search & Command Palette (Ctrl+K) */}
       <SpotlightSearchModal

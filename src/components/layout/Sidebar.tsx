@@ -370,17 +370,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isRenaming ? 'cursor-text' : 'cursor-grab active:cursor-grabbing'
         } ${
           isActive
-            ? 'bg-[#EAEAEC] text-[#1D1D1F] font-semibold'
+            ? 'bg-[#E8F0FE] text-[#1967D2] font-semibold shadow-2xs'
             : 'hover:bg-[#EAEAEA] text-[#48484A]'
         } ${isDragging ? 'opacity-30 border border-dashed border-[#1D1D1F] bg-[#F2F2F7]' : ''}`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {doc.icon === '💬' || doc.tags?.includes('Đoạn chat') ? (
-            <MessageSquare className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+            <MessageSquare className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[#1967D2]' : 'text-[#1D1D1F]'}`} />
           ) : doc.type === 'meeting' ? (
-            <Users className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+            <Users className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[#1967D2]' : 'text-[#1D1D1F]'}`} />
           ) : (
-            <FileText className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+            <FileText className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[#1967D2]' : 'text-[#1D1D1F]'}`} />
           )}
           {isRenaming ? (
             <input
@@ -704,22 +704,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           )}
-        </div>
-
-        {/* Search bar matching screenshot: [🔍 Tìm kiếm ghi chú...   Ctrl K] */}
-        <div className="px-3 py-1">
-          <div
-            onClick={onOpenSpotlight}
-            className="flex items-center justify-between px-3 py-2 bg-white hover:bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl cursor-pointer text-[#86868B] transition-all ios-interactive shadow-2xs"
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <Search className="w-4 h-4 stroke-[1.75] shrink-0 text-[#86868B]" />
-              <span className="text-xs truncate text-[#86868B]">Tìm kiếm ghi chú...</span>
-            </div>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#F2F2F7] text-[#86868B] border border-[#E5E5EA] shrink-0">
-              Ctrl K
-            </span>
-          </div>
         </div>
 
         {/* Smart Sections: Gần đây & Yêu thích */}

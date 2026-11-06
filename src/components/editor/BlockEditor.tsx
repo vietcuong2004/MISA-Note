@@ -340,19 +340,19 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               onToggleFavorite(doc.id);
               setDoc((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
             }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors ios-interactive shadow-2xs cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ios-interactive shadow-2xs cursor-pointer ${
               doc.isFavorite
                 ? 'bg-[#1D1D1F] text-white border-[#1D1D1F]'
-                : 'bg-white border-[#E5E5EA] text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F2F2F7]'
+                : 'bg-white border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F2F2F7]'
             }`}
             title={doc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào yêu thích'}
           >
             <Star
               className={`w-3.5 h-3.5 stroke-[1.75] ${
-                doc.isFavorite ? 'fill-white text-white' : ''
+                doc.isFavorite ? 'fill-white text-white' : 'text-[#1D1D1F]'
               }`}
             />
-            <span className="hidden sm:inline">
+            <span>
               {doc.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
             </span>
           </button>
@@ -370,7 +370,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-1.5 rounded-xl text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition-colors ios-interactive cursor-pointer"
+              className="w-8 h-8 rounded-xl border border-[#E5E5EA] bg-white hover:bg-[#F2F2F7] flex items-center justify-center text-[#1D1D1F] transition-colors ios-interactive shadow-2xs cursor-pointer"
               title="Tùy chọn khác"
             >
               <MoreHorizontal className="w-4 h-4 stroke-[1.75]" />

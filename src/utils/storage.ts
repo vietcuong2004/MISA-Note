@@ -2,9 +2,9 @@ import { Document, Folder, SpaceType } from '../types';
 import { INITIAL_DOCUMENTS, INITIAL_FOLDERS } from '../data/mockData';
 
 const STORAGE_KEYS = {
-  DOCUMENTS: 'ghi_chu_noi_bo_documents_v5',
-  FOLDERS: 'ghi_chu_noi_bo_folders_v5',
-  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v5',
+  DOCUMENTS: 'ghi_chu_noi_bo_documents_v6',
+  FOLDERS: 'ghi_chu_noi_bo_folders_v6',
+  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v6',
 };
 
 export const getStoredDocuments = (): Document[] => {
