@@ -27,7 +27,6 @@ import { TrashView } from './components/views/TrashView';
 import { ToastContainer, ToastMessage } from './components/Toast';
 import { FolderModal } from './components/modals/FolderModal';
 import { MoveModal } from './components/modals/MoveModal';
-import { OneAIModal } from './components/modals/OneAIModal';
 import { NewChatModal } from './components/modals/NewChatModal';
 import { SpotlightSearchModal } from './components/modals/SpotlightSearchModal';
 import { Clock, Star, FileText } from 'lucide-react';
@@ -41,6 +40,18 @@ export default function App() {
   });
   const [currentRole, setCurrentRole] = useState<UserRole>('owner');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('misa_sidebar_width');
+      if (saved) {
+        const parsed = Number(saved);
+        if (!isNaN(parsed) && parsed >= 200 && parsed <= 520) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return 260;
+  });
 
   // Modals
   const [isSpotlightOpen, setIsSpotlightOpen] = useState(false);
@@ -50,7 +61,6 @@ export default function App() {
     defaultSpace?: SpaceType;
   }>({ isOpen: false });
 
-  const [oneAIModalOpen, setOneAIModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [moveModalDoc, setMoveModalDoc] = useState<Document | null>(null);
@@ -221,7 +231,7 @@ export default function App() {
     const newDocId = `doc_${Date.now()}`;
     const newDoc: Document = {
       id: newDocId,
-      title: 'Ghi chú không có tiêu đề',
+      title: 'Ghi chú mới',
       icon: '📄',
       space,
       folderId: folderId || null,
@@ -352,6 +362,8 @@ export default function App() {
         currentRole={currentRole}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        sidebarWidth={sidebarWidth}
+        onWidthChange={setSidebarWidth}
         onNavigate={setViewState}
         onCreateDocument={handleCreateDocument}
         onCreateFolder={handleOpenCreateFolder}
@@ -359,7 +371,7 @@ export default function App() {
         onDeleteFolder={handleDeleteFolder}
         onRoleChange={setCurrentRole}
         onOpenSpotlight={() => setIsSpotlightOpen(true)}
-        onOpenOneAI={() => setOneAIModalOpen(true)}
+        onOpenOneAI={() => addToast('Tính năng Hỏi AI (One AI) sắp ra mắt', 'info')}
         onCreateMeetingNote={() => handleCreateFromTemplate('tpl_meeting_minutes')}
         onOpenTemplates={() => setShowTemplatePicker(true)}
         onOpenChat={() => setChatModalOpen(true)}
@@ -524,7 +536,7 @@ export default function App() {
         onOpenDocument={(docId) => setViewState({ type: 'document', documentId: docId })}
         onCreateNewNote={() => handleCreateDocument('personal', null)}
         onCreateMeetingNote={() => handleCreateFromTemplate('tpl_meeting_minutes')}
-        onOpenOneAI={() => setOneAIModalOpen(true)}
+        onOpenOneAI={() => addToast('Tính năng Hỏi AI (One AI) sắp ra mắt', 'info')}
         onCreateTaskList={handleCreateTaskList}
         onOpenTemplates={() => setShowTemplatePicker(true)}
       />
@@ -580,19 +592,13 @@ export default function App() {
         onToast={addToast}
       />
 
-      <OneAIModal
-        isOpen={oneAIModalOpen}
-        onClose={() => setOneAIModalOpen(false)}
-        documentTitle={activeDocument?.title || 'Kế hoạch tuần'}
-      />
-
       <NewChatModal
         isOpen={chatModalOpen}
         onClose={() => setChatModalOpen(false)}
         documentTitle={activeDocument?.title}
         folders={folders}
         onToast={addToast}
-        onSaveAsDocument={(title, folderId, space, chatLines) => {
+        onSaveAsDocument={(title, folderId, space, chatLines, isFavorite = false) => {
           const newDocId = `doc_${Date.now()}`;
           const newDoc: Document = {
             id: newDocId,
@@ -611,7 +617,7 @@ export default function App() {
               email: CURRENT_USER.email,
               department: CURRENT_USER.department,
             },
-            isFavorite: false,
+            isFavorite: !!isFavorite,
             isTrash: false,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -635,6 +641,9 @@ export default function App() {
           setDocuments(newDocs);
           setViewState({ type: 'document', documentId: newDocId });
           setChatModalOpen(false);
+          if (isFavorite) {
+            addToast('Đã lưu đoạn chat và thêm vào mục Yêu thích');
+          }
         }}
       />
 

@@ -27,13 +27,19 @@ interface BlockItemProps {
   index: number;
   totalBlocks: number;
   userRole: UserRole;
+  isDragging?: boolean;
+  isDragOver?: boolean;
   onUpdate: (blockId: string, content: string, properties?: any) => void;
   onDelete: (blockId: string) => void;
   onDuplicate: (blockId: string) => void;
   onMoveUp: (blockId: string) => void;
   onMoveDown: (blockId: string) => void;
   onAddBelow: (index: number) => void;
-  onTriggerSlash: (blockId: string, query: string, rect: DOMRect) => void;
+  onTriggerSlash: (blockId: string, query: string, rect: DOMRect | null) => void;
+  onDragStartBlock?: (index: number) => void;
+  onDragOverBlock?: (index: number) => void;
+  onDropBlock?: (sourceIndex: number, targetIndex: number) => void;
+  onDragEndBlock?: () => void;
 }
 
 export const BlockItem: React.FC<BlockItemProps> = ({
@@ -41,6 +47,8 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   index,
   totalBlocks,
   userRole,
+  isDragging = false,
+  isDragOver = false,
   onUpdate,
   onDelete,
   onDuplicate,
@@ -48,11 +56,28 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   onMoveDown,
   onAddBelow,
   onTriggerSlash,
+  onDragStartBlock,
+  onDragOverBlock,
+  onDropBlock,
+  onDragEndBlock,
 }) => {
   const isReadOnly = userRole === 'viewer';
   const [showMenu, setShowMenu] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    if (showMenu) {
+      window.document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => window.document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
 
   const adjustHeight = () => {
     if (textRef.current) {
@@ -72,6 +97,8 @@ export const BlockItem: React.FC<BlockItemProps> = ({
     if (val.startsWith('/') && textRef.current) {
       const rect = textRef.current.getBoundingClientRect();
       onTriggerSlash(block.id, val.slice(1), rect);
+    } else {
+      onTriggerSlash(block.id, '', null);
     }
   };
 
@@ -820,31 +847,69 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             value={block.content}
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
-            placeholder="Gõ nội dung hoặc gõ / để mở tiện ích..."
-            className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+            placeholder={
+              block.content === '/'
+                ? 'Nhập để tìm kiếm'
+                : 'Gõ nội dung hoặc gõ / để mở tiện ích...'
+            }
+            className={`w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#86868B] leading-relaxed ${
+              block.content.startsWith('/') ? 'font-mono' : ''
+            }`}
           />
         );
     }
   };
 
   return (
-    <div className="group relative flex items-start gap-1 py-1.5 -ml-8 pl-8 pr-2 rounded-xl hover:bg-[#F2F2F7]/50 transition-colors">
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        onDragOverBlock?.(index);
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sourceIdxStr = e.dataTransfer.getData('text/plain');
+        const sourceIndex = sourceIdxStr !== '' ? Number(sourceIdxStr) : null;
+        if (sourceIndex !== null && !isNaN(sourceIndex)) {
+          onDropBlock?.(sourceIndex, index);
+        }
+      }}
+      className={`group relative flex items-start gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl transition-all ${
+        isDragging ? 'opacity-30 bg-[#F2F2F7] border border-dashed border-[#1D1D1F]' : 'hover:bg-[#F2F2F7]/40'
+      } ${isDragOver ? 'border-t-2 border-[#1D1D1F] -mt-0.5' : ''}`}
+    >
       {!isReadOnly && (
-        <div className="absolute left-0 top-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute left-1 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
             onClick={() => onAddBelow(index)}
-            className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors"
+            className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors cursor-pointer"
             title="Thêm khối bên dưới"
           >
             <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
           </button>
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
+              draggable={!isReadOnly}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                e.dataTransfer.setData('text/plain', String(index));
+                e.dataTransfer.effectAllowed = 'move';
+                onDragStartBlock?.(index);
+              }}
+              onDragEnd={() => {
+                onDragEndBlock?.();
+              }}
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors"
-              title="Tùy chọn khối"
+              className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors cursor-grab active:cursor-grabbing"
+              title="Kéo để di chuyển hoặc bấm để mở tùy chọn"
             >
               <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
             </button>

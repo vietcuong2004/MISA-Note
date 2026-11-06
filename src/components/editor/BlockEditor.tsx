@@ -23,7 +23,6 @@ import { BlockItem } from './BlockItem';
 import { SlashMenu } from './SlashMenu';
 import { ShareModal } from '../modals/ShareModal';
 import { MoveModal } from '../modals/MoveModal';
-import { OneAIModal } from '../modals/OneAIModal';
 import { ExportModal } from '../modals/ExportModal';
 
 interface BlockEditorProps {
@@ -54,10 +53,13 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   // Modals state
   const [shareOpen, setShareOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
-  const [oneAIOpen, setOneAIOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  // Drag and drop block reordering state
+  const [draggingBlockIndex, setDraggingBlockIndex] = useState<number | null>(null);
+  const [dragOverBlockIndex, setDragOverBlockIndex] = useState<number | null>(null);
 
   // Slash Menu state
   const [slashState, setSlashState] = useState<{
@@ -169,6 +171,27 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     triggerAutoSave(updatedDoc);
   };
 
+  const handleReorderBlock = (sourceIndex: number, targetIndex: number) => {
+    setDraggingBlockIndex(null);
+    setDragOverBlockIndex(null);
+    if (
+      sourceIndex === targetIndex ||
+      sourceIndex < 0 ||
+      targetIndex < 0 ||
+      sourceIndex >= doc.blocks.length ||
+      targetIndex >= doc.blocks.length
+    ) {
+      return;
+    }
+    const updatedBlocks = [...doc.blocks];
+    const [movedBlock] = updatedBlocks.splice(sourceIndex, 1);
+    updatedBlocks.splice(targetIndex, 0, movedBlock);
+    const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
+    setDoc(updatedDoc);
+    triggerAutoSave(updatedDoc);
+    onToast('Đã di chuyển vị trí đề mục');
+  };
+
   const handleAddBlockBelow = (index: number) => {
     const newBlock: Block = {
       id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -183,13 +206,17 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   // Slash trigger
-  const handleTriggerSlash = (blockId: string, query: string, rect: DOMRect) => {
+  const handleTriggerSlash = (blockId: string, query: string, rect: DOMRect | null) => {
+    if (!rect) {
+      setSlashState({ isOpen: false, blockId: null, query: '' });
+      return;
+    }
     setSlashState({
       isOpen: true,
       blockId,
       query,
       position: {
-        top: rect.bottom + window.scrollY - 30,
+        top: rect.bottom + 6,
         left: rect.left,
       },
     });
@@ -304,8 +331,32 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           <span className="truncate text-[#1D1D1F] font-semibold">{doc.title}</span>
         </div>
 
-        {/* Action Buttons Toolbar: [+ Chia sẻ] [•••] */}
+        {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
         <div className="flex items-center gap-2 shrink-0" ref={moreMenuRef}>
+          {/* Favorite Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              onToggleFavorite(doc.id);
+              setDoc((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors ios-interactive shadow-2xs cursor-pointer ${
+              doc.isFavorite
+                ? 'bg-[#1D1D1F] text-white border-[#1D1D1F]'
+                : 'bg-white border-[#E5E5EA] text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F2F2F7]'
+            }`}
+            title={doc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào yêu thích'}
+          >
+            <Star
+              className={`w-3.5 h-3.5 stroke-[1.75] ${
+                doc.isFavorite ? 'fill-white text-white' : ''
+              }`}
+            />
+            <span className="hidden sm:inline">
+              {doc.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
+            </span>
+          </button>
+
           {/* Share Button (white rounded-xl with border) */}
           <button
             onClick={() => setShareOpen(true)}
@@ -424,6 +475,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                 index={idx}
                 totalBlocks={doc.blocks.length}
                 userRole={currentRole}
+                isDragging={draggingBlockIndex === idx}
+                isDragOver={dragOverBlockIndex === idx && draggingBlockIndex !== idx}
                 onUpdate={handleUpdateBlock}
                 onDelete={handleDeleteBlock}
                 onDuplicate={handleDuplicateBlock}
@@ -431,6 +484,13 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                 onMoveDown={handleMoveBlockDown}
                 onAddBelow={handleAddBlockBelow}
                 onTriggerSlash={handleTriggerSlash}
+                onDragStartBlock={(dragIdx) => setDraggingBlockIndex(dragIdx)}
+                onDragOverBlock={(overIdx) => setDragOverBlockIndex(overIdx)}
+                onDropBlock={handleReorderBlock}
+                onDragEndBlock={() => {
+                  setDraggingBlockIndex(null);
+                  setDragOverBlockIndex(null);
+                }}
               />
             ))}
 
@@ -538,24 +598,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           setDoc((prev) => ({ ...prev, folderId, space }));
         }}
         onToast={onToast}
-      />
-
-      <OneAIModal
-        isOpen={oneAIOpen}
-        onClose={() => setOneAIOpen(false)}
-        documentTitle={doc.title}
-        onInsertToDoc={(text) => {
-          const newBlock: Block = {
-            id: `blk_${Date.now()}`,
-            type: 'quote',
-            content: text,
-          };
-          const updatedBlocks = [...doc.blocks, newBlock];
-          const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
-          setDoc(updatedDoc);
-          triggerAutoSave(updatedDoc);
-          onToast('Đã chèn nội dung từ One AI');
-        }}
       />
 
       <ExportModal

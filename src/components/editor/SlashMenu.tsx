@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  FileText,
+  Sparkles,
+  Code,
   List,
-  Database,
-  PenTool,
-  LayoutGrid,
+  ListOrdered,
+  CheckSquare,
+  Quote,
+  Table,
+  Minus,
+  Lightbulb,
 } from 'lucide-react';
 import { BlockType } from '../../types';
 
@@ -15,173 +19,131 @@ interface SlashMenuProps {
   position?: { top: number; left: number };
 }
 
-interface CategoryDefinition {
+interface MenuItem {
   id: string;
-  name: string;
-  icon: React.ReactNode;
-  items: {
-    type: BlockType;
-    glyph: string | React.ReactNode;
-    title: string;
-    description: string;
-  }[];
+  type: BlockType;
+  glyph: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  shortcut?: string;
+  badge?: string;
+  category: 'suggested' | 'basic';
 }
 
-const CATEGORIES: CategoryDefinition[] = [
+const MENU_ITEMS: MenuItem[] = [
+  // 1. Được đề xuất
   {
-    id: 'text',
-    name: 'Văn bản',
-    icon: <FileText className="w-3.5 h-3.5 stroke-[1.75]" />,
-    items: [
-      {
-        type: 'paragraph',
-        glyph: 'π',
-        title: 'Văn bản',
-        description: 'Nhập đoạn văn bản',
-      },
-      {
-        type: 'h1',
-        glyph: 'H₁',
-        title: 'Tiêu đề 1',
-        description: 'Tiêu đề lớn',
-      },
-      {
-        type: 'h2',
-        glyph: 'H₂',
-        title: 'Tiêu đề 2',
-        description: 'Tiêu đề vừa',
-      },
-      {
-        type: 'quote',
-        glyph: '❝',
-        title: 'Trích dẫn',
-        description: 'Khối trích dẫn',
-      },
-    ],
+    id: 'ai_meeting',
+    type: 'meeting_info',
+    glyph: <Sparkles className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Ghi chép cuộc họp với AI',
+    category: 'suggested',
   },
   {
-    id: 'list',
-    name: 'Danh sách',
-    icon: <List className="w-3.5 h-3.5 stroke-[1.75]" />,
-    items: [
-      {
-        type: 'bullet',
-        glyph: '•',
-        title: 'Dấu chấm',
-        description: 'Danh sách gạch đầu dòng',
-      },
-      {
-        type: 'numbered',
-        glyph: '1.',
-        title: 'Đánh số',
-        description: 'Danh sách thứ tự',
-      },
-      {
-        type: 'checklist',
-        glyph: '☑',
-        title: 'Việc cần làm',
-        description: 'Checklist ô kiểm',
-      },
-      {
-        type: 'toggle',
-        glyph: '▶',
-        title: 'Thu gọn',
-        description: 'Khối danh sách đóng mở',
-      },
-    ],
+    id: 'embed_html',
+    type: 'code',
+    glyph: <Code className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'HTML',
+    subtitle: '· Nhúng',
+    badge: 'Mới',
+    category: 'suggested',
+  },
+
+  // 2. Thành phần nội dung cơ bản
+  {
+    id: 'paragraph',
+    type: 'paragraph',
+    glyph: <span className="font-serif font-bold text-xs">T</span>,
+    title: 'Văn bản',
+    category: 'basic',
   },
   {
-    id: 'data',
-    name: 'Dữ liệu',
-    icon: <Database className="w-3.5 h-3.5 stroke-[1.75]" />,
-    items: [
-      {
-        type: 'table',
-        glyph: '▦',
-        title: 'Bảng dữ liệu',
-        description: 'Bảng dòng và cột',
-      },
-      {
-        type: 'meeting_info',
-        glyph: '📅',
-        title: 'Thông tin họp',
-        description: 'Thời gian, địa điểm họp',
-      },
-      {
-        type: 'meeting_attendees',
-        glyph: '👥',
-        title: 'Người tham dự',
-        description: 'Danh sách thành viên',
-      },
-      {
-        type: 'meeting_action_items',
-        glyph: '✓',
-        title: 'Action items',
-        description: 'Đầu việc sau cuộc họp',
-      },
-    ],
+    id: 'h1',
+    type: 'h1',
+    glyph: <span className="font-sans font-bold text-xs">H₁</span>,
+    title: 'Đề mục 1',
+    shortcut: '#',
+    category: 'basic',
   },
   {
-    id: 'insert',
-    name: 'Chèn',
-    icon: <PenTool className="w-3.5 h-3.5 stroke-[1.75]" />,
-    items: [
-      {
-        type: 'image',
-        glyph: '🖼',
-        title: 'Hình ảnh',
-        description: 'Chèn ảnh minh họa',
-      },
-      {
-        type: 'file',
-        glyph: '📎',
-        title: 'Tệp đính kèm',
-        description: 'Đính kèm tệp tài liệu',
-      },
-      {
-        type: 'link',
-        glyph: '🔗',
-        title: 'Liên kết web',
-        description: 'Đường dẫn liên kết',
-      },
-      {
-        type: 'code',
-        glyph: '</>',
-        title: 'Mã nguồn',
-        description: 'Khối code định dạng',
-      },
-    ],
+    id: 'h2',
+    type: 'h2',
+    glyph: <span className="font-sans font-bold text-xs">H₂</span>,
+    title: 'Đề mục 2',
+    shortcut: '##',
+    category: 'basic',
   },
   {
-    id: 'layout',
-    name: 'Bố cục',
-    icon: <LayoutGrid className="w-3.5 h-3.5 stroke-[1.75]" />,
-    items: [
-      {
-        type: 'callout',
-        glyph: '💡',
-        title: 'Khối chú thích',
-        description: 'Hộp thông tin nổi bật',
-      },
-      {
-        type: 'divider',
-        glyph: '—',
-        title: 'Đường phân cách',
-        description: 'Kẻ ngang chia đoạn',
-      },
-      {
-        type: 'h3',
-        glyph: 'H₃',
-        title: 'Tiêu đề 3',
-        description: 'Tiêu đề phụ nhỏ',
-      },
-      {
-        type: 'meeting_agenda',
-        glyph: '⏱',
-        title: 'Chương trình họp',
-        description: 'Nội dung và thời lượng',
-      },
-    ],
+    id: 'h3',
+    type: 'h3',
+    glyph: <span className="font-sans font-bold text-xs">H₃</span>,
+    title: 'Đề mục 3',
+    shortcut: '###',
+    category: 'basic',
+  },
+  {
+    id: 'h4',
+    type: 'h3',
+    glyph: <span className="font-sans font-bold text-xs">H₄</span>,
+    title: 'Đề mục 4',
+    shortcut: '####',
+    category: 'basic',
+  },
+  {
+    id: 'bullet',
+    type: 'bullet',
+    glyph: <List className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Danh sách có dấu đầu dòng',
+    category: 'basic',
+  },
+  {
+    id: 'numbered',
+    type: 'numbered',
+    glyph: <ListOrdered className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Danh sách được đánh số',
+    category: 'basic',
+  },
+  {
+    id: 'checklist',
+    type: 'checklist',
+    glyph: <CheckSquare className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Danh sách việc cần làm',
+    category: 'basic',
+  },
+  {
+    id: 'quote',
+    type: 'quote',
+    glyph: <Quote className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Trích dẫn',
+    category: 'basic',
+  },
+  {
+    id: 'table',
+    type: 'table',
+    glyph: <Table className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Bảng',
+    category: 'basic',
+  },
+  {
+    id: 'code',
+    type: 'code',
+    glyph: <Code className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Khối mã',
+    category: 'basic',
+  },
+  {
+    id: 'divider',
+    type: 'divider',
+    glyph: <Minus className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Đường phân cách',
+    category: 'basic',
+  },
+  {
+    id: 'callout',
+    type: 'callout',
+    glyph: <Lightbulb className="w-3.5 h-3.5 stroke-[1.75]" />,
+    title: 'Khối chú thích',
+    category: 'basic',
   },
 ];
 
@@ -191,69 +153,69 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({
   onClose,
   position,
 }) => {
-  const [activeCategoryId, setActiveCategoryId] = useState<string>('text');
-  const [selectedItemIndex, setSelectedItemIndex] = useState<number>(0);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const cleanQuery = query.toLowerCase().trim();
 
-  // If query is typed, search across all categories
-  const isSearching = cleanQuery.length > 0;
-  const allItems = CATEGORIES.flatMap((c) => c.items);
-  const filteredSearchItems = isSearching
-    ? allItems.filter(
-        (i) =>
-          i.title.toLowerCase().includes(cleanQuery) ||
-          i.description.toLowerCase().includes(cleanQuery) ||
-          i.type.toLowerCase().includes(cleanQuery)
+  // Filter items matching query
+  const filteredItems = cleanQuery
+    ? MENU_ITEMS.filter(
+        (item) =>
+          item.title.toLowerCase().includes(cleanQuery) ||
+          item.subtitle?.toLowerCase().includes(cleanQuery) ||
+          item.shortcut?.toLowerCase().includes(cleanQuery) ||
+          item.type.toLowerCase().includes(cleanQuery)
       )
-    : [];
-
-  const activeCategory =
-    CATEGORIES.find((c) => c.id === activeCategoryId) || CATEGORIES[0];
-  const currentItems = isSearching ? filteredSearchItems : activeCategory.items;
+    : MENU_ITEMS;
 
   useEffect(() => {
-    setSelectedItemIndex(0);
-  }, [activeCategoryId, query]);
+    setSelectedIndex(0);
+  }, [query]);
 
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (currentItems.length === 0) return;
+      if (filteredItems.length === 0) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+        return;
+      }
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedItemIndex((prev) => (prev + 1) % currentItems.length);
+        setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedItemIndex((prev) => (prev - 1 + currentItems.length) % currentItems.length);
+        setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (currentItems[selectedItemIndex]) {
-          onSelect(currentItems[selectedItemIndex].type);
+        if (filteredItems[selectedIndex]) {
+          onSelect(filteredItems[selectedIndex].type);
         }
       } else if (e.key === 'Escape') {
         e.preventDefault();
         onClose();
-      } else if (e.key === 'ArrowRight' && !isSearching) {
-        // move to next category
-        const catIdx = CATEGORIES.findIndex((c) => c.id === activeCategoryId);
-        if (catIdx < CATEGORIES.length - 1) {
-          setActiveCategoryId(CATEGORIES[catIdx + 1].id);
-        }
-      } else if (e.key === 'ArrowLeft' && !isSearching) {
-        // move to prev category
-        const catIdx = CATEGORIES.findIndex((c) => c.id === activeCategoryId);
-        if (catIdx > 0) {
-          setActiveCategoryId(CATEGORIES[catIdx - 1].id);
-        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentItems, selectedItemIndex, activeCategoryId, isSearching, onSelect, onClose]);
+  }, [filteredItems, selectedIndex, onSelect, onClose]);
 
+  // Scroll active item into view
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const activeEl = scrollRef.current.querySelector('[data-selected="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedIndex]);
+
+  // Click outside listener
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -264,89 +226,175 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({
     return () => window.document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
+  // Group filtered items by category if no active search, else show as flat list
+  const suggestedItems = filteredItems.filter((i) => i.category === 'suggested');
+  const basicItems = filteredItems.filter((i) => i.category === 'basic');
+
   return (
     <div
       ref={containerRef}
-      className="absolute z-50 bg-white/95 backdrop-blur-xl rounded-2xl border border-[#E5E5EA] shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-      style={
-        position
-          ? {
-              top: `${position.top}px`,
-              left: `${Math.min(position.left, window.innerWidth - 440)}px`,
-              width: '420px',
-            }
-          : { top: '100%', left: 0, width: '420px' }
-      }
+      className="fixed z-50 bg-white rounded-2xl border border-[#E5E5EA] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col w-[285px]"
+      style={{
+        top: position ? `${Math.min(position.top, window.innerHeight - 380)}px` : '160px',
+        left: position ? `${Math.max(16, Math.min(position.left, window.innerWidth - 305))}px` : '320px',
+      }}
     >
-      <div className="flex divide-x divide-[#E5E5EA]">
-        {/* Left Column: Categories exactly matching screenshot */}
-        {!isSearching && (
-          <div className="w-[124px] p-2 space-y-1 bg-[#FAFAFA] shrink-0">
-            {CATEGORIES.map((cat) => {
-              const isActive = cat.id === activeCategoryId;
+      {/* Scrollable Items Container matching Image 3 */}
+      <div
+        ref={scrollRef}
+        className="max-h-[320px] overflow-y-auto p-1.5 space-y-2 select-none"
+      >
+        {filteredItems.length === 0 ? (
+          <div className="p-4 text-center text-xs text-[#86868B]">
+            Không tìm thấy thành phần nào
+          </div>
+        ) : cleanQuery ? (
+          // Flat list when searching
+          <div className="space-y-0.5">
+            <div className="px-2.5 py-1 text-[11px] font-semibold text-[#86868B]">
+              Kết quả tìm kiếm ({filteredItems.length})
+            </div>
+            {filteredItems.map((item, idx) => {
+              const isSelected = idx === selectedIndex;
               return (
                 <button
-                  key={cat.id}
+                  key={item.id}
                   type="button"
-                  onClick={() => setActiveCategoryId(cat.id)}
-                  onMouseEnter={() => setActiveCategoryId(cat.id)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
-                    isActive
-                      ? 'bg-[#EAEAEC] text-[#1D1D1F] font-semibold'
-                      : 'text-[#48484A] hover:bg-[#F2F2F7]'
+                  data-selected={isSelected}
+                  onClick={() => onSelect(item.type)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-colors cursor-pointer text-xs ${
+                    isSelected
+                      ? 'bg-[#F2F2F7] text-[#1D1D1F]'
+                      : 'text-[#1D1D1F] hover:bg-[#F2F2F7]'
                   }`}
                 >
-                  <span className="shrink-0 text-[#1D1D1F]">{cat.icon}</span>
-                  <span className="truncate">{cat.name}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-5 text-center font-bold text-xs text-[#1D1D1F] shrink-0">
+                      {item.glyph}
+                    </span>
+                    <span className="font-medium text-[#1D1D1F] truncate">
+                      {item.title}
+                      {item.subtitle && (
+                        <span className="text-[#86868B] font-normal ml-1">
+                          {item.subtitle}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {item.badge && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[#EBF5FF] text-[#0071E3] shrink-0">
+                      {item.badge}
+                    </span>
+                  )}
+                  {item.shortcut && (
+                    <span className="font-mono text-xs text-[#AEAEB2] shrink-0 ml-2">
+                      {item.shortcut}
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
+        ) : (
+          // Grouped by section matching Image 3
+          <>
+            {/* Section 1: Được đề xuất */}
+            {suggestedItems.length > 0 && (
+              <div className="space-y-0.5">
+                <div className="px-2.5 pt-1 pb-1 text-[11px] font-normal text-[#86868B]">
+                  Được đề xuất
+                </div>
+                {suggestedItems.map((item) => {
+                  const itemIndex = filteredItems.findIndex((i) => i.id === item.id);
+                  const isSelected = itemIndex === selectedIndex;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-selected={isSelected}
+                      onClick={() => onSelect(item.type)}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-colors cursor-pointer text-xs ${
+                        isSelected
+                          ? 'bg-[#F2F2F7] text-[#1D1D1F]'
+                          : 'text-[#1D1D1F] hover:bg-[#F2F2F7]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 text-center font-bold text-xs text-[#1D1D1F] shrink-0 flex items-center justify-center">
+                          {item.glyph}
+                        </span>
+                        <span className="font-medium text-[#1D1D1F] truncate">
+                          {item.title}
+                          {item.subtitle && (
+                            <span className="text-[#86868B] font-normal ml-1">
+                              {item.subtitle}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {item.badge && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[#EBF5FF] text-[#0071E3] shrink-0">
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Section 2: Thành phần nội dung cơ bản */}
+            {basicItems.length > 0 && (
+              <div className="space-y-0.5 pt-1">
+                <div className="px-2.5 pt-1 pb-1 text-[11px] font-normal text-[#86868B]">
+                  Thành phần nội dung cơ bản
+                </div>
+                {basicItems.map((item) => {
+                  const itemIndex = filteredItems.findIndex((i) => i.id === item.id);
+                  const isSelected = itemIndex === selectedIndex;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-selected={isSelected}
+                      onClick={() => onSelect(item.type)}
+                      onMouseEnter={() => setSelectedIndex(itemIndex)}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-left transition-colors cursor-pointer text-xs ${
+                        isSelected
+                          ? 'bg-[#F2F2F7] text-[#1D1D1F]'
+                          : 'text-[#1D1D1F] hover:bg-[#F2F2F7]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 text-center font-bold text-xs text-[#1D1D1F] shrink-0 flex items-center justify-center">
+                          {item.glyph}
+                        </span>
+                        <span className="font-medium text-[#1D1D1F] truncate">
+                          {item.title}
+                        </span>
+                      </div>
+                      {item.shortcut && (
+                        <span className="font-mono text-xs text-[#AEAEB2] shrink-0 ml-2">
+                          {item.shortcut}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
+      </div>
 
-        {/* Right Column: Items */}
-        <div className="flex-1 p-2 flex flex-col justify-start min-h-[190px]">
-          <div className="px-3 pt-1 pb-1.5 text-xs font-semibold text-[#1D1D1F]">
-            {isSearching ? `Kết quả tìm kiếm ("${query}")` : activeCategory.name}
-          </div>
-
-          {currentItems.length === 0 ? (
-            <div className="p-4 text-center text-xs text-[#86868B]">
-              Không tìm thấy tiện ích
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {currentItems.map((item, idx) => {
-                const isSelected = idx === selectedItemIndex;
-                return (
-                  <button
-                    key={item.type}
-                    type="button"
-                    onClick={() => onSelect(item.type)}
-                    onMouseEnter={() => setSelectedItemIndex(idx)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-left transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#F2F2F7] text-[#1D1D1F]'
-                        : 'text-[#1D1D1F] hover:bg-[#F2F2F7]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-5 text-center font-bold text-xs text-[#1D1D1F] shrink-0 font-sans">
-                        {item.glyph}
-                      </span>
-                      <span className="text-xs font-semibold text-[#1D1D1F] truncate">
-                        {item.title}
-                      </span>
-                    </div>
-                    <span className="text-xs text-[#86868B] truncate ml-3 pl-1 font-normal">
-                      {item.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      {/* Footer bar matching Image 3 */}
+      <div className="px-3 py-2 border-t border-[#E5E5EA] flex items-center justify-between text-xs text-[#1D1D1F] bg-white shrink-0">
+        <span className="text-[11px] font-normal">Đóng menu</span>
+        <span className="font-mono text-[10px] text-[#86868B]">esc</span>
       </div>
     </div>
   );

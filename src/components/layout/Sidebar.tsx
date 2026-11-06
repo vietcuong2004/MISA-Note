@@ -38,6 +38,8 @@ interface SidebarProps {
   currentRole: UserRole;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  sidebarWidth?: number;
+  onWidthChange?: (width: number) => void;
   onNavigate: (view: ViewState) => void;
   onCreateDocument: (space: SpaceType, folderId?: string | null) => void;
   onCreateFolder: (space: SpaceType) => void;
@@ -67,6 +69,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
   collapsed,
   onToggleCollapse,
+  sidebarWidth = 260,
+  onWidthChange,
   onNavigate,
   onCreateDocument,
   onCreateFolder,
@@ -87,8 +91,68 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onMoveDocument,
   onToast,
 }) => {
+  const DEFAULT_SIDEBAR_WIDTH = 260;
+  const MIN_SIDEBAR_WIDTH = 200;
+  const MAX_SIDEBAR_WIDTH = 520;
+
+  const [width, setWidth] = useState(sidebarWidth || DEFAULT_SIDEBAR_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false);
+  const widthRef = useRef(width);
+
+  useEffect(() => {
+    if (sidebarWidth && !isResizingRef.current) {
+      setWidth(sidebarWidth);
+      widthRef.current = sidebarWidth;
+    }
+  }, [sidebarWidth]);
+
+  const handleStartResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isResizingRef.current = true;
+    setIsResizing(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, moveEvent.clientX));
+      setWidth(newWidth);
+      widthRef.current = newWidth;
+      onWidthChange?.(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      isResizingRef.current = false;
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      try {
+        localStorage.setItem('misa_sidebar_width', String(widthRef.current));
+      } catch (err) {}
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleResetWidth = () => {
+    setWidth(DEFAULT_SIDEBAR_WIDTH);
+    widthRef.current = DEFAULT_SIDEBAR_WIDTH;
+    onWidthChange?.(DEFAULT_SIDEBAR_WIDTH);
+    try {
+      localStorage.setItem('misa_sidebar_width', String(DEFAULT_SIDEBAR_WIDTH));
+    } catch (err) {}
+    onToast?.('Đã đặt lại độ rộng thanh bên về mặc định (260px)', 'info');
+  };
+
   const [personalExpanded, setPersonalExpanded] = useState(true);
   const [companyExpanded, setCompanyExpanded] = useState(true);
+  const [recentExpanded, setRecentExpanded] = useState(true);
+  const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
 
@@ -224,6 +288,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeDocs = documents.filter((d) => !d.isTrash);
   const trashDocs = documents.filter((d) => d.isTrash);
 
+  const recentDocs = [...activeDocs].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+  const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
+
   const personalFolders = folders.filter((f) => f.space === 'personal');
   const companyFolders = folders.filter((f) => f.space === 'company');
 
@@ -306,7 +375,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${isDragging ? 'opacity-30 border border-dashed border-[#1D1D1F] bg-[#F2F2F7]' : ''}`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <FileText className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+          {doc.icon === '💬' || doc.tags?.includes('Đoạn chat') ? (
+            <MessageSquare className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+          ) : doc.type === 'meeting' ? (
+            <Users className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+          ) : (
+            <FileText className="w-3.5 h-3.5 stroke-[1.75] shrink-0 text-[#1D1D1F]" />
+          )}
           {isRenaming ? (
             <input
               type="text"
@@ -324,9 +399,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ) : (
             <span className="truncate text-xs">{doc.title || 'Không có tiêu đề'}</span>
           )}
+          {doc.isFavorite && (
+            <Star className="w-2.5 h-2.5 fill-[#1D1D1F] text-[#1D1D1F] shrink-0" />
+          )}
         </div>
 
-        {/* 2 hover action icons matching user screenshot image_1bfc8ff5.png: [+] and [···] */}
+        {/* 2 hover action icons matching user screenshot: [+] and [···] */}
         {!isRenaming && (
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 ml-1">
             {/* 1. Plus button: Thêm tài liệu mới */}
@@ -388,7 +466,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Quick Note icon */}
           <button
-            onClick={() => onCreateDocument('personal', null)}
+            onClick={() => {
+              setRecentExpanded(true);
+              onCreateDocument('personal', null);
+            }}
             className="w-10 h-10 rounded-xl bg-[#1D1D1F] text-white flex items-center justify-center ios-interactive shadow-xs"
             title="Ghi chú mới"
           >
@@ -479,7 +560,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Expanded Sidebar matching user design
   return (
-    <aside className="w-[260px] h-full bg-[#FAFAFA] border-r border-[#E5E5EA] flex flex-col justify-between select-none text-xs text-[#1D1D1F] transition-all shrink-0 relative">
+    <aside
+      style={{ width: `${width}px` }}
+      className={`h-full bg-[#FAFAFA] border-r border-[#E5E5EA] flex flex-col justify-between select-none text-xs text-[#1D1D1F] shrink-0 relative ${
+        isResizing ? 'transition-none select-none' : 'transition-[width] duration-150'
+      }`}
+    >
       <div className="flex-1 overflow-y-auto flex flex-col">
         {/* Top Header Row: Icon Ghi chép AI + Title + Collapse button « */}
         <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
@@ -502,7 +588,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Ghi chú mới button */}
             <button
               type="button"
-              onClick={() => onCreateDocument('personal', null)}
+              onClick={() => {
+                setRecentExpanded(true);
+                onCreateDocument('personal', null);
+              }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#1D1D1F] text-white hover:bg-black font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer"
             >
               <SquarePen className="w-3.5 h-3.5 stroke-[2]" />
@@ -633,33 +722,114 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Quick Nav Links: Gần đây, Yêu thích, Ghi chú cuộc họp */}
-        <div className="px-2 pt-2 space-y-0.5">
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'recent' })}
-            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ios-interactive cursor-pointer ${
-              viewState.type === 'recent'
-                ? 'bg-[#EAEAEA] text-[#1D1D1F] font-semibold'
-                : 'text-[#1D1D1F] hover:bg-[#EAEAEA]'
-            }`}
-          >
-            <Clock className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
-            <span>Gần đây</span>
-          </button>
+        {/* Smart Sections: Gần đây & Yêu thích */}
+        <div className="px-2 pt-2 space-y-1">
+          {/* Section: Gần đây */}
+          <div className="space-y-0.5">
+            <div
+              className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer text-[#1D1D1F] ios-interactive transition-colors ${
+                viewState.type === 'recent'
+                  ? 'bg-[#EAEAEA] text-[#1D1D1F] font-semibold'
+                  : 'hover:bg-[#EAEAEA]'
+              }`}
+              onClick={() => setRecentExpanded(!recentExpanded)}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[#86868B]">
+                  {recentExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 stroke-[2]" />
+                  )}
+                </span>
+                <Clock className="w-3.5 h-3.5 stroke-[1.75] text-[#1D1D1F] shrink-0" />
+                <span className="text-xs font-medium truncate">Gần đây</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {recentDocs.length > 0 && (
+                  <span className="text-[10px] text-[#86868B] font-mono px-1.5 py-0.2 rounded bg-[#E5E5EA]">
+                    {recentDocs.length}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRecentExpanded(true);
+                    onCreateDocument('personal', null);
+                  }}
+                  className="p-1 rounded hover:bg-[#DCDCE0] text-[#86868B] hover:text-[#1D1D1F] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  title="Tạo ghi chú mới"
+                >
+                  <Plus className="w-3 h-3 stroke-[2]" />
+                </button>
+              </div>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'favorite' })}
-            className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors ios-interactive cursor-pointer ${
-              viewState.type === 'favorite'
-                ? 'bg-[#EAEAEA] text-[#1D1D1F] font-semibold'
-                : 'text-[#1D1D1F] hover:bg-[#EAEAEA]'
-            }`}
-          >
-            <Star className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
-            <span>Yêu thích</span>
-          </button>
+            {/* List of recent documents right below "Gần đây" tab */}
+            {recentExpanded && (
+              <div className="pl-6 space-y-0.5 border-l border-[#E5E5EA] ml-3.5 my-0.5">
+                {recentDocs.slice(0, 7).map((doc) => renderDocumentItem(doc, doc.folderId))}
+                {recentDocs.length === 0 && (
+                  <div className="text-[10px] text-[#86868B] italic px-2 py-1">
+                    Chưa có ghi chú nào
+                  </div>
+                )}
+                {recentDocs.length > 7 && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate({ type: 'recent' })}
+                    className="w-full text-left px-2 py-1 text-[11px] text-[#86868B] hover:text-[#1D1D1F] hover:underline font-medium cursor-pointer"
+                  >
+                    Xem tất cả ({recentDocs.length}) →
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Yêu thích */}
+          <div className="space-y-0.5">
+            <div
+              className={`group flex items-center justify-between px-2.5 py-1.5 rounded-xl cursor-pointer text-[#1D1D1F] ios-interactive transition-colors ${
+                viewState.type === 'favorite'
+                  ? 'bg-[#EAEAEA] text-[#1D1D1F] font-semibold'
+                  : 'hover:bg-[#EAEAEA]'
+              }`}
+              onClick={() => setFavoriteExpanded(!favoriteExpanded)}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[#86868B]">
+                  {favoriteExpanded ? (
+                    <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 stroke-[2]" />
+                  )}
+                </span>
+                <Star className="w-3.5 h-3.5 stroke-[1.75] text-[#1D1D1F] fill-[#1D1D1F] shrink-0" />
+                <span className="text-xs font-medium truncate">Yêu thích</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {favoriteDocs.length > 0 && (
+                  <span className="text-[10px] text-[#86868B] font-mono px-1.5 py-0.2 rounded bg-[#E5E5EA]">
+                    {favoriteDocs.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* List of favorite documents right below "Yêu thích" tab */}
+            {favoriteExpanded && (
+              <div className="pl-6 space-y-0.5 border-l border-[#E5E5EA] ml-3.5 my-0.5">
+                {favoriteDocs.map((doc) => renderDocumentItem(doc, doc.folderId))}
+                {favoriteDocs.length === 0 && (
+                  <div className="text-[10px] text-[#86868B] italic px-2 py-1">
+                    Chưa có mục yêu thích
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Section 1: GHI CHÉP CỦA TÔI */}
@@ -1194,6 +1364,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })
         }
       />
+
+      {/* Resizer Handle on right border */}
+      <div
+        onMouseDown={handleStartResizing}
+        onDoubleClick={handleResetWidth}
+        className="absolute top-0 -right-1 w-2.5 h-full cursor-col-resize z-40 group flex items-center justify-center select-none"
+        title="Kéo sang trái/phải để thay đổi độ rộng (Nhấp đúp để đặt lại mặc định)"
+      >
+        <div
+          className={`w-[2px] h-full transition-colors ${
+            isResizing ? 'bg-[#1D1D1F]' : 'bg-transparent group-hover:bg-[#1D1D1F]/30'
+          }`}
+        />
+      </div>
     </aside>
   );
 };

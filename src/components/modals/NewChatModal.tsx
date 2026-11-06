@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, MessageSquare, Folder, Check } from 'lucide-react';
+import { X, Send, MessageSquare, Folder, Check, Star } from 'lucide-react';
 import { TEAM_MEMBERS } from '../../data/mockData';
 import { Folder as FolderType, SpaceType } from '../../types';
 
@@ -9,7 +9,13 @@ interface NewChatModalProps {
   documentTitle?: string;
   onToast: (msg: string) => void;
   folders?: FolderType[];
-  onSaveAsDocument?: (title: string, folderId: string | null, space: SpaceType, messages: string[]) => void;
+  onSaveAsDocument?: (
+    title: string,
+    folderId: string | null,
+    space: SpaceType,
+    messages: string[],
+    isFavorite?: boolean
+  ) => void;
 }
 
 interface ChatMessage {
@@ -74,6 +80,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     onToast('Đã gửi tin nhắn nội bộ');
   };
 
+  const handleSaveToFavorites = () => {
+    const chatTitle = documentTitle ? `Thảo luận: ${documentTitle}` : 'Đoạn chat thảo luận nhóm';
+    const textLines = messages.map((m) => `${m.sender} (${m.time}): ${m.text}`);
+    onSaveAsDocument?.(chatTitle, null, 'personal', textLines, true);
+    onToast('Đã lưu đoạn chat vào mục Yêu thích');
+    onClose();
+  };
+
   const handleExecuteSave = (folder: FolderType | null, space: SpaceType) => {
     const chatTitle = documentTitle ? `Thảo luận: ${documentTitle}` : 'Đoạn chat thảo luận nhóm';
     const textLines = messages.map((m) => `${m.sender} (${m.time}): ${m.text}`);
@@ -101,6 +115,17 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Button Thêm vào yêu thích */}
+            <button
+              type="button"
+              onClick={handleSaveToFavorites}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E5E5EA] bg-white hover:bg-[#F2F2F7] text-xs font-semibold text-[#1D1D1F] transition-colors cursor-pointer"
+              title="Lưu đoạn chat và thêm vào mục Yêu thích"
+            >
+              <Star className="w-3.5 h-3.5 stroke-[1.75] text-[#1D1D1F] fill-[#1D1D1F]" />
+              <span>Thêm vào yêu thích</span>
+            </button>
+
             {/* Button Lưu vào thư mục */}
             <div className="relative">
               <button
