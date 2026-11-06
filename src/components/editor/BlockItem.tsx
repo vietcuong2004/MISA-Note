@@ -1,0 +1,908 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  GripVertical,
+  Plus,
+  Trash2,
+  Copy,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  ChevronRight,
+  ChevronDown,
+  ExternalLink,
+  Paperclip,
+  Code2,
+  Calendar,
+  Users,
+  Clock,
+  CheckSquare,
+  Sparkles,
+  PlusCircle,
+} from 'lucide-react';
+import { Block, BlockType, UserRole } from '../../types';
+import { TEAM_MEMBERS } from '../../data/mockData';
+
+interface BlockItemProps {
+  block: Block;
+  index: number;
+  totalBlocks: number;
+  userRole: UserRole;
+  onUpdate: (blockId: string, content: string, properties?: any) => void;
+  onDelete: (blockId: string) => void;
+  onDuplicate: (blockId: string) => void;
+  onMoveUp: (blockId: string) => void;
+  onMoveDown: (blockId: string) => void;
+  onAddBelow: (index: number) => void;
+  onTriggerSlash: (blockId: string, query: string, rect: DOMRect) => void;
+}
+
+export const BlockItem: React.FC<BlockItemProps> = ({
+  block,
+  index,
+  totalBlocks,
+  userRole,
+  onUpdate,
+  onDelete,
+  onDuplicate,
+  onMoveUp,
+  onMoveDown,
+  onAddBelow,
+  onTriggerSlash,
+}) => {
+  const isReadOnly = userRole === 'viewer';
+  const [showMenu, setShowMenu] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    if (textRef.current) {
+      textRef.current.style.height = 'auto';
+      textRef.current.style.height = `${textRef.current.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [block.content]);
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    onUpdate(block.id, val, block.properties);
+
+    if (val.startsWith('/') && textRef.current) {
+      const rect = textRef.current.getBoundingClientRect();
+      onTriggerSlash(block.id, val.slice(1), rect);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      if (['paragraph', 'bullet', 'numbered', 'checklist'].includes(block.type)) {
+        e.preventDefault();
+        onAddBelow(index);
+      }
+    } else if (e.key === 'Backspace' && block.content === '' && totalBlocks > 1) {
+      e.preventDefault();
+      onDelete(block.id);
+    }
+  };
+
+  const renderBlockContent = () => {
+    switch (block.type) {
+      case 'h1':
+        return (
+          <textarea
+            ref={textRef}
+            rows={1}
+            disabled={isReadOnly}
+            value={block.content}
+            onChange={handleTextChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Tiêu đề 1..."
+            className="w-full text-2xl md:text-3xl font-extrabold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-tight tracking-tight"
+          />
+        );
+
+      case 'h2':
+        return (
+          <textarea
+            ref={textRef}
+            rows={1}
+            disabled={isReadOnly}
+            value={block.content}
+            onChange={handleTextChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Tiêu đề 2..."
+            className="w-full text-xl md:text-2xl font-bold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-snug tracking-tight mt-1"
+          />
+        );
+
+      case 'h3':
+        return (
+          <textarea
+            ref={textRef}
+            rows={1}
+            disabled={isReadOnly}
+            value={block.content}
+            onChange={handleTextChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Tiêu đề 3..."
+            className="w-full text-base md:text-lg font-semibold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] tracking-tight mt-1"
+          />
+        );
+
+      case 'bullet':
+        return (
+          <div className="flex items-start gap-2.5 w-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#1D1D1F] mt-2.5 shrink-0" />
+            <textarea
+              ref={textRef}
+              rows={1}
+              disabled={isReadOnly}
+              value={block.content}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Nội dung gạch đầu dòng..."
+              className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+            />
+          </div>
+        );
+
+      case 'numbered':
+        return (
+          <div className="flex items-start gap-2 w-full">
+            <span className="text-sm font-semibold text-[#86868B] min-w-5 shrink-0 pt-0.5 font-mono tabular-nums">
+              {index + 1}.
+            </span>
+            <textarea
+              ref={textRef}
+              rows={1}
+              disabled={isReadOnly}
+              value={block.content}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Nội dung danh sách thứ tự..."
+              className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+            />
+          </div>
+        );
+
+      // Apple Reminders Style Checklist with subtle monochrome circular checkbox
+      case 'checklist':
+        const checked = !!block.properties?.checked;
+        return (
+          <div className="flex items-start gap-3 w-full">
+            <button
+              type="button"
+              disabled={isReadOnly}
+              onClick={() =>
+                onUpdate(block.id, block.content, { ...block.properties, checked: !checked })
+              }
+              className={`mt-0.5 w-[18px] h-[18px] rounded-md border flex items-center justify-center transition-all ios-interactive ${
+                checked
+                  ? 'bg-[#1D1D1F] border-[#1D1D1F] text-white shadow-2xs'
+                  : 'border-[#C7C7CC] hover:border-[#1D1D1F] bg-white'
+              }`}
+            >
+              {checked && <Check className="w-3 h-3 stroke-[3]" />}
+            </button>
+            <textarea
+              ref={textRef}
+              rows={1}
+              disabled={isReadOnly}
+              value={block.content}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Việc cần làm..."
+              className={`w-full text-sm bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed transition-all ${
+                checked ? 'line-through text-[#86868B]' : 'text-[#1D1D1F]'
+              }`}
+            />
+          </div>
+        );
+
+      case 'toggle':
+        const isOpen = !!block.properties?.open;
+        return (
+          <div className="w-full space-y-1.5">
+            <div className="flex items-start gap-1.5">
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdate(block.id, block.content, { ...block.properties, open: !isOpen })
+                }
+                className="mt-0.5 p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] ios-interactive"
+              >
+                {isOpen ? <ChevronDown className="w-4 h-4 stroke-[1.75]" /> : <ChevronRight className="w-4 h-4 stroke-[1.75]" />}
+              </button>
+              <textarea
+                ref={textRef}
+                rows={1}
+                disabled={isReadOnly}
+                value={block.content}
+                onChange={handleTextChange}
+                placeholder="Tiêu đề mục thu gọn..."
+                className="w-full text-sm font-semibold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC]"
+              />
+            </div>
+            {isOpen && (
+              <div className="pl-6 border-l-2 border-[#E5E5EA] ml-3">
+                <textarea
+                  rows={2}
+                  disabled={isReadOnly}
+                  value={block.properties?.caption || ''}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, {
+                      ...block.properties,
+                      caption: e.target.value,
+                    })
+                  }
+                  placeholder="Nội dung chi tiết bên trong mục thu gọn..."
+                  className="w-full text-xs text-[#6E6E73] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+                />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'quote':
+        return (
+          <div className="w-full pl-4 border-l-2 border-[#1D1D1F] py-1 my-1">
+            <textarea
+              ref={textRef}
+              rows={1}
+              disabled={isReadOnly}
+              value={block.content}
+              onChange={handleTextChange}
+              placeholder="Nhập trích dẫn..."
+              className="w-full text-sm italic text-[#48484A] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+            />
+          </div>
+        );
+
+      // Clean neutral callout without candy background
+      case 'callout':
+        return (
+          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-[#F8F8FA] flex items-start gap-3 my-1.5">
+            <div className="w-7 h-7 rounded-xl bg-white border border-[#E5E5EA] shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <textarea
+                ref={textRef}
+                rows={1}
+                disabled={isReadOnly}
+                value={block.content}
+                onChange={handleTextChange}
+                placeholder="Nội dung chú thích nổi bật..."
+                className="w-full text-xs font-medium bg-transparent resize-none focus:outline-none leading-relaxed text-[#1D1D1F]"
+              />
+            </div>
+          </div>
+        );
+
+      case 'divider':
+        return (
+          <div className="w-full py-3 my-1">
+            <div className="border-b border-[#E5E5EA] w-full" />
+          </div>
+        );
+
+      case 'code':
+        return (
+          <div className="w-full my-2 rounded-2xl overflow-hidden border border-[#3A3A3C] bg-[#1D1D1F] text-white ios-card-shadow">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#2C2C2E] border-b border-[#3A3A3C] text-[11px] text-[#AEAEB2]">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8E8E93]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8E8E93]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#8E8E93]" />
+                </div>
+                <span className="font-mono ml-2 text-xs">{block.properties?.language || 'typescript'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(block.content);
+                  setCopiedCode(true);
+                  setTimeout(() => setCopiedCode(false), 2000);
+                }}
+                className="flex items-center gap-1 text-[10px] text-[#AEAEB2] hover:text-white px-2 py-0.5 rounded-md hover:bg-[#3A3A3C] transition-colors ios-interactive"
+              >
+                {copiedCode ? <Check className="w-3 h-3 text-white" /> : <Code2 className="w-3 h-3 stroke-[1.75]" />}
+                <span>{copiedCode ? 'Đã sao chép' : 'Sao chép mã'}</span>
+              </button>
+            </div>
+            <textarea
+              rows={4}
+              disabled={isReadOnly}
+              value={block.content}
+              onChange={(e) => onUpdate(block.id, e.target.value, block.properties)}
+              placeholder="// Nhập mã nguồn tại đây..."
+              className="w-full p-4 font-mono text-xs bg-transparent text-[#F2F2F7] focus:outline-none resize-y leading-relaxed"
+            />
+          </div>
+        );
+
+      case 'image':
+        const imgUrl =
+          block.properties?.url ||
+          'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&auto=format&fit=crop&q=80';
+        return (
+          <div className="w-full my-2 space-y-2">
+            <div className="rounded-[20px] overflow-hidden border border-[#E5E5EA] bg-[#F2F2F7] max-h-80 flex items-center justify-center ios-card-shadow">
+              <img
+                src={imgUrl}
+                alt={block.content || 'Hình ảnh'}
+                referrerPolicy="no-referrer"
+                className="w-full h-auto max-h-80 object-cover"
+              />
+            </div>
+            {!isReadOnly && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  type="text"
+                  value={block.properties?.url || ''}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, { ...block.properties, url: e.target.value })
+                  }
+                  placeholder="Dán liên kết ảnh (URL)..."
+                  className="flex-1 text-xs px-3 py-1.5 bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl focus:outline-none text-[#1D1D1F]"
+                />
+                <input
+                  type="text"
+                  value={block.content}
+                  onChange={(e) => onUpdate(block.id, e.target.value, block.properties)}
+                  placeholder="Chú thích ảnh..."
+                  className="w-48 text-xs px-3 py-1.5 bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl focus:outline-none text-[#1D1D1F]"
+                />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'file':
+        return (
+          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-white hover:bg-[#F8F8FA] transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#F2F2F7] border border-[#E5E5EA] text-[#1D1D1F] flex items-center justify-center shrink-0">
+                <Paperclip className="w-5 h-5 stroke-[1.75]" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold text-[#1D1D1F]">
+                  {block.content || 'Tai_lieu_dinh_kem.pdf'}
+                </div>
+                <div className="text-[11px] text-[#86868B] font-mono">
+                  {block.properties?.fileSize || '2.4 MB'} · Tệp đính kèm nội bộ
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => alert(`Tải xuống tệp: ${block.content || 'tài liệu'}`)}
+              className="text-xs font-medium text-[#1D1D1F] hover:bg-[#E5E5EA] px-3.5 py-1.5 rounded-xl border border-[#D1D1D6] bg-[#F2F2F7] ios-interactive"
+            >
+              Tải tệp
+            </button>
+          </div>
+        );
+
+      case 'link':
+        return (
+          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-white hover:border-[#1D1D1F]/30 transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-[#F2F2F7] border border-[#E5E5EA] text-[#1D1D1F] flex items-center justify-center shrink-0">
+                <ExternalLink className="w-5 h-5 stroke-[1.75]" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-[#1D1D1F] truncate">
+                  {block.content || 'Cổng thông tin nội bộ OneWorkspace'}
+                </div>
+                <div className="text-[11px] text-[#6E6E73] truncate">
+                  {block.properties?.url || 'https://workspace.congty.vn'}
+                </div>
+              </div>
+            </div>
+            <a
+              href={block.properties?.url || '#'}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-[#1D1D1F] font-semibold px-3 py-1 hover:underline shrink-0"
+            >
+              Mở ↗
+            </a>
+          </div>
+        );
+
+      case 'table':
+        const tableData = block.properties?.tableData || {
+          headers: ['Công việc', 'Người phụ trách', 'Trạng thái'],
+          rows: [
+            ['Hoàn thiện wireframe', 'Việt Cường', 'Đang thực hiện'],
+            ['Chuẩn bị slide họp', 'Lan Anh', 'Chưa bắt đầu'],
+            ['Review ghi chú cũ', 'Minh Đức', 'Hoàn thành'],
+          ],
+        };
+
+        const updateCell = (rowIndex: number, colIndex: number, val: string) => {
+          const newRows = [...tableData.rows];
+          newRows[rowIndex] = [...newRows[rowIndex]];
+          newRows[rowIndex][colIndex] = val;
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            tableData: { ...tableData, rows: newRows },
+          });
+        };
+
+        const updateHeader = (colIndex: number, val: string) => {
+          const newHeaders = [...tableData.headers];
+          newHeaders[colIndex] = val;
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            tableData: { ...tableData, headers: newHeaders },
+          });
+        };
+
+        const addRow = () => {
+          const emptyRow = tableData.headers.map((_, i) =>
+            i === tableData.headers.length - 1 && tableData.headers[i].toLowerCase().includes('trạng thái')
+              ? 'Chưa bắt đầu'
+              : ''
+          );
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            tableData: { ...tableData, rows: [...tableData.rows, emptyRow] },
+          });
+        };
+
+        const cycleStatus = (rowIndex: number, colIndex: number, currentVal: string) => {
+          if (isReadOnly) return;
+          const statusCycle = ['Chưa bắt đầu', 'Đang thực hiện', 'Hoàn thành', 'Chờ duyệt'];
+          const currentIdx = statusCycle.indexOf(currentVal);
+          const nextVal = currentIdx === -1 ? 'Đang thực hiện' : statusCycle[(currentIdx + 1) % statusCycle.length];
+          updateCell(rowIndex, colIndex, nextVal);
+        };
+
+        return (
+          <div className="w-full my-2.5 overflow-x-auto">
+            <div className="border border-[#E5E5EA] rounded-xl overflow-hidden bg-white">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-[#FAFAFA] text-[#1D1D1F] font-semibold border-b border-[#E5E5EA]">
+                  <tr>
+                    {tableData.headers.map((hdr, cIdx) => (
+                      <th key={cIdx} className="px-3.5 py-2.5 border-r border-[#E5E5EA] last:border-r-0 font-semibold text-xs text-[#1D1D1F]">
+                        <input
+                          type="text"
+                          disabled={isReadOnly}
+                          value={hdr}
+                          onChange={(e) => updateHeader(cIdx, e.target.value)}
+                          className="w-full bg-transparent font-semibold focus:outline-none text-[#1D1D1F]"
+                        />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E5E5EA] bg-white">
+                  {tableData.rows.map((row, rIdx) => (
+                    <tr key={rIdx} className="hover:bg-[#FAFAFA]/70 transition-colors">
+                      {row.map((cell, cIdx) => {
+                        const isStatusCol = tableData.headers[cIdx]?.toLowerCase().includes('trạng thái');
+
+                        return (
+                          <td key={cIdx} className="px-3.5 py-2.5 border-r border-[#E5E5EA] last:border-r-0 text-xs text-[#1D1D1F] align-middle">
+                            {isStatusCol ? (
+                              <button
+                                type="button"
+                                disabled={isReadOnly}
+                                onClick={() => cycleStatus(rIdx, cIdx, cell)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAEAEC] text-[#1D1D1F] text-xs font-medium hover:bg-[#DCDCE0] transition-colors cursor-pointer"
+                                title="Bấm để chuyển trạng thái"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#6E6E73]" />
+                                <span>{cell || 'Chưa bắt đầu'}</span>
+                              </button>
+                            ) : (
+                              <input
+                                type="text"
+                                disabled={isReadOnly}
+                                value={cell}
+                                onChange={(e) => updateCell(rIdx, cIdx, e.target.value)}
+                                className="w-full bg-transparent focus:outline-none text-[#1D1D1F] text-xs"
+                                placeholder="..."
+                              />
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!isReadOnly && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={addRow}
+                  className="inline-flex items-center gap-1 text-xs text-[#86868B] hover:text-[#1D1D1F] font-medium transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2]" />
+                  <span>Thêm dòng</span>
+                </button>
+              </div>
+            )}
+          </div>
+        );
+
+      // Meeting Info with unified monochrome Lucide icon
+      case 'meeting_info':
+        const props = block.properties || {};
+        return (
+          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-[#F8F8FA] ios-card-shadow space-y-3.5 my-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F] border-b border-[#E5E5EA] pb-2.5">
+              <Calendar className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+              <span>Thông tin cuộc họp</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <label className="text-[11px] font-medium text-[#86868B] block">Thời gian họp</label>
+                <input
+                  type="text"
+                  disabled={isReadOnly}
+                  value={props.meetingTime || '09:00 - 10:30'}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, { ...props, meetingTime: e.target.value })
+                  }
+                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-[#86868B] block">Ngày diễn ra</label>
+                <input
+                  type="text"
+                  disabled={isReadOnly}
+                  value={props.meetingDate || 'Hôm nay'}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, { ...props, meetingDate: e.target.value })
+                  }
+                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-[#86868B] block">Địa điểm / Phòng họp</label>
+                <input
+                  type="text"
+                  disabled={isReadOnly}
+                  value={props.meetingLocation || 'Phòng họp Tầng 3'}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, { ...props, meetingLocation: e.target.value })
+                  }
+                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-[#86868B] block">Liên kết phòng trực tuyến</label>
+                <input
+                  type="text"
+                  disabled={isReadOnly}
+                  value={props.meetingLink || 'https://meet.google.com/abc-def-ghi'}
+                  onChange={(e) =>
+                    onUpdate(block.id, block.content, { ...props, meetingLink: e.target.value })
+                  }
+                  className="w-full font-semibold text-[#1D1D1F] underline bg-transparent focus:outline-none pt-0.5 truncate"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'meeting_attendees':
+        const attendees = block.properties?.attendees || [
+          { name: 'Nguyễn Văn Minh', role: 'Chủ trì', status: 'present' },
+          { name: 'Trần Thị Thu Hà', role: 'Thành viên', status: 'present' },
+        ];
+
+        const toggleStatus = (idx: number) => {
+          if (isReadOnly) return;
+          const nextStatusMap: Record<string, 'present' | 'absent' | 'excused'> = {
+            present: 'absent',
+            absent: 'excused',
+            excused: 'present',
+          };
+          const updated = [...attendees];
+          updated[idx] = { ...updated[idx], status: nextStatusMap[updated[idx].status] };
+          onUpdate(block.id, block.content, { ...block.properties, attendees: updated });
+        };
+
+        const addAttendee = () => {
+          const updated = [
+            ...attendees,
+            { name: 'Thành viên mới', role: 'Tham dự', status: 'present' as const },
+          ];
+          onUpdate(block.id, block.content, { ...block.properties, attendees: updated });
+        };
+
+        return (
+          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+            <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
+                <Users className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <span>Thành phần tham dự ({attendees.length} người)</span>
+              </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={addAttendee}
+                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm người
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+              {attendees.map((person, idx) => (
+                <div
+                  key={idx}
+                  className="p-2.5 rounded-xl bg-[#F8F8FA] border border-[#E5E5EA] flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-[#1D1D1F] truncate">{person.name}</div>
+                    <div className="text-[10px] text-[#86868B] truncate">{person.role}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleStatus(idx)}
+                    className="text-[10px] px-2.5 py-0.5 rounded-md font-semibold shrink-0 transition-colors bg-white border border-[#E5E5EA] text-[#1D1D1F]"
+                  >
+                    {person.status === 'present'
+                      ? 'Có mặt'
+                      : person.status === 'absent'
+                      ? 'Vắng'
+                      : 'Có phép'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'meeting_agenda':
+        const agenda = block.properties?.agenda || [];
+        const addAgendaItem = () => {
+          const newItem = {
+            id: `ag_${Date.now()}`,
+            title: 'Chủ đề thảo luận mới',
+            duration: '15 phút',
+            speaker: 'Cả nhóm',
+            notes: '',
+          };
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            agenda: [...agenda, newItem],
+          });
+        };
+
+        return (
+          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+            <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
+                <Clock className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <span>Chương trình cuộc họp</span>
+              </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={addAgendaItem}
+                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm mục
+                </button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {agenda.map((item, idx) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-xl bg-[#F8F8FA] border border-[#E5E5EA] space-y-1.5"
+                >
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-[#1D1D1F]">
+                      {idx + 1}. {item.title}
+                    </span>
+                    <span className="text-[11px] font-mono font-medium text-[#6E6E73] bg-white px-2 py-0.5 rounded-md border border-[#E5E5EA] shrink-0">
+                      {item.duration} · {item.speaker}
+                    </span>
+                  </div>
+                  {item.notes && (
+                    <div className="text-[11px] text-[#6E6E73] pl-3 border-l-2 border-[#1D1D1F]">
+                      {item.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'meeting_action_items':
+        const actionItems = block.properties?.actionItems || [];
+        const toggleItem = (itemId: string) => {
+          if (isReadOnly) return;
+          const updated = actionItems.map((act) =>
+            act.id === itemId ? { ...act, completed: !act.completed } : act
+          );
+          onUpdate(block.id, block.content, { ...block.properties, actionItems: updated });
+        };
+
+        const addActionItem = () => {
+          const newItem = {
+            id: `act_${Date.now()}`,
+            task: 'Nhiệm vụ mới cần theo dõi',
+            assignee: TEAM_MEMBERS[0].name,
+            dueDate: 'Hết tuần',
+            completed: false,
+            priority: 'medium' as const,
+          };
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            actionItems: [...actionItems, newItem],
+          });
+        };
+
+        return (
+          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+            <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
+                <CheckSquare className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <span>Việc cần làm sau cuộc họp (Action Items)</span>
+              </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={addActionItem}
+                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                >
+                  <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm đầu việc
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-[#F2F2F7]">
+              {actionItems.map((act) => (
+                <div
+                  key={act.id}
+                  className="py-3 flex items-center justify-between gap-3 text-xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      type="button"
+                      disabled={isReadOnly}
+                      onClick={() => toggleItem(act.id)}
+                      className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all ios-interactive ${
+                        act.completed
+                          ? 'bg-[#1D1D1F] border-[#1D1D1F] text-white'
+                          : 'border-[#C7C7CC] hover:border-[#1D1D1F] bg-white'
+                      }`}
+                    >
+                      {act.completed && <Check className="w-3 h-3 stroke-[3]" />}
+                    </button>
+                    <span
+                      className={`truncate ${
+                        act.completed
+                          ? 'line-through text-[#86868B]'
+                          : 'text-[#1D1D1F] font-semibold'
+                      }`}
+                    >
+                      {act.task}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 text-[11px]">
+                    <span className="text-[#1D1D1F] bg-[#F2F2F7] px-2.5 py-0.5 rounded-md border border-[#E5E5EA] font-medium">
+                      👤 {act.assignee}
+                    </span>
+                    <span className="text-[#86868B] bg-[#F2F2F7] px-2.5 py-0.5 rounded-md border border-[#E5E5EA] font-medium font-mono tabular-nums">
+                      ⏰ {act.dueDate}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'paragraph':
+      default:
+        return (
+          <textarea
+            ref={textRef}
+            rows={1}
+            disabled={isReadOnly}
+            value={block.content}
+            onChange={handleTextChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Gõ nội dung hoặc gõ / để mở tiện ích..."
+            className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+          />
+        );
+    }
+  };
+
+  return (
+    <div className="group relative flex items-start gap-1 py-1.5 -ml-8 pl-8 pr-2 rounded-xl hover:bg-[#F2F2F7]/50 transition-colors">
+      {!isReadOnly && (
+        <div className="absolute left-0 top-2 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={() => onAddBelow(index)}
+            className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors"
+            title="Thêm khối bên dưới"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors"
+              title="Tùy chọn khối"
+            >
+              <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
+            </button>
+
+            {showMenu && (
+              <div className="absolute left-6 top-0 z-40 w-44 bg-white/95 backdrop-blur-xl rounded-2xl ios-elevated-shadow border border-[#E5E5EA] py-1.5 text-xs animate-in zoom-in-95 duration-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDuplicate(block.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                >
+                  <Copy className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Nhân bản khối
+                </button>
+                {index > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveUp(block.id);
+                      setShowMenu(false);
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Di chuyển lên
+                  </button>
+                )}
+                {index < totalBlocks - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onMoveDown(block.id);
+                      setShowMenu(false);
+                    }}
+                    className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                  >
+                    <ArrowDown className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Di chuyển xuống
+                  </button>
+                )}
+                <div className="border-t border-[#F2F2F7] my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete(block.id);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2 font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-[#86868B] stroke-[1.75]" /> Xóa khối
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">{renderBlockContent()}</div>
+    </div>
+  );
+};
