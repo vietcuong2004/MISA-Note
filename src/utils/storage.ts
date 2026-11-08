@@ -1,10 +1,11 @@
 import { Document, Folder, SpaceType } from '../types';
 import { INITIAL_DOCUMENTS, INITIAL_FOLDERS } from '../data/mockData';
+import { validateFolderParent } from './folders';
 
 const STORAGE_KEYS = {
-  DOCUMENTS: 'ghi_chu_noi_bo_documents_v6',
-  FOLDERS: 'ghi_chu_noi_bo_folders_v6',
-  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v6',
+  DOCUMENTS: 'ghi_chu_noi_bo_documents_v7',
+  FOLDERS: 'ghi_chu_noi_bo_folders_v7',
+  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v7',
 };
 
 export const getStoredDocuments = (): Document[] => {
@@ -14,7 +15,16 @@ export const getStoredDocuments = (): Document[] => {
       localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
       return INITIAL_DOCUMENTS;
     }
-    return JSON.parse(raw);
+    const docs: Document[] = JSON.parse(raw);
+    return docs.map((doc) => ({
+      ...doc,
+      blocks: doc.blocks?.filter(
+        (b) =>
+          b.id !== 'blk_u_02' &&
+          b.id !== 'b_t1_2' &&
+          b.content !== 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.'
+      ) || [],
+    }));
   } catch (err) {
     console.error('Error reading documents from localStorage:', err);
     return INITIAL_DOCUMENTS;
@@ -138,6 +148,7 @@ export const toggleDocumentFavorite = (docId: string): Document[] => {
 
 export const upsertFolder = (folder: Folder): Folder[] => {
   const folders = getStoredFolders();
+  validateFolderParent(folder, folders);
   const index = folders.findIndex((f) => f.id === folder.id);
   const now = new Date().toISOString();
   const updatedFolder = { ...folder, updatedAt: now };
@@ -155,14 +166,33 @@ export const upsertFolder = (folder: Folder): Folder[] => {
 };
 
 export const deleteFolderAndReassign = (folderId: string): { folders: Folder[]; docs: Document[] } => {
-  const folders = getStoredFolders().filter((f) => f.id !== folderId);
-  saveStoredFolders(folders);
+  const previousFolders = getStoredFolders();
+  const target = previousFolders.find(folder => folder.id === folderId);
+  if (!target) return { folders: previousFolders, docs: getStoredDocuments() };
+  const parent = previousFolders.find(folder => folder.id === target.parentId && folder.space === target.space);
+  const parentId = parent?.id || null;
+  const now = new Date().toISOString();
+  const folders = previousFolders.filter(folder => folder.id !== folderId).map(folder =>
+    folder.parentId === folderId ? { ...folder, parentId, updatedAt: now } : folder);
 
-  // Unassign folder from documents so they become root docs in their space
-  const docs = getStoredDocuments().map((doc) =>
-    doc.folderId === folderId ? { ...doc, folderId: null, updatedAt: new Date().toISOString() } : doc
+  // Delete only the chosen folder; preserve its contents at the parent level.
+  const previousDocuments = getStoredDocuments();
+  const docs = previousDocuments.map((doc) =>
+    doc.folderId === folderId ? { ...doc, folderId: parentId, updatedAt: now } : doc
   );
-  saveStoredDocuments(docs);
+  // Both records must be persisted before the UI reports a successful deletion.
+  const oldFolders = localStorage.getItem(STORAGE_KEYS.FOLDERS);
+  const oldDocuments = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+  try {
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
+    localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
+  } catch {
+    try {
+      if (oldDocuments !== null) localStorage.setItem(STORAGE_KEYS.DOCUMENTS, oldDocuments);
+      if (oldFolders !== null) localStorage.setItem(STORAGE_KEYS.FOLDERS, oldFolders);
+    } catch { /* Keep the failure visible so the user can retry. */ }
+    throw new Error('Không lưu được thay đổi. Thư mục chưa được xóa; vui lòng thử lại.');
+  }
 
   return { folders, docs };
 };

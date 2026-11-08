@@ -52,26 +52,26 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
-      <div className="bg-white rounded-[24px] ios-elevated-shadow border border-[#E5E5EA] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+      <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E5EA]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#1D1D1F] text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center shadow-xs">
               <Sparkles className="w-4 h-4 text-white stroke-[1.75]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-[#1D1D1F]">One AI Assistant</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#F2F2F7] text-[#1D1D1F] border border-[#E5E5EA]">
+                <h3 className="text-sm font-bold text-[var(--ui-text)]">One AI Assistant</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[var(--ui-hover)] text-[var(--ui-text)] border border-[var(--ui-border)]">
                   Chờ kết nối One AI
                 </span>
               </div>
-              <p className="text-xs text-[#86868B]">Trợ lý trí tuệ nhân tạo tích hợp cho tài liệu</p>
+              <p className="text-xs text-[var(--ui-tertiary)]">Trợ lý trí tuệ nhân tạo tích hợp cho tài liệu</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition-colors"
+            className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>
@@ -80,17 +80,17 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
         {/* Body */}
         <div className="p-6 space-y-4 overflow-y-auto">
           {/* Status banner */}
-          <div className="p-4 rounded-2xl bg-[#F8F8FA] border border-[#E5E5EA] flex items-start gap-3">
-            <Bot className="w-5 h-5 text-[#1D1D1F] shrink-0 mt-0.5 stroke-[1.75]" />
-            <div className="text-xs text-[#6E6E73] leading-relaxed">
-              <span className="font-bold text-[#1D1D1F]">Giao diện chờ kết nối One AI:</span> Cổng API kết nối One AI đã được thiết lập sẵn. Bạn có thể thử nghiệm các câu lệnh tóm tắt, trích xuất đầu việc hoặc sinh ý tưởng bên dưới.
+          <div className="p-4 rounded-2xl bg-[var(--ui-subtle)] border border-[var(--ui-border)] flex items-start gap-3">
+            <Bot className="w-5 h-5 text-[var(--ui-text)] shrink-0 mt-0.5 stroke-[1.75]" />
+            <div className="text-xs text-[var(--ui-muted)] leading-relaxed">
+              <span className="font-bold text-[var(--ui-text)]">Giao diện chờ kết nối One AI:</span> Cổng API kết nối One AI đã được thiết lập sẵn. Bạn có thể thử nghiệm các câu lệnh tóm tắt, trích xuất đầu việc hoặc sinh ý tưởng bên dưới.
             </div>
           </div>
 
           {/* Quick suggestions */}
           <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#1D1D1F]">
-              <Lightbulb className="w-3.5 h-3.5 text-[#1D1D1F] stroke-[1.75]" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--ui-text)]">
+              <Lightbulb className="w-3.5 h-3.5 text-[var(--ui-text)] stroke-[1.75]" />
               <span>Gợi ý tác vụ nhanh với tài liệu</span>
             </div>
             <div className="grid grid-cols-1 gap-2">
@@ -99,10 +99,10 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => handleRunPrompt(item)}
-                  className="text-left p-3 rounded-2xl border border-[#E5E5EA] hover:border-[#1D1D1F]/40 hover:bg-[#F8F8FA] text-xs text-[#1D1D1F] transition-all flex items-center justify-between group ios-interactive"
+                  className="text-left p-3 rounded-2xl border border-[var(--ui-border)] hover:border-[var(--ui-primary)]/40 hover:bg-[var(--ui-subtle)] text-xs text-[var(--ui-text)] transition-all flex items-center justify-between group ios-interactive"
                 >
                   <span className="truncate pr-2 font-medium">{item}</span>
-                  <span className="text-[10px] text-[#1D1D1F] font-bold opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <span className="text-[10px] text-[var(--ui-text)] font-bold opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     Chạy →
                   </span>
                 </button>
@@ -112,17 +112,17 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
 
           {/* Response Box */}
           {loading && (
-            <div className="p-4 rounded-2xl border border-[#E5E5EA] bg-[#F8F8FA] flex items-center justify-center gap-2 text-xs text-[#6E6E73]">
-              <Clock className="w-4 h-4 animate-spin text-[#1D1D1F] stroke-[1.75]" />
+            <div className="p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] flex items-center justify-center gap-2 text-xs text-[var(--ui-muted)]">
+              <Clock className="w-4 h-4 animate-spin text-[var(--ui-text)] stroke-[1.75]" />
               <span>One AI đang xử lý ngữ cảnh tài liệu...</span>
             </div>
           )}
 
           {response && (
-            <div className="p-4 rounded-2xl border border-[#E5E5EA] bg-[#F8F8FA] space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-[#1D1D1F]">
+            <div className="p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--ui-text)]">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" /> Kết quả từ One AI
+                  <CheckCircle2 className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" /> Kết quả từ One AI
                 </span>
                 {onInsertToDoc && (
                   <button
@@ -130,13 +130,13 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
                       onInsertToDoc(response);
                       onClose();
                     }}
-                    className="text-[11px] text-[#1D1D1F] hover:underline font-bold"
+                    className="text-[11px] text-[var(--ui-text)] hover:underline font-bold"
                   >
                     Chèn vào tài liệu
                   </button>
                 )}
               </div>
-              <pre className="text-xs text-[#1D1D1F] whitespace-pre-wrap font-sans leading-relaxed">
+              <pre className="text-xs text-[var(--ui-text)] whitespace-pre-wrap font-sans leading-relaxed">
                 {response}
               </pre>
             </div>
@@ -144,19 +144,19 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
         </div>
 
         {/* Input Form */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-[#E5E5EA] bg-[#F8F8FA]">
+        <form onSubmit={handleSubmit} className="p-4 border-t border-[var(--ui-border)] bg-[var(--ui-subtle)]">
           <div className="relative flex items-center">
             <input
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Nhập yêu cầu cho One AI..."
-              className="w-full pl-4 pr-12 py-2.5 text-xs bg-white border border-[#E5E5EA] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[#1D1D1F] focus:border-[#1D1D1F] transition-shadow text-[#1D1D1F]"
+              className="w-full pl-4 pr-12 py-2.5 text-xs bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-2xl focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)] focus:border-[var(--ui-primary)] transition-shadow text-[var(--ui-text)]"
             />
             <button
               type="submit"
               disabled={!prompt.trim() || loading}
-              className="absolute right-1.5 p-2 rounded-xl bg-[#1D1D1F] text-white disabled:opacity-40 hover:bg-black transition-colors ios-interactive"
+              className="absolute right-1.5 p-2 rounded-xl theme-primary bg-[var(--ui-primary)] text-white disabled:opacity-40 hover:bg-[var(--ui-primary-hover)] transition-colors ios-interactive"
             >
               <Send className="w-3.5 h-3.5 stroke-[1.75]" />
             </button>

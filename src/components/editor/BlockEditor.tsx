@@ -18,12 +18,14 @@ import {
   ArrowRight,
   Link2,
 } from 'lucide-react';
-import { Block, BlockType, Document, Folder, UserRole } from '../../types';
+import { Block, BlockProperties, BlockType, Document, Folder, UserRole, ViewState } from '../../types';
 import { BlockItem } from './BlockItem';
 import { SlashMenu } from './SlashMenu';
 import { ShareModal } from '../modals/ShareModal';
 import { MoveModal } from '../modals/MoveModal';
 import { ExportModal } from '../modals/ExportModal';
+import { documentUrl } from '../../app/router/routes';
+import { getFolderPath } from '../../utils/folders';
 
 interface BlockEditorProps {
   document: Document;
@@ -35,6 +37,7 @@ interface BlockEditorProps {
   onMoveDocument: (docId: string, folderId: string | null, space: any) => void;
   onToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
   onRoleChange?: (newRole: UserRole) => void;
+  onNavigate?: (view: ViewState) => void;
 }
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({
@@ -46,6 +49,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onToggleFavorite,
   onMoveDocument,
   onToast,
+  onNavigate,
 }) => {
   const [doc, setDoc] = useState<Document>(document);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
@@ -74,12 +78,30 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   });
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSaveRef = useRef<Document | null>(null);
+  const saveCallbackRef = useRef(onUpdateDocument);
+  saveCallbackRef.current = onUpdateDocument;
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setDoc(document);
   }, [document.id]);
+
+  // Commit pending edits before navigating away or refreshing a document URL.
+  useEffect(() => {
+    const flushPendingSave = () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      const pending = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      if (pending) saveCallbackRef.current(pending);
+    };
+    window.addEventListener('beforeunload', flushPendingSave);
+    return () => {
+      window.removeEventListener('beforeunload', flushPendingSave);
+      flushPendingSave();
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -95,14 +117,16 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const triggerAutoSave = useCallback(
     (updatedDoc: Document) => {
       setSaveStatus('saving');
+      pendingSaveRef.current = updatedDoc;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
       saveTimerRef.current = setTimeout(() => {
-        onUpdateDocument(updatedDoc);
+        pendingSaveRef.current = null;
+        saveCallbackRef.current(updatedDoc);
         setSaveStatus('saved');
       }, 350);
     },
-    [onUpdateDocument]
+    []
   );
 
   const updateDocField = (field: keyof Document, value: any) => {
@@ -222,7 +246,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     });
   };
 
-  const handleSelectSlashItem = (type: BlockType) => {
+  const handleSelectSlashItem = (type: BlockType, extraProps?: BlockProperties) => {
     if (!slashState.blockId) return;
 
     const updatedBlocks = doc.blocks.map((b) => {
@@ -298,7 +322,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           ...b,
           type,
           content: '',
-          properties: props,
+          properties: { ...props, ...extraProps },
         };
       }
       return b;
@@ -313,22 +337,22 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const isReadOnly = currentRole === 'viewer';
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden relative">
       {/* Top Header Bar matching screenshot: Breadcrumbs on left, [Chia sẻ] and [•••] on right */}
-      <div className="h-14 border-b border-[#E5E5EA] px-8 flex items-center justify-between gap-4 bg-white sticky top-0 z-30">
+      <div className="h-14 border-b border-[var(--ui-border)] px-8 flex items-center justify-between gap-4 bg-[var(--ui-surface)] sticky top-0 z-30">
         {/* Breadcrumb matching screenshot: "Ghi chép của tôi / Công việc / Kế hoạch tuần" */}
-        <div className="flex items-center gap-2 text-xs text-[#6E6E73] min-w-0 font-medium">
-          <span className="truncate">
+        <div className="flex items-center gap-2 text-xs text-[var(--ui-muted)] min-w-0 font-medium">
+          <button type="button" onClick={() => onNavigate?.({ type: doc.space === 'personal' ? 'private' : 'company' })} className="truncate hover:underline">
             {doc.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
-          </span>
+          </button>
           <span className="text-[#C7C7CC]">/</span>
           {currentFolder && (
             <>
-              <span className="truncate">{currentFolder.name}</span>
+              <button type="button" onClick={() => onNavigate?.({ type: 'folder', folderId: currentFolder.id })} className="truncate hover:underline">{getFolderPath(currentFolder.id, folders)}</button>
               <span className="text-[#C7C7CC]">/</span>
             </>
           )}
-          <span className="truncate text-[#1D1D1F] font-semibold">{doc.title}</span>
+          <span className="truncate text-[var(--ui-text)] font-semibold">{doc.title}</span>
         </div>
 
         {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
@@ -342,14 +366,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ios-interactive shadow-2xs cursor-pointer ${
               doc.isFavorite
-                ? 'bg-[#1D1D1F] text-white border-[#1D1D1F]'
-                : 'bg-white border-[#E5E5EA] text-[#1D1D1F] hover:bg-[#F2F2F7]'
+                ? 'theme-primary bg-[var(--ui-primary)] text-white border-[var(--ui-primary)]'
+                : 'bg-[var(--ui-surface)] border-[var(--ui-border)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
             }`}
             title={doc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào yêu thích'}
           >
             <Star
               className={`w-3.5 h-3.5 stroke-[1.75] ${
-                doc.isFavorite ? 'fill-white text-white' : 'text-[#1D1D1F]'
+                doc.isFavorite ? 'fill-white text-white' : 'text-[var(--ui-text)]'
               }`}
             />
             <span>
@@ -360,7 +384,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           {/* Share Button (white rounded-xl with border) */}
           <button
             onClick={() => setShareOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-white border border-[#E5E5EA] hover:bg-[#F2F2F7] text-[#1D1D1F] transition-colors ios-interactive shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
           >
             <UserPlus className="w-3.5 h-3.5 stroke-[1.75]" />
             <span>Chia sẻ</span>
@@ -370,7 +394,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           <div className="relative">
             <button
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="w-8 h-8 rounded-xl border border-[#E5E5EA] bg-white hover:bg-[#F2F2F7] flex items-center justify-center text-[#1D1D1F] transition-colors ios-interactive shadow-2xs cursor-pointer"
+              className="w-8 h-8 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
               title="Tùy chọn khác"
             >
               <MoreHorizontal className="w-4 h-4 stroke-[1.75]" />
@@ -378,16 +402,16 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
             {/* Dropdown Menu matching screenshot */}
             {showMoreMenu && (
-              <div className="absolute right-0 top-9 z-40 w-48 bg-white rounded-2xl ios-elevated-shadow border border-[#E5E5EA] py-1.5 text-xs animate-in zoom-in-95 duration-100 space-y-0.5">
+              <div className="absolute right-0 top-9 z-40 w-48 bg-[var(--ui-surface)] rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-1.5 text-xs animate-in zoom-in-95 duration-100 space-y-0.5">
                 <button
                   type="button"
                   onClick={() => {
                     setShowMoreMenu(false);
                     titleInputRef.current?.focus();
                   }}
-                  className="w-full px-3.5 py-2 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  <Pencil className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
+                  <Pencil className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
                   <span>Đổi tên</span>
                 </button>
 
@@ -398,9 +422,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                       setMoveOpen(true);
                       setShowMoreMenu(false);
                     }}
-                    className="w-full px-3.5 py-2 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2.5 transition-colors cursor-pointer"
+                    className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
-                    <ArrowRight className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
+                    <ArrowRight className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
                     <span>Di chuyển</span>
                   </button>
                 )}
@@ -408,13 +432,13 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard?.writeText(window.location.href);
+                    navigator.clipboard?.writeText(documentUrl(window.location.origin, doc.id));
                     onToast('Đã sao chép liên kết vào bộ nhớ tạm');
                     setShowMoreMenu(false);
                   }}
-                  className="w-full px-3.5 py-2 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
                 >
-                  <Link2 className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
+                  <Link2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
                   <span>Sao chép liên kết</span>
                 </button>
 
@@ -427,9 +451,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
                         onSoftDeleteDocument(doc.id);
                         setShowMoreMenu(false);
                       }}
-                      className="w-full px-3.5 py-2 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2.5 transition-colors cursor-pointer"
+                      className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
+                      <Trash2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
                       <span>Chuyển vào thùng rác</span>
                     </button>
                   </>
@@ -452,12 +476,12 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               value={doc.title}
               onChange={(e) => updateDocField('title', e.target.value)}
               placeholder="Tiêu đề trang..."
-              className="w-full text-3xl md:text-4xl font-bold text-[#1D1D1F] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
+              className="w-full text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
             />
 
             {/* Meta Status matching screenshot: "✓ Đã lưu  ·  Cập nhật 2 phút trước" */}
-            <div className="flex items-center gap-2 text-xs text-[#86868B] mt-2 font-normal">
-              <span className="flex items-center gap-1 text-[#48484A]">
+            <div className="flex items-center gap-2 text-xs text-[var(--ui-tertiary)] mt-2 font-normal">
+              <span className="flex items-center gap-1 text-[var(--ui-text-secondary)]">
                 <Check className="w-3.5 h-3.5 stroke-[2]" />
                 <span>Đã lưu</span>
               </span>
@@ -507,16 +531,16 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
             {/* Bottom prompt matching screenshot: [ + :: Gõ / để chèn nội dung... ] */}
             {!isReadOnly && (
               <div
-                className="flex items-center gap-1.5 text-[#86868B] text-xs pt-3 pb-4 cursor-text group"
+                className="flex items-center gap-1.5 text-[var(--ui-tertiary)] text-xs pt-3 pb-4 cursor-text group"
                 onClick={() => handleAddBlockBelow(doc.blocks.length - 1)}
               >
-                <span className="p-0.5 rounded text-[#86868B] group-hover:text-[#1D1D1F]">
+                <span className="p-0.5 rounded text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]">
                   <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
                 </span>
-                <span className="p-0.5 rounded text-[#86868B] group-hover:text-[#1D1D1F]">
+                <span className="p-0.5 rounded text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]">
                   <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
                 </span>
-                <span className="text-[#86868B] text-xs ml-0.5">Gõ / để chèn nội dung...</span>
+                <span className="text-[var(--ui-tertiary)] text-xs ml-0.5">Gõ / để chèn nội dung...</span>
               </div>
             )}
 
@@ -529,7 +553,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         <button
           type="button"
           onClick={() => setShowHelpModal(true)}
-          className="w-8 h-8 rounded-full bg-white border border-[#E5E5EA] shadow-2xs hover:bg-[#F2F2F7] flex items-center justify-center text-xs font-semibold text-[#86868B] hover:text-[#1D1D1F] transition-all ios-interactive"
+          className="w-8 h-8 rounded-full bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xs hover:bg-[var(--ui-hover)] flex items-center justify-center text-xs font-semibold text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] transition-all ios-interactive"
           title="Trợ giúp"
         >
           ?
@@ -539,36 +563,36 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       {/* Help Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
-          <div className="bg-white rounded-[24px] ios-elevated-shadow border border-[#E5E5EA] w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-[#E5E5EA] pb-3">
+          <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[var(--ui-border)] pb-3">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 stroke-[1.75] text-[#1D1D1F]" />
-                <h3 className="text-sm font-bold text-[#1D1D1F]">Hướng dẫn & Phím tắt</h3>
+                <HelpCircle className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
+                <h3 className="text-sm font-bold text-[var(--ui-text)]">Hướng dẫn & Phím tắt</h3>
               </div>
               <button
                 onClick={() => setShowHelpModal(false)}
-                className="text-xs text-[#86868B] hover:text-[#1D1D1F]"
+                className="text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]"
               >
                 ✕
               </button>
             </div>
-            <div className="space-y-2.5 text-xs text-[#6E6E73] leading-relaxed">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F8FA]">
+            <div className="space-y-2.5 text-xs text-[var(--ui-muted)] leading-relaxed">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
                 <span>Mở menu 20 tiện ích</span>
-                <span className="font-mono font-bold text-[#1D1D1F] px-1.5 py-0.5 rounded bg-white border border-[#E5E5EA]">/</span>
+                <span className="font-mono font-bold text-[var(--ui-text)] px-1.5 py-0.5 rounded bg-[var(--ui-surface)] border border-[var(--ui-border)]">/</span>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F8FA]">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
                 <span>Tìm kiếm & hỏi</span>
-                <span className="font-mono font-bold text-[#1D1D1F] px-1.5 py-0.5 rounded bg-white border border-[#E5E5EA]">Ctrl + K</span>
+                <span className="font-mono font-bold text-[var(--ui-text)] px-1.5 py-0.5 rounded bg-[var(--ui-surface)] border border-[var(--ui-border)]">Ctrl + K</span>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#F8F8FA]">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
                 <span>Tự động lưu</span>
-                <span className="text-[#1D1D1F] font-semibold">Tức thì</span>
+                <span className="text-[var(--ui-text)] font-semibold">Tức thì</span>
               </div>
             </div>
             <button
               onClick={() => setShowHelpModal(false)}
-              className="w-full py-2 rounded-xl bg-[#1D1D1F] text-white text-xs font-semibold hover:bg-black transition-colors"
+              className="w-full py-2 rounded-xl theme-primary bg-[var(--ui-primary)] text-white text-xs font-semibold hover:bg-[var(--ui-primary-hover)] transition-colors"
             >
               Đã hiểu
             </button>

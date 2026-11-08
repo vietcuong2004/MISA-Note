@@ -36,7 +36,6 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
   onCreateMeetingNote,
   onOpenOneAI,
   onCreateTaskList,
-  onOpenTemplates,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -95,12 +94,12 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
       <div
-        className="bg-white rounded-[24px] ios-elevated-shadow border border-[#E5E5EA] w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[75vh]"
+        className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[75vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-[#E5E5EA] gap-3">
-          <Search className="w-5 h-5 text-[#86868B] stroke-[1.75] shrink-0" />
+        <div className="flex items-center px-4 py-3.5 border-b border-[var(--ui-border)] gap-3">
+          <Search className="w-5 h-5 text-[var(--ui-tertiary)] stroke-[1.75] shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -110,25 +109,34 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
               setSelectedIndex(0);
             }}
             placeholder="Tìm kiếm ghi chú, nội dung hoặc tác vụ..."
-            className="flex-1 bg-transparent text-sm font-medium text-[#1D1D1F] focus:outline-none placeholder:text-[#86868B]"
+            className="flex-1 min-w-0 bg-transparent text-sm font-medium text-[var(--ui-text)] focus:outline-none placeholder:text-[var(--ui-tertiary)]"
           />
           {query && (
             <button
+              type="button"
+              aria-label="Xóa từ khóa tìm kiếm"
+              title="Xóa từ khóa tìm kiếm"
               onClick={() => setQuery('')}
-              className="p-1 rounded-md text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7]"
+              className="p-1 rounded-md text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)]"
             >
               <X className="w-4 h-4 stroke-[1.75]" />
             </button>
           )}
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#F2F2F7] text-[#86868B] border border-[#E5E5EA]">
-            ESC
-          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng tìm kiếm"
+            title="Đóng tìm kiếm"
+            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-md text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+          >
+            <X className="w-5 h-5 stroke-[1.75]" />
+          </button>
         </div>
 
         {/* Quick actions chips */}
         {!query && (
-          <div className="p-3 bg-[#F8F8FA] border-b border-[#E5E5EA]">
-            <div className="text-[10px] font-semibold text-[#86868B] uppercase tracking-wider px-2 mb-2">
+          <div className="p-3 bg-[var(--ui-subtle)] border-b border-[var(--ui-border)]">
+            <div className="text-[10px] font-semibold text-[var(--ui-tertiary)] uppercase tracking-wider px-2 mb-2">
               Thao tác nhanh
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
@@ -138,9 +146,9 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   onCreateNewNote();
                   onClose();
                 }}
-                className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#1D1D1F] text-xs font-medium text-[#1D1D1F] ios-interactive shadow-2xs"
+                className="flex items-center gap-2 p-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-primary)] text-xs font-medium text-[var(--ui-text)] ios-interactive shadow-2xs"
               >
-                <FileText className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <FileText className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span className="truncate">Ghi chú mới</span>
               </button>
 
@@ -150,9 +158,9 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   onCreateMeetingNote();
                   onClose();
                 }}
-                className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#1D1D1F] text-xs font-medium text-[#1D1D1F] ios-interactive shadow-2xs"
+                className="flex items-center gap-2 p-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-primary)] text-xs font-medium text-[var(--ui-text)] ios-interactive shadow-2xs"
               >
-                <Calendar className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <Calendar className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span className="truncate">Biên bản họp</span>
               </button>
 
@@ -162,9 +170,9 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   onOpenOneAI();
                   onClose();
                 }}
-                className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#1D1D1F] text-xs font-medium text-[#1D1D1F] ios-interactive shadow-2xs"
+                className="flex items-center gap-2 p-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-primary)] text-xs font-medium text-[var(--ui-text)] ios-interactive shadow-2xs"
               >
-                <Sparkles className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span className="truncate">Hỏi One AI</span>
               </button>
 
@@ -174,9 +182,9 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   onCreateTaskList();
                   onClose();
                 }}
-                className="flex items-center gap-2 p-2 rounded-xl bg-white border border-[#E5E5EA] hover:border-[#1D1D1F] text-xs font-medium text-[#1D1D1F] ios-interactive shadow-2xs"
+                className="flex items-center gap-2 p-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:border-[var(--ui-primary)] text-xs font-medium text-[var(--ui-text)] ios-interactive shadow-2xs"
               >
-                <CheckSquare className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+                <CheckSquare className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span className="truncate">Công việc</span>
               </button>
             </div>
@@ -185,12 +193,12 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
 
         {/* Results List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          <div className="text-[10px] font-semibold text-[#86868B] uppercase tracking-wider px-2 py-1">
+          <div className="text-[10px] font-semibold text-[var(--ui-tertiary)] uppercase tracking-wider px-2 py-1">
             {query ? `Kết quả tìm kiếm (${filteredDocs.length})` : 'Tài liệu gần đây'}
           </div>
 
           {filteredDocs.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#86868B]">
+            <div className="p-8 text-center text-xs text-[var(--ui-tertiary)]">
               Không tìm thấy ghi chú nào phù hợp với "{query}"
             </div>
           ) : (
@@ -207,16 +215,16 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
-                    isSelected ? 'bg-[#1D1D1F] text-white shadow-2xs' : 'hover:bg-[#F2F2F7] text-[#1D1D1F]'
+                    isSelected ? 'theme-primary bg-[var(--ui-primary)] text-white shadow-2xs' : 'hover:bg-[var(--ui-hover)] text-[var(--ui-text)]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-base shrink-0">{doc.icon || '📄'}</span>
                     <div className="min-w-0">
-                      <div className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-[#1D1D1F]'}`}>
+                      <div className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-[var(--ui-text)]'}`}>
                         {doc.title || 'Không có tiêu đề'}
                       </div>
-                      <div className={`text-[10px] flex items-center gap-2 truncate mt-0.5 ${isSelected ? 'text-white/70' : 'text-[#86868B]'}`}>
+                      <div className={`text-[10px] flex items-center gap-2 truncate mt-0.5 ${isSelected ? 'text-white/70' : 'text-[var(--ui-tertiary)]'}`}>
                         <span>{doc.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}</span>
                         {folder && (
                           <>
@@ -235,13 +243,13 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                       <span
                         key={t}
                         className={`text-[9px] px-2 py-0.5 rounded-md ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-[#F2F2F7] text-[#6E6E73] border border-[#E5E5EA]'
+                          isSelected ? 'bg-[var(--ui-surface)]/20 text-white' : 'bg-[var(--ui-hover)] text-[var(--ui-muted)] border border-[var(--ui-border)]'
                         }`}
                       >
                         #{t}
                       </span>
                     ))}
-                    <ArrowRight className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[#86868B]'}`} />
+                    <ArrowRight className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-[var(--ui-tertiary)]'}`} />
                   </div>
                 </div>
               );
@@ -249,23 +257,6 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
           )}
         </div>
 
-        {/* Footer shortcuts */}
-        <div className="px-4 py-2.5 bg-[#F8F8FA] border-t border-[#E5E5EA] flex items-center justify-between text-[11px] text-[#86868B]">
-          <div className="flex items-center gap-3">
-            <span>↑↓ để di chuyển</span>
-            <span>↵ để chọn</span>
-            <span>esc để thoát</span>
-          </div>
-          <button
-            onClick={() => {
-              onOpenTemplates();
-              onClose();
-            }}
-            className="text-[11px] text-[#1D1D1F] font-semibold hover:underline"
-          >
-            Xem kho mẫu Lark →
-          </button>
-        </div>
       </div>
     </div>
   );

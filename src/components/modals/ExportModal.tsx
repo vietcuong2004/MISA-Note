@@ -38,6 +38,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         case 'h3':
           md += `### ${block.content}\n\n`;
           break;
+        case 'h4':
+          md += `#### ${block.content}\n\n`;
+          break;
         case 'bullet':
           md += `- ${block.content}\n`;
           break;
@@ -104,6 +107,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         case 'image':
           md += `![${block.content || 'Hình ảnh'}](${block.properties?.url || ''})\n\n`;
           break;
+        case 'video':
+        case 'audio':
+        case 'embed':
+          if (block.properties?.provider === 'HTML') {
+            md += `\`\`\`html\n${block.content}\n\`\`\`\n\n`;
+          } else {
+            md += `[${block.properties?.commandTitle || block.type}](${block.properties?.url || ''})\n\n${block.content}\n\n`;
+          }
+          break;
+        case 'utility':
+          md += `**${block.properties?.commandTitle || ''}**\n\n`;
+          if (block.properties?.url) md += `${block.properties.url}\n\n`;
+          md += block.properties?.utilityKind === 'columns'
+            ? `${(block.properties.columnContents || []).join('\n\n')}\n\n`
+            : `${block.content}\n\n`;
+          break;
         default:
           md += `${block.content}\n\n`;
       }
@@ -138,31 +157,31 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
-      <div className="bg-white rounded-[24px] ios-elevated-shadow border border-[#E5E5EA] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+      <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5E5EA]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#1D1D1F] text-white flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center">
               <FileText className="w-4 h-4 stroke-[1.75]" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-[#1D1D1F]">Xuất & In ấn tài liệu</h3>
-              <p className="text-xs text-[#86868B] truncate max-w-[360px]">{document.title}</p>
+              <h3 className="text-sm font-bold text-[var(--ui-text)]">Xuất & In ấn tài liệu</h3>
+              <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[360px]">{document.title}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] transition-colors"
+            className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>
         </div>
 
         {/* Actions bar */}
-        <div className="p-4 bg-[#F8F8FA] border-b border-[#E5E5EA] flex items-center gap-2">
+        <div className="p-4 bg-[var(--ui-subtle)] border-b border-[var(--ui-border)] flex items-center gap-2">
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1D1D1F] text-white text-xs font-semibold hover:bg-black transition-colors shadow-xs ios-interactive"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl theme-primary bg-[var(--ui-primary)] text-white text-xs font-semibold hover:bg-[var(--ui-primary-hover)] transition-colors shadow-xs ios-interactive"
           >
             <Download className="w-3.5 h-3.5 stroke-[1.75]" />
             <span>Tải tệp .md</span>
@@ -170,15 +189,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E5E5EA] text-[#1D1D1F] text-xs font-semibold hover:bg-[#F2F2F7] transition-colors shadow-2xs ios-interactive"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)] text-xs font-semibold hover:bg-[var(--ui-hover)] transition-colors shadow-2xs ios-interactive"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-[#1D1D1F] stroke-[2]" /> : <Copy className="w-3.5 h-3.5 stroke-[1.75]" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-[var(--ui-text)] stroke-[2]" /> : <Copy className="w-3.5 h-3.5 stroke-[1.75]" />}
             <span>{copied ? 'Đã sao chép' : 'Sao chép Markdown'}</span>
           </button>
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-[#E5E5EA] text-[#1D1D1F] text-xs font-semibold hover:bg-[#F2F2F7] transition-colors shadow-2xs ml-auto ios-interactive"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)] text-xs font-semibold hover:bg-[var(--ui-hover)] transition-colors shadow-2xs ml-auto ios-interactive"
           >
             <Printer className="w-3.5 h-3.5 stroke-[1.75]" />
             <span>In ấn (Print PDF)</span>
@@ -186,8 +205,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         {/* Markdown preview */}
-        <div className="flex-1 p-6 overflow-y-auto bg-[#F5F5F7]">
-          <pre className="text-xs font-mono text-[#1D1D1F] bg-white p-5 rounded-2xl border border-[#E5E5EA] whitespace-pre-wrap leading-relaxed ios-card-shadow">
+        <div className="flex-1 p-6 overflow-y-auto bg-[var(--ui-bg)]">
+          <pre className="text-xs font-mono text-[var(--ui-text)] bg-[var(--ui-surface)] p-5 rounded-2xl border border-[var(--ui-border)] whitespace-pre-wrap leading-relaxed ios-card-shadow">
             {markdownContent}
           </pre>
         </div>

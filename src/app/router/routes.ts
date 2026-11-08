@@ -1,0 +1,40 @@
+import { ViewState } from '../../types';
+
+const pagePaths = {
+  private: '/private', company: '/company', templates: '/templates',
+  recent: '/unclassified', favorite: '/favorites', library: '/library',
+  trash: '/trash', meeting_notes: '/meetings', shared: '/shared',
+} as const;
+
+export function pathForView(view: ViewState): string {
+  switch (view.type) {
+    case 'document': return `/documents/${encodeURIComponent(view.documentId)}`;
+    case 'folder': return `/folders/${encodeURIComponent(view.folderId)}`;
+    case 'not_found': return view.path.startsWith('/') && !view.path.startsWith('//') ? view.path : '/404';
+    default: return pagePaths[view.type];
+  }
+}
+
+/** Resolve both new page URLs and links shared by earlier app versions. */
+export function viewForLocation(location: string): ViewState {
+  const url = new URL(location, 'http://app.local');
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  const legacyDocument = new URLSearchParams(url.hash.slice(1)).get('doc');
+  if ((path === '/' || path === '/Notes') && legacyDocument) return { type: 'document', documentId: legacyDocument };
+  if (path === '/' || path === '/Notes') return { type: 'private' };
+  if (path === '/recent') return { type: 'recent' };
+  for (const [type, pagePath] of Object.entries(pagePaths)) {
+    if (pagePath === path) return { type } as ViewState;
+  }
+  const match = path.match(/^\/(documents|folders)\/([^/]+)$/);
+  if (match) {
+    try {
+      const id = decodeURIComponent(match[2]);
+      if (id) return match[1] === 'documents' ? { type: 'document', documentId: id } : { type: 'folder', folderId: id };
+    } catch { /* Invalid URL encoding belongs on the not-found page. */ }
+  }
+  return { type: 'not_found', path: url.pathname };
+}
+
+export const documentUrl = (origin: string, documentId: string) =>
+  `${origin}${pathForView({ type: 'document', documentId })}`;

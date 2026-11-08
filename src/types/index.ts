@@ -10,6 +10,11 @@ export type BlockType =
   | 'h1'
   | 'h2'
   | 'h3'
+  | 'h4'
+  | 'video'
+  | 'audio'
+  | 'embed'
+  | 'utility'
   // 2. Danh sách
   | 'bullet'
   | 'numbered'
@@ -60,6 +65,13 @@ export interface BlockTableData {
 }
 
 export interface BlockProperties {
+  commandTitle?: string;
+  utilityKind?: string;
+  provider?: string;
+  view?: string;
+  columns?: number;
+  headingLevel?: number;
+  columnContents?: string[];
   checked?: boolean; // for checklist
   open?: boolean; // for toggle list
   language?: string; // for code block
@@ -89,6 +101,7 @@ export interface Block {
 
 export interface Folder {
   id: string;
+  parentId?: string | null;
   name: string;
   space: SpaceType;
   icon?: string;
@@ -133,10 +146,15 @@ export interface User {
 }
 
 export type ViewState =
+  | { type: 'private' }
+  | { type: 'company' }
+  | { type: 'shared' }
+  | { type: 'not_found'; path: string }
   | { type: 'document'; documentId: string }
   | { type: 'recent' }
   | { type: 'favorite' }
   | { type: 'meeting_notes' }
   | { type: 'library' }
+  | { type: 'templates' }
   | { type: 'trash' }
   | { type: 'folder'; folderId: string };

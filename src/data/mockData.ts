@@ -2,10 +2,10 @@ import { Block, BlockType, Document, Folder, User } from '../types';
 
 export const CURRENT_USER: User = {
   id: 'usr_vc',
-  name: 'Việt Cường',
-  avatar: 'VC',
-  email: 'cuong.viet@congty.vn',
-  department: 'Quản lý Sản phẩm',
+  name: 'Người dùng Demo',
+  avatar: '/assets/avatar-demo.svg',
+  email: 'user@example.com',
+  department: 'Công ty cổ phần MISA',
   currentRole: 'owner',
 };
 
@@ -97,12 +97,6 @@ export const INITIAL_DOCUMENTS: Document[] = [
         id: 'blk_u_01',
         type: 'h1',
         content: 'Ý tưởng & Ghi chép hôm nay',
-      },
-      {
-        id: 'blk_u_02',
-        type: 'callout',
-        content: 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.',
-        properties: { calloutType: 'info' },
       },
       {
         id: 'blk_u_03',
@@ -699,7 +693,6 @@ export const TEMPLATES = [
     tags: ['Cá nhân', 'Ý tưởng', 'Ghi chú nhanh'],
     createBlocks: (): Block[] => [
       { id: 'b_t1_1', type: 'h1', content: 'Ý tưởng & Ghi chép hôm nay' },
-      { id: 'b_t1_2', type: 'callout', content: 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.', properties: { calloutType: 'info' } },
       { id: 'b_t1_3', type: 'h2', content: '1. Nội dung cốt lõi' },
       { id: 'b_t1_4', type: 'paragraph', content: 'Bắt đầu gõ nội dung hoặc gõ / để chèn các tiện ích...' },
       { id: 'b_t1_5', type: 'h2', content: '2. Việc cần làm trong ngày' },
@@ -816,6 +809,39 @@ export const TEMPLATES = [
       { id: 'b_t3_5', type: 'h2', content: '2. Các tiêu chí nghiệm thu' },
       { id: 'b_t3_6', type: 'checklist', content: 'Hoàn thiện tài liệu kiến trúc', properties: { checked: true } },
       { id: 'b_t3_7', type: 'checklist', content: 'Đạt kiểm thử bảo mật & an toàn dữ liệu', properties: { checked: false } },
+    ],
+  },
+  {
+    id: 'tpl_weekly_plan',
+    title: 'Kế hoạch tuần',
+    description: 'Xác định mục tiêu tuần, sắp xếp công việc và tổng kết kết quả thực hiện.',
+    type: 'plan' as const,
+    space: 'personal' as const,
+    icon: '📅',
+    tags: ['Kế hoạch', 'Công việc', 'Theo tuần'],
+    createBlocks: (): Block[] => [
+      { id: 'b_week_1', type: 'h1', content: 'Kế hoạch tuần' },
+      { id: 'b_week_2', type: 'paragraph', content: 'Tuần: … / … / … đến … / … / …' },
+      { id: 'b_week_3', type: 'h2', content: 'Mục tiêu tuần này' },
+      { id: 'b_week_4', type: 'checklist', content: 'Mục tiêu ưu tiên 1', properties: { checked: false } },
+      { id: 'b_week_5', type: 'checklist', content: 'Mục tiêu ưu tiên 2', properties: { checked: false } },
+      { id: 'b_week_6', type: 'h2', content: 'Công việc chính' },
+      { id: 'b_week_7', type: 'table', content: '', properties: { tableData: {
+        headers: ['Ngày', 'Công việc', 'Kết quả mong đợi', 'Trạng thái'],
+        rows: [
+          ['Thứ Hai', '', '', 'Chưa bắt đầu'],
+          ['Thứ Ba', '', '', 'Chưa bắt đầu'],
+          ['Thứ Tư', '', '', 'Chưa bắt đầu'],
+          ['Thứ Năm', '', '', 'Chưa bắt đầu'],
+          ['Thứ Sáu', '', '', 'Chưa bắt đầu'],
+        ],
+      } } },
+      { id: 'b_week_8', type: 'h2', content: 'Vướng mắc và hỗ trợ cần thiết' },
+      { id: 'b_week_9', type: 'paragraph', content: '' },
+      { id: 'b_week_10', type: 'h2', content: 'Tổng kết cuối tuần' },
+      { id: 'b_week_11', type: 'bullet', content: 'Kết quả đạt được:' },
+      { id: 'b_week_12', type: 'bullet', content: 'Việc cần chuyển sang tuần sau:' },
+      { id: 'b_week_13', type: 'bullet', content: 'Điều cần cải thiện:' },
     ],
   },
   {

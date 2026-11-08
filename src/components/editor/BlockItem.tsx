@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Block, BlockType, UserRole } from '../../types';
 import { TEAM_MEMBERS } from '../../data/mockData';
+import { UtilityBlock } from './UtilityBlock';
 
 interface BlockItemProps {
   block: Block;
@@ -116,6 +117,17 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
   const renderBlockContent = () => {
     switch (block.type) {
+      case 'video':
+      case 'audio':
+      case 'embed':
+      case 'utility':
+        return <UtilityBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
+      case 'h4':
+        return <textarea ref={textRef} rows={1} disabled={isReadOnly}
+          value={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown}
+          placeholder="Tiêu đề 4..."
+          className="w-full text-sm font-semibold bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] mt-1" />;
       case 'h1':
         return (
           <textarea
@@ -126,7 +138,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             placeholder="Tiêu đề 1..."
-            className="w-full text-2xl md:text-3xl font-extrabold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-tight tracking-tight"
+            className="w-full text-2xl md:text-3xl font-extrabold text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-tight tracking-tight"
           />
         );
 
@@ -140,7 +152,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             placeholder="Tiêu đề 2..."
-            className="w-full text-xl md:text-2xl font-bold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-snug tracking-tight mt-1"
+            className="w-full text-xl md:text-2xl font-bold text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-snug tracking-tight mt-1"
           />
         );
 
@@ -154,14 +166,14 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             placeholder="Tiêu đề 3..."
-            className="w-full text-base md:text-lg font-semibold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] tracking-tight mt-1"
+            className="w-full text-base md:text-lg font-semibold text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] tracking-tight mt-1"
           />
         );
 
       case 'bullet':
         return (
           <div className="flex items-start gap-2.5 w-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#1D1D1F] mt-2.5 shrink-0" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--ui-primary)] mt-2.5 shrink-0" />
             <textarea
               ref={textRef}
               rows={1}
@@ -170,7 +182,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               placeholder="Nội dung gạch đầu dòng..."
-              className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+              className="w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
             />
           </div>
         );
@@ -178,7 +190,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'numbered':
         return (
           <div className="flex items-start gap-2 w-full">
-            <span className="text-sm font-semibold text-[#86868B] min-w-5 shrink-0 pt-0.5 font-mono tabular-nums">
+            <span className="text-sm font-semibold text-[var(--ui-tertiary)] min-w-5 shrink-0 pt-0.5 font-mono tabular-nums">
               {index + 1}.
             </span>
             <textarea
@@ -189,7 +201,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               placeholder="Nội dung danh sách thứ tự..."
-              className="w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+              className="w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
             />
           </div>
         );
@@ -207,8 +219,8 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               }
               className={`mt-0.5 w-[18px] h-[18px] rounded-md border flex items-center justify-center transition-all ios-interactive ${
                 checked
-                  ? 'bg-[#1D1D1F] border-[#1D1D1F] text-white shadow-2xs'
-                  : 'border-[#C7C7CC] hover:border-[#1D1D1F] bg-white'
+                  ? 'theme-primary bg-[var(--ui-primary)] border-[var(--ui-primary)] text-white shadow-2xs'
+                  : 'border-[#C7C7CC] hover:border-[var(--ui-primary)] bg-[var(--ui-surface)]'
               }`}
             >
               {checked && <Check className="w-3 h-3 stroke-[3]" />}
@@ -222,7 +234,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               onKeyDown={handleKeyDown}
               placeholder="Việc cần làm..."
               className={`w-full text-sm bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed transition-all ${
-                checked ? 'line-through text-[#86868B]' : 'text-[#1D1D1F]'
+                checked ? 'line-through text-[var(--ui-tertiary)]' : 'text-[var(--ui-text)]'
               }`}
             />
           </div>
@@ -238,7 +250,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 onClick={() =>
                   onUpdate(block.id, block.content, { ...block.properties, open: !isOpen })
                 }
-                className="mt-0.5 p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#F2F2F7] ios-interactive"
+                className="mt-0.5 p-1 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] ios-interactive"
               >
                 {isOpen ? <ChevronDown className="w-4 h-4 stroke-[1.75]" /> : <ChevronRight className="w-4 h-4 stroke-[1.75]" />}
               </button>
@@ -249,11 +261,11 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 value={block.content}
                 onChange={handleTextChange}
                 placeholder="Tiêu đề mục thu gọn..."
-                className="w-full text-sm font-semibold text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC]"
+                className={`w-full font-semibold text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] ${block.properties?.headingLevel === 1 ? 'text-2xl' : block.properties?.headingLevel === 2 ? 'text-xl' : block.properties?.headingLevel === 3 ? 'text-lg' : 'text-sm'}`}
               />
             </div>
             {isOpen && (
-              <div className="pl-6 border-l-2 border-[#E5E5EA] ml-3">
+              <div className="pl-6 border-l-2 border-[var(--ui-border)] ml-3">
                 <textarea
                   rows={2}
                   disabled={isReadOnly}
@@ -265,7 +277,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                     })
                   }
                   placeholder="Nội dung chi tiết bên trong mục thu gọn..."
-                  className="w-full text-xs text-[#6E6E73] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+                  className="w-full text-xs text-[var(--ui-muted)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
                 />
               </div>
             )}
@@ -274,7 +286,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
       case 'quote':
         return (
-          <div className="w-full pl-4 border-l-2 border-[#1D1D1F] py-1 my-1">
+          <div className="w-full pl-4 border-l-2 border-[var(--ui-primary)] py-1 my-1">
             <textarea
               ref={textRef}
               rows={1}
@@ -282,7 +294,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               value={block.content}
               onChange={handleTextChange}
               placeholder="Nhập trích dẫn..."
-              className="w-full text-sm italic text-[#48484A] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
+              className="w-full text-sm italic text-[var(--ui-text-secondary)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
             />
           </div>
         );
@@ -290,9 +302,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       // Clean neutral callout without candy background
       case 'callout':
         return (
-          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-[#F8F8FA] flex items-start gap-3 my-1.5">
-            <div className="w-7 h-7 rounded-xl bg-white border border-[#E5E5EA] shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
-              <Sparkles className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] flex items-start gap-3 my-1.5">
+            <div className="w-7 h-7 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
             </div>
             <div className="flex-1 min-w-0">
               <textarea
@@ -302,7 +314,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 value={block.content}
                 onChange={handleTextChange}
                 placeholder="Nội dung chú thích nổi bật..."
-                className="w-full text-xs font-medium bg-transparent resize-none focus:outline-none leading-relaxed text-[#1D1D1F]"
+                className="w-full text-xs font-medium bg-transparent resize-none focus:outline-none leading-relaxed text-[var(--ui-text)]"
               />
             </div>
           </div>
@@ -311,13 +323,13 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'divider':
         return (
           <div className="w-full py-3 my-1">
-            <div className="border-b border-[#E5E5EA] w-full" />
+            <div className="border-b border-[var(--ui-border)] w-full" />
           </div>
         );
 
       case 'code':
         return (
-          <div className="w-full my-2 rounded-2xl overflow-hidden border border-[#3A3A3C] bg-[#1D1D1F] text-white ios-card-shadow">
+          <div className="w-full my-2 rounded-2xl overflow-hidden border border-[#3A3A3C] bg-[#1d1d1f] text-white ios-card-shadow">
             <div className="flex items-center justify-between px-4 py-2 bg-[#2C2C2E] border-b border-[#3A3A3C] text-[11px] text-[#AEAEB2]">
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1.5">
@@ -357,7 +369,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
           'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&auto=format&fit=crop&q=80';
         return (
           <div className="w-full my-2 space-y-2">
-            <div className="rounded-[20px] overflow-hidden border border-[#E5E5EA] bg-[#F2F2F7] max-h-80 flex items-center justify-center ios-card-shadow">
+            <div className="rounded-[20px] overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-hover)] max-h-80 flex items-center justify-center ios-card-shadow">
               <img
                 src={imgUrl}
                 alt={block.content || 'Hình ảnh'}
@@ -374,14 +386,14 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                     onUpdate(block.id, block.content, { ...block.properties, url: e.target.value })
                   }
                   placeholder="Dán liên kết ảnh (URL)..."
-                  className="flex-1 text-xs px-3 py-1.5 bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl focus:outline-none text-[#1D1D1F]"
+                  className="flex-1 text-xs px-3 py-1.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl focus:outline-none text-[var(--ui-text)]"
                 />
                 <input
                   type="text"
                   value={block.content}
                   onChange={(e) => onUpdate(block.id, e.target.value, block.properties)}
                   placeholder="Chú thích ảnh..."
-                  className="w-48 text-xs px-3 py-1.5 bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl focus:outline-none text-[#1D1D1F]"
+                  className="w-48 text-xs px-3 py-1.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl focus:outline-none text-[var(--ui-text)]"
                 />
               </div>
             )}
@@ -390,16 +402,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
       case 'file':
         return (
-          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-white hover:bg-[#F8F8FA] transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
+          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-subtle)] transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#F2F2F7] border border-[#E5E5EA] text-[#1D1D1F] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] flex items-center justify-center shrink-0">
                 <Paperclip className="w-5 h-5 stroke-[1.75]" />
               </div>
               <div>
-                <div className="text-xs font-semibold text-[#1D1D1F]">
+                <div className="text-xs font-semibold text-[var(--ui-text)]">
                   {block.content || 'Tai_lieu_dinh_kem.pdf'}
                 </div>
-                <div className="text-[11px] text-[#86868B] font-mono">
+                <div className="text-[11px] text-[var(--ui-tertiary)] font-mono">
                   {block.properties?.fileSize || '2.4 MB'} · Tệp đính kèm nội bộ
                 </div>
               </div>
@@ -407,7 +419,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             <button
               type="button"
               onClick={() => alert(`Tải xuống tệp: ${block.content || 'tài liệu'}`)}
-              className="text-xs font-medium text-[#1D1D1F] hover:bg-[#E5E5EA] px-3.5 py-1.5 rounded-xl border border-[#D1D1D6] bg-[#F2F2F7] ios-interactive"
+              className="text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-3.5 py-1.5 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-hover)] ios-interactive"
             >
               Tải tệp
             </button>
@@ -416,16 +428,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
       case 'link':
         return (
-          <div className="w-full p-4 rounded-2xl border border-[#E5E5EA] bg-white hover:border-[#1D1D1F]/30 transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
+          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)]/30 transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[#F2F2F7] border border-[#E5E5EA] text-[#1D1D1F] flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] flex items-center justify-center shrink-0">
                 <ExternalLink className="w-5 h-5 stroke-[1.75]" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-[#1D1D1F] truncate">
+                <div className="text-xs font-semibold text-[var(--ui-text)] truncate">
                   {block.content || 'Cổng thông tin nội bộ OneWorkspace'}
                 </div>
-                <div className="text-[11px] text-[#6E6E73] truncate">
+                <div className="text-[11px] text-[var(--ui-muted)] truncate">
                   {block.properties?.url || 'https://workspace.congty.vn'}
                 </div>
               </div>
@@ -434,7 +446,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               href={block.properties?.url || '#'}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-[#1D1D1F] font-semibold px-3 py-1 hover:underline shrink-0"
+              className="text-xs text-[var(--ui-text)] font-semibold px-3 py-1 hover:underline shrink-0"
             >
               Mở ↗
             </a>
@@ -492,37 +504,37 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
         return (
           <div className="w-full my-2.5 overflow-x-auto">
-            <div className="border border-[#E5E5EA] rounded-xl overflow-hidden bg-white">
+            <div className="border border-[var(--ui-border)] rounded-xl overflow-hidden bg-[var(--ui-surface)]">
               <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-[#FAFAFA] text-[#1D1D1F] font-semibold border-b border-[#E5E5EA]">
+                <thead className="bg-[var(--ui-panel)] text-[var(--ui-text)] font-semibold border-b border-[var(--ui-border)]">
                   <tr>
                     {tableData.headers.map((hdr, cIdx) => (
-                      <th key={cIdx} className="px-3.5 py-2.5 border-r border-[#E5E5EA] last:border-r-0 font-semibold text-xs text-[#1D1D1F]">
+                      <th key={cIdx} className="px-3.5 py-2.5 border-r border-[var(--ui-border)] last:border-r-0 font-semibold text-xs text-[var(--ui-text)]">
                         <input
                           type="text"
                           disabled={isReadOnly}
                           value={hdr}
                           onChange={(e) => updateHeader(cIdx, e.target.value)}
-                          className="w-full bg-transparent font-semibold focus:outline-none text-[#1D1D1F]"
+                          className="w-full bg-transparent font-semibold focus:outline-none text-[var(--ui-text)]"
                         />
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E5E5EA] bg-white">
+                <tbody className="divide-y divide-[var(--ui-border)] bg-[var(--ui-surface)]">
                   {tableData.rows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-[#FAFAFA]/70 transition-colors">
+                    <tr key={rIdx} className="hover:bg-[var(--ui-panel)]/70 transition-colors">
                       {row.map((cell, cIdx) => {
                         const isStatusCol = tableData.headers[cIdx]?.toLowerCase().includes('trạng thái');
 
                         return (
-                          <td key={cIdx} className="px-3.5 py-2.5 border-r border-[#E5E5EA] last:border-r-0 text-xs text-[#1D1D1F] align-middle">
+                          <td key={cIdx} className="px-3.5 py-2.5 border-r border-[var(--ui-border)] last:border-r-0 text-xs text-[var(--ui-text)] align-middle">
                             {isStatusCol ? (
                               <button
                                 type="button"
                                 disabled={isReadOnly}
                                 onClick={() => cycleStatus(rIdx, cIdx, cell)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAEAEC] text-[#1D1D1F] text-xs font-medium hover:bg-[#DCDCE0] transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAEAEC] text-[var(--ui-text)] text-xs font-medium hover:bg-[var(--ui-hover-strong)] transition-colors cursor-pointer"
                                 title="Bấm để chuyển trạng thái"
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#6E6E73]" />
@@ -534,7 +546,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                                 disabled={isReadOnly}
                                 value={cell}
                                 onChange={(e) => updateCell(rIdx, cIdx, e.target.value)}
-                                className="w-full bg-transparent focus:outline-none text-[#1D1D1F] text-xs"
+                                className="w-full bg-transparent focus:outline-none text-[var(--ui-text)] text-xs"
                                 placeholder="..."
                               />
                             )}
@@ -552,7 +564,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 <button
                   type="button"
                   onClick={addRow}
-                  className="inline-flex items-center gap-1 text-xs text-[#86868B] hover:text-[#1D1D1F] font-medium transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] font-medium transition-colors cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2]" />
                   <span>Thêm dòng</span>
@@ -566,14 +578,14 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'meeting_info':
         const props = block.properties || {};
         return (
-          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-[#F8F8FA] ios-card-shadow space-y-3.5 my-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F] border-b border-[#E5E5EA] pb-2.5">
-              <Calendar className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+          <div className="w-full p-5 rounded-[20px] border border-[var(--ui-border)] bg-[var(--ui-subtle)] ios-card-shadow space-y-3.5 my-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--ui-text)] border-b border-[var(--ui-border)] pb-2.5">
+              <Calendar className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
               <span>Thông tin cuộc họp</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
               <div>
-                <label className="text-[11px] font-medium text-[#86868B] block">Thời gian họp</label>
+                <label className="text-[11px] font-medium text-[var(--ui-tertiary)] block">Thời gian họp</label>
                 <input
                   type="text"
                   disabled={isReadOnly}
@@ -581,11 +593,11 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                   onChange={(e) =>
                     onUpdate(block.id, block.content, { ...props, meetingTime: e.target.value })
                   }
-                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                  className="w-full font-semibold text-[var(--ui-text)] bg-transparent focus:outline-none pt-0.5"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-[#86868B] block">Ngày diễn ra</label>
+                <label className="text-[11px] font-medium text-[var(--ui-tertiary)] block">Ngày diễn ra</label>
                 <input
                   type="text"
                   disabled={isReadOnly}
@@ -593,11 +605,11 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                   onChange={(e) =>
                     onUpdate(block.id, block.content, { ...props, meetingDate: e.target.value })
                   }
-                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                  className="w-full font-semibold text-[var(--ui-text)] bg-transparent focus:outline-none pt-0.5"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-[#86868B] block">Địa điểm / Phòng họp</label>
+                <label className="text-[11px] font-medium text-[var(--ui-tertiary)] block">Địa điểm / Phòng họp</label>
                 <input
                   type="text"
                   disabled={isReadOnly}
@@ -605,11 +617,11 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                   onChange={(e) =>
                     onUpdate(block.id, block.content, { ...props, meetingLocation: e.target.value })
                   }
-                  className="w-full font-semibold text-[#1D1D1F] bg-transparent focus:outline-none pt-0.5"
+                  className="w-full font-semibold text-[var(--ui-text)] bg-transparent focus:outline-none pt-0.5"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-[#86868B] block">Liên kết phòng trực tuyến</label>
+                <label className="text-[11px] font-medium text-[var(--ui-tertiary)] block">Liên kết phòng trực tuyến</label>
                 <input
                   type="text"
                   disabled={isReadOnly}
@@ -617,7 +629,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                   onChange={(e) =>
                     onUpdate(block.id, block.content, { ...props, meetingLink: e.target.value })
                   }
-                  className="w-full font-semibold text-[#1D1D1F] underline bg-transparent focus:outline-none pt-0.5 truncate"
+                  className="w-full font-semibold text-[var(--ui-text)] underline bg-transparent focus:outline-none pt-0.5 truncate"
                 />
               </div>
             </div>
@@ -651,17 +663,17 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         };
 
         return (
-          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+          <div className="w-full p-5 rounded-[20px] border border-[var(--ui-border)] bg-[var(--ui-surface)] ios-card-shadow space-y-3.5 my-2">
             <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
-                <Users className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--ui-text)]">
+                <Users className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span>Thành phần tham dự ({attendees.length} người)</span>
               </div>
               {!isReadOnly && (
                 <button
                   type="button"
                   onClick={addAttendee}
-                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                  className="text-[11px] text-[var(--ui-text)] font-semibold flex items-center gap-1 hover:underline ios-interactive"
                 >
                   <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm người
                 </button>
@@ -671,16 +683,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               {attendees.map((person, idx) => (
                 <div
                   key={idx}
-                  className="p-2.5 rounded-xl bg-[#F8F8FA] border border-[#E5E5EA] flex items-center justify-between gap-2"
+                  className="p-2.5 rounded-xl bg-[var(--ui-subtle)] border border-[var(--ui-border)] flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0">
-                    <div className="text-xs font-semibold text-[#1D1D1F] truncate">{person.name}</div>
-                    <div className="text-[10px] text-[#86868B] truncate">{person.role}</div>
+                    <div className="text-xs font-semibold text-[var(--ui-text)] truncate">{person.name}</div>
+                    <div className="text-[10px] text-[var(--ui-tertiary)] truncate">{person.role}</div>
                   </div>
                   <button
                     type="button"
                     onClick={() => toggleStatus(idx)}
-                    className="text-[10px] px-2.5 py-0.5 rounded-md font-semibold shrink-0 transition-colors bg-white border border-[#E5E5EA] text-[#1D1D1F]"
+                    className="text-[10px] px-2.5 py-0.5 rounded-md font-semibold shrink-0 transition-colors bg-[var(--ui-surface)] border border-[var(--ui-border)] text-[var(--ui-text)]"
                   >
                     {person.status === 'present'
                       ? 'Có mặt'
@@ -711,17 +723,17 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         };
 
         return (
-          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+          <div className="w-full p-5 rounded-[20px] border border-[var(--ui-border)] bg-[var(--ui-surface)] ios-card-shadow space-y-3.5 my-2">
             <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
-                <Clock className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--ui-text)]">
+                <Clock className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span>Chương trình cuộc họp</span>
               </div>
               {!isReadOnly && (
                 <button
                   type="button"
                   onClick={addAgendaItem}
-                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                  className="text-[11px] text-[var(--ui-text)] font-semibold flex items-center gap-1 hover:underline ios-interactive"
                 >
                   <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm mục
                 </button>
@@ -731,18 +743,18 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               {agenda.map((item, idx) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-[#F8F8FA] border border-[#E5E5EA] space-y-1.5"
+                  className="p-3.5 rounded-xl bg-[var(--ui-subtle)] border border-[var(--ui-border)] space-y-1.5"
                 >
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-semibold text-[#1D1D1F]">
+                    <span className="font-semibold text-[var(--ui-text)]">
                       {idx + 1}. {item.title}
                     </span>
-                    <span className="text-[11px] font-mono font-medium text-[#6E6E73] bg-white px-2 py-0.5 rounded-md border border-[#E5E5EA] shrink-0">
+                    <span className="text-[11px] font-mono font-medium text-[var(--ui-muted)] bg-[var(--ui-surface)] px-2 py-0.5 rounded-md border border-[var(--ui-border)] shrink-0">
                       {item.duration} · {item.speaker}
                     </span>
                   </div>
                   {item.notes && (
-                    <div className="text-[11px] text-[#6E6E73] pl-3 border-l-2 border-[#1D1D1F]">
+                    <div className="text-[11px] text-[var(--ui-muted)] pl-3 border-l-2 border-[var(--ui-primary)]">
                       {item.notes}
                     </div>
                   )}
@@ -778,17 +790,17 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         };
 
         return (
-          <div className="w-full p-5 rounded-[20px] border border-[#E5E5EA] bg-white ios-card-shadow space-y-3.5 my-2">
+          <div className="w-full p-5 rounded-[20px] border border-[var(--ui-border)] bg-[var(--ui-surface)] ios-card-shadow space-y-3.5 my-2">
             <div className="flex items-center justify-between border-b border-[#F2F2F7] pb-2.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#1D1D1F]">
-                <CheckSquare className="w-4 h-4 text-[#1D1D1F] stroke-[1.75]" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[var(--ui-text)]">
+                <CheckSquare className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
                 <span>Việc cần làm sau cuộc họp (Action Items)</span>
               </div>
               {!isReadOnly && (
                 <button
                   type="button"
                   onClick={addActionItem}
-                  className="text-[11px] text-[#1D1D1F] font-semibold flex items-center gap-1 hover:underline ios-interactive"
+                  className="text-[11px] text-[var(--ui-text)] font-semibold flex items-center gap-1 hover:underline ios-interactive"
                 >
                   <PlusCircle className="w-3.5 h-3.5 stroke-[1.75]" /> Thêm đầu việc
                 </button>
@@ -807,8 +819,8 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                       onClick={() => toggleItem(act.id)}
                       className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all ios-interactive ${
                         act.completed
-                          ? 'bg-[#1D1D1F] border-[#1D1D1F] text-white'
-                          : 'border-[#C7C7CC] hover:border-[#1D1D1F] bg-white'
+                          ? 'theme-primary bg-[var(--ui-primary)] border-[var(--ui-primary)] text-white'
+                          : 'border-[#C7C7CC] hover:border-[var(--ui-primary)] bg-[var(--ui-surface)]'
                       }`}
                     >
                       {act.completed && <Check className="w-3 h-3 stroke-[3]" />}
@@ -816,18 +828,18 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                     <span
                       className={`truncate ${
                         act.completed
-                          ? 'line-through text-[#86868B]'
-                          : 'text-[#1D1D1F] font-semibold'
+                          ? 'line-through text-[var(--ui-tertiary)]'
+                          : 'text-[var(--ui-text)] font-semibold'
                       }`}
                     >
                       {act.task}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 text-[11px]">
-                    <span className="text-[#1D1D1F] bg-[#F2F2F7] px-2.5 py-0.5 rounded-md border border-[#E5E5EA] font-medium">
+                    <span className="text-[var(--ui-text)] bg-[var(--ui-hover)] px-2.5 py-0.5 rounded-md border border-[var(--ui-border)] font-medium">
                       👤 {act.assignee}
                     </span>
-                    <span className="text-[#86868B] bg-[#F2F2F7] px-2.5 py-0.5 rounded-md border border-[#E5E5EA] font-medium font-mono tabular-nums">
+                    <span className="text-[var(--ui-tertiary)] bg-[var(--ui-hover)] px-2.5 py-0.5 rounded-md border border-[var(--ui-border)] font-medium font-mono tabular-nums">
                       ⏰ {act.dueDate}
                     </span>
                   </div>
@@ -852,7 +864,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 ? 'Nhập để tìm kiếm'
                 : 'Gõ nội dung hoặc gõ / để mở tiện ích...'
             }
-            className={`w-full text-sm text-[#1D1D1F] bg-transparent resize-none focus:outline-none placeholder:text-[#86868B] leading-relaxed ${
+            className={`w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[var(--ui-tertiary)] leading-relaxed ${
               block.content.startsWith('/') ? 'font-mono' : ''
             }`}
           />
@@ -881,15 +893,15 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         }
       }}
       className={`group relative flex items-start gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl transition-all ${
-        isDragging ? 'opacity-30 bg-[#F2F2F7] border border-dashed border-[#1D1D1F]' : 'hover:bg-[#F2F2F7]/40'
-      } ${isDragOver ? 'border-t-2 border-[#1D1D1F] -mt-0.5' : ''}`}
+        isDragging ? 'opacity-30 bg-[var(--ui-hover)] border border-dashed border-[var(--ui-primary)]' : 'hover:bg-[var(--ui-hover)]/40'
+      } ${isDragOver ? 'border-t-2 border-[var(--ui-primary)] -mt-0.5' : ''}`}
     >
       {!isReadOnly && (
         <div className="absolute left-1 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
             onClick={() => onAddBelow(index)}
-            className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors cursor-pointer"
+            className="p-1 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
             title="Thêm khối bên dưới"
           >
             <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
@@ -908,23 +920,23 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 onDragEndBlock?.();
               }}
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-lg text-[#86868B] hover:text-[#1D1D1F] hover:bg-[#E5E5EA] transition-colors cursor-grab active:cursor-grabbing"
+              className="p-1 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-grab active:cursor-grabbing"
               title="Kéo để di chuyển hoặc bấm để mở tùy chọn"
             >
               <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
             </button>
 
             {showMenu && (
-              <div className="absolute left-6 top-0 z-40 w-44 bg-white/95 backdrop-blur-xl rounded-2xl ios-elevated-shadow border border-[#E5E5EA] py-1.5 text-xs animate-in zoom-in-95 duration-100">
+              <div className="absolute left-6 top-0 z-40 w-44 bg-[var(--ui-surface)]/95 backdrop-blur-xl rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-1.5 text-xs animate-in zoom-in-95 duration-100">
                 <button
                   type="button"
                   onClick={() => {
                     onDuplicate(block.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                  className="w-full px-3 py-1.5 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2"
                 >
-                  <Copy className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Nhân bản khối
+                  <Copy className="w-3.5 h-3.5 text-[var(--ui-muted)] stroke-[1.75]" /> Nhân bản khối
                 </button>
                 {index > 0 && (
                   <button
@@ -933,9 +945,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                       onMoveUp(block.id);
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                    className="w-full px-3 py-1.5 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2"
                   >
-                    <ArrowUp className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Di chuyển lên
+                    <ArrowUp className="w-3.5 h-3.5 text-[var(--ui-muted)] stroke-[1.75]" /> Di chuyển lên
                   </button>
                 )}
                 {index < totalBlocks - 1 && (
@@ -945,9 +957,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                       onMoveDown(block.id);
                       setShowMenu(false);
                     }}
-                    className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2"
+                    className="w-full px-3 py-1.5 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2"
                   >
-                    <ArrowDown className="w-3.5 h-3.5 text-[#6E6E73] stroke-[1.75]" /> Di chuyển xuống
+                    <ArrowDown className="w-3.5 h-3.5 text-[var(--ui-muted)] stroke-[1.75]" /> Di chuyển xuống
                   </button>
                 )}
                 <div className="border-t border-[#F2F2F7] my-1" />
@@ -957,9 +969,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                     onDelete(block.id);
                     setShowMenu(false);
                   }}
-                  className="w-full px-3 py-1.5 text-left text-[#1D1D1F] hover:bg-[#F2F2F7] flex items-center gap-2 font-medium"
+                  className="w-full px-3 py-1.5 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2 font-medium"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-[#86868B] stroke-[1.75]" /> Xóa khối
+                  <Trash2 className="w-3.5 h-3.5 text-[var(--ui-tertiary)] stroke-[1.75]" /> Xóa khối
                 </button>
               </div>
             )}

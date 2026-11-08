@@ -1,0 +1,61 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { AppPages, AppPagesProps } from '../AppPages';
+import { CURRENT_USER, INITIAL_DOCUMENTS, INITIAL_FOLDERS } from '../../data/mockData';
+import { Document } from '../../types';
+import { viewForLocation } from '../router/routes';
+
+const note = (id: string, extra: Partial<Document>): Document => ({
+  ...INITIAL_DOCUMENTS[0], id, title: id, author: CURRENT_USER,
+  blocks: [{ id: `${id}_block`, type: 'paragraph', content: `Content of ${id}` }],
+  tags: [], isTrash: false, isFavorite: false, ...extra,
+});
+const documents = [
+  note('PERSONAL_FOLDER_NOTE', { space: 'personal', folderId: 'fld_work' }),
+  note('PERSONAL_ROOT_NOTE', { space: 'personal', folderId: null, isFavorite: true }),
+  note('COMPANY_ROOT_NOTE', { space: 'company', folderId: null }),
+  note('COMPANY_MEETING_NOTE', { space: 'company', folderId: null, type: 'meeting' }),
+  note('TRASHED_NOTE', { space: 'personal', folderId: null, isTrash: true }),
+];
+const noop = () => {};
+const workspace: Omit<AppPagesProps, 'view'> = {
+  documents, folders: INITIAL_FOLDERS,
+  actions: { onOpenDocument: noop, onToggleFavorite: noop, onSoftDeleteDocument: noop },
+  onNavigate: noop, onUseTemplate: noop,
+  editor: { folders: INITIAL_FOLDERS, currentRole: 'owner', onUpdateDocument: noop,
+    onSoftDeleteDocument: noop, onToggleFavorite: noop, onMoveDocument: noop, onToast: noop },
+  trash: { onRestore: noop, onPermanentDelete: noop, onEmptyTrash: noop },
+};
+const render = (path: string) => renderToStaticMarkup(<AppPages {...workspace} view={viewForLocation(path)} />);
+
+test('private and company URLs render only their own notes, excluding trash', () => {
+  const personal = render('/private'); const company = render('/company');
+  assert(personal.includes('PERSONAL_FOLDER_NOTE') && personal.includes('PERSONAL_ROOT_NOTE'));
+  assert(!personal.includes('COMPANY_ROOT_NOTE') && !personal.includes('TRASHED_NOTE'));
+  assert(company.includes('COMPANY_ROOT_NOTE') && company.includes('COMPANY_MEETING_NOTE'));
+  assert(!company.includes('PERSONAL_FOLDER_NOTE'));
+});
+
+test('folder, favorites, unclassified, meetings and trash URLs select the correct content', () => {
+  const folder = render('/folders/fld_work'); assert(folder.includes('PERSONAL_FOLDER_NOTE')); assert(!folder.includes('PERSONAL_ROOT_NOTE'));
+  const favorites = render('/favorites'); assert(favorites.includes('PERSONAL_ROOT_NOTE')); assert(!favorites.includes('COMPANY_ROOT_NOTE'));
+  const roots = render('/unclassified'); assert(roots.includes('PERSONAL_ROOT_NOTE')); assert(!roots.includes('PERSONAL_FOLDER_NOTE')); assert(!roots.includes('TRASHED_NOTE'));
+  const meetings = render('/meetings'); assert(meetings.includes('COMPANY_MEETING_NOTE')); assert(!meetings.includes('COMPANY_ROOT_NOTE'));
+  const trash = render('/trash'); assert(trash.includes('TRASHED_NOTE')); assert(!trash.includes('PERSONAL_ROOT_NOTE'));
+});
+
+test('template URLs render five cards and direct-use actions', () => {
+  const html = render('/templates');
+  assert.equal((html.match(/<article/g) || []).length, 5);
+  assert.equal((html.match(/aria-label="Sử dụng mẫu /g) || []).length, 5);
+});
+
+test('document links open the specified editor; missing entities render a recovery page', () => {
+  const editor = render('/documents/PERSONAL_ROOT_NOTE');
+  assert(editor.includes('PERSONAL_ROOT_NOTE') && editor.includes('textarea'));
+  for (const path of ['/documents/missing', '/documents/TRASHED_NOTE', '/folders/missing', '/not-a-page']) {
+    assert(render(path).includes('Về ghi chú của tôi'));
+  }
+});
