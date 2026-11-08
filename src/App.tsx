@@ -369,15 +369,10 @@ export default function App() {
           <button
             type="button"
             onClick={() => setIsSpotlightOpen(true)}
-            className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-lg bg-[#0E51BF]/80 hover:bg-[#0E51BF] border border-white/20 text-white/90 text-xs transition-colors shadow-inner cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg bg-[#0E51BF]/80 hover:bg-[#0E51BF] border border-white/20 text-white/90 text-xs transition-colors shadow-inner cursor-pointer"
           >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Search className="w-3.5 h-3.5 text-white/75 shrink-0" />
-              <span className="text-white/80 text-xs truncate">Tìm kiếm ghi chú...</span>
-            </div>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/15 text-white/90 border border-white/20 shrink-0">
-              Ctrl K
-            </span>
+            <Search className="w-3.5 h-3.5 text-white/75 shrink-0" />
+            <span className="text-white/80 text-xs truncate">Tìm kiếm ghi chú...</span>
           </button>
         </div>
 
