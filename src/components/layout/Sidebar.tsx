@@ -32,6 +32,7 @@ import {
 import { Document, Folder as FolderType, SpaceType, UserRole, ViewState } from '../../types';
 import { CURRENT_USER, TEMPLATES } from '../../data/mockData';
 import { ConfirmMoveDialog } from '../modals/ConfirmMoveDialog';
+import { MoveFolderModal } from '../modals/MoveFolderModal';
 import { FolderTree } from './FolderTree';
 import { getFolderAncestors, getFolderPath } from '../../utils/folders';
 import { documentUrl } from '../../app/router/routes';
@@ -67,6 +68,7 @@ interface SidebarProps {
   onRenameDocument?: (docId: string, newTitle: string) => void;
   onMoveDocumentRequest?: (doc: Document) => void;
   onMoveDocument?: (docId: string, targetFolderId: string | null, targetSpace: SpaceType) => void;
+  onMoveFolder?: (folderId: string, targetParentId: string | null, targetSpace: SpaceType) => void;
   onToast?: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -99,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameDocument,
   onMoveDocumentRequest,
   onMoveDocument,
+  onMoveFolder,
   onToast,
 }) => {
   const DEFAULT_SIDEBAR_WIDTH = 280;
@@ -188,8 +191,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Drag and Drop state
   const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
+  const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [dragOverRootSpace, setDragOverRootSpace] = useState<SpaceType | null>(null);
+
+  // Folder Move Modal state
+  const [moveFolderModal, setMoveFolderModal] = useState<{
+    isOpen: boolean;
+    folder: FolderType | null;
+  }>({
+    isOpen: false,
+    folder: null,
+  });
 
   // Confirmation Move Dialog state
   const [confirmMoveState, setConfirmMoveState] = useState<{
@@ -271,6 +284,109 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return doc.space === 'personal' ? 'Của tôi' : 'Công ty';
   };
 
+  const handleDirectMoveDocument = (
+    docId: string,
+    targetFolder: FolderType | null,
+    targetSpace?: SpaceType
+  ) => {
+    const doc = documents.find((d) => d.id === docId);
+    if (!doc) return;
+
+    const resolvedSpace = targetFolder ? targetFolder.space : targetSpace || doc.space;
+
+    if (doc.folderId === (targetFolder?.id || null) && doc.space === resolvedSpace) {
+      onToast?.('Tài liệu đã ở vị trí này rồi', 'info');
+      return;
+    }
+
+    onMoveDocument?.(doc.id, targetFolder?.id || null, resolvedSpace);
+    if (targetFolder) {
+      setExpandedFolders((prev) => ({ ...prev, [targetFolder.id]: true }));
+    }
+    const spaceTitle = resolvedSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+    const folderName = targetFolder ? `thư mục "${targetFolder.name}"` : `thư mục gốc ("${spaceTitle}")`;
+    onToast?.(`Đã di chuyển "${doc.title}" vào ${folderName}`);
+  };
+
+  const handleDirectMoveFolder = (
+    folderId: string,
+    targetParentId: string | null,
+    targetSpace: SpaceType
+  ) => {
+    const fld = folders.find((f) => f.id === folderId);
+    if (!fld) return;
+
+    if (targetParentId === folderId) {
+      onToast?.('Không thể di chuyển thư mục vào chính nó', 'error');
+      return;
+    }
+    if (targetParentId) {
+      const ancestors = getFolderAncestors(targetParentId, folders);
+      if (ancestors.some((a) => a.id === folderId)) {
+        onToast?.('Không thể di chuyển thư mục vào thư mục con của nó', 'error');
+        return;
+      }
+    }
+
+    if (fld.parentId === targetParentId && fld.space === targetSpace) {
+      onToast?.('Thư mục đã ở vị trí này rồi', 'info');
+      return;
+    }
+
+    try {
+      onMoveFolder?.(folderId, targetParentId, targetSpace);
+      if (targetParentId) {
+        setExpandedFolders((prev) => ({ ...prev, [targetParentId]: true }));
+      }
+      const targetParent = folders.find((f) => f.id === targetParentId);
+      const spaceLabel = targetSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+      const locText = targetParent
+        ? `thư mục "${targetParent.name}"`
+        : `thư mục gốc ("${spaceLabel}")`;
+      onToast?.(`Đã di chuyển thư mục "${fld.name}" vào ${locText}`);
+    } catch (err) {
+      onToast?.(err instanceof Error ? err.message : 'Không thể di chuyển thư mục', 'error');
+    }
+  };
+
+  const handleDropOnRoot = (e: React.DragEvent, space: SpaceType) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverRootSpace(null);
+
+    const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
+    const rawPlain = e.dataTransfer.getData('text/plain') || '';
+
+    let fldId: string | null = null;
+    let docId: string | null = null;
+
+    if (rawFolder) {
+      fldId = rawFolder;
+    } else if (rawPlain.startsWith('folder:')) {
+      fldId = rawPlain.replace('folder:', '');
+    } else if (rawPlain.startsWith('doc:')) {
+      docId = rawPlain.replace('doc:', '');
+    } else if (rawPlain) {
+      if (folders.some(f => f.id === rawPlain)) {
+        fldId = rawPlain;
+      } else {
+        docId = rawPlain;
+      }
+    }
+
+    if (!fldId && draggingFolderId) fldId = draggingFolderId;
+    if (!docId && draggingDocId) docId = draggingDocId;
+
+    setDraggingDocId(null);
+    setDraggingFolderId(null);
+
+    if (fldId) {
+      handleDirectMoveFolder(fldId, null, space);
+    } else if (docId) {
+      handleDirectMoveDocument(docId, null, space);
+    }
+  };
+
   const handlePromptMove = (
     docId: string,
     targetFolder: FolderType | null,
@@ -281,16 +397,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const resolvedSpace = targetFolder ? targetFolder.space : targetSpace || doc.space;
 
-    // If destination is identical to current location, do not show modal
     if (doc.folderId === (targetFolder?.id || null) && doc.space === resolvedSpace) {
       onToast?.('Tài liệu đã ở trong thư mục này', 'info');
       return;
     }
 
     const currentLoc = getLocationName(doc);
+    const spaceTitle = resolvedSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
     const targetLoc = targetFolder
-      ? `${targetFolder.space === 'personal' ? 'Của tôi' : 'Công ty'} / ${getFolderPath(targetFolder.id, folders)}`
-      : `${resolvedSpace === 'personal' ? 'Của tôi' : 'Công ty'}`;
+      ? `${targetFolder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'} / ${getFolderPath(targetFolder.id, folders)}`
+      : `${spaceTitle} (Thư mục gốc)`;
 
     setConfirmMoveState({
       isOpen: true,
@@ -313,7 +429,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setExpandedFolders((prev) => ({ ...prev, [targetFolderId]: true }));
     }
 
-    const folderName = targetFolder ? `thư mục "${targetFolder.name}"` : 'thư mục gốc';
+    const spaceTitle = targetSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+    const folderName = targetFolder ? `thư mục "${targetFolder.name}"` : `thư mục gốc ("${spaceTitle}")`;
     onToast?.(`Đã di chuyển "${doc.title}" vào ${folderName}`);
     setConfirmMoveState({
       isOpen: false,
@@ -398,6 +515,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const isActive = isDocActive(doc.id);
     const isRenaming = renamingDocId === doc.id;
     const isDragging = draggingDocId === doc.id;
+    const isAnyDragging = !!(draggingDocId || draggingFolderId);
+    const targetFolderId = defaultFolderId ?? doc.folderId;
+    const isTargetFolderOver = !!(targetFolderId && dragOverFolderId === targetFolderId);
 
     return (
       <div
@@ -405,7 +525,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         draggable={!isRenaming}
         onDragStart={(e) => {
           e.stopPropagation();
-          e.dataTransfer.setData('text/plain', doc.id);
+          e.dataTransfer.setData('text/plain', `doc:${doc.id}`);
+          e.dataTransfer.setData('application/x-doc-id', doc.id);
+          e.dataTransfer.setData('text/uri-list', `#doc-${doc.id}`);
           e.dataTransfer.effectAllowed = 'move';
           setDraggingDocId(doc.id);
         }}
@@ -413,6 +535,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
           setDraggingDocId(null);
           setDragOverFolderId(null);
           setDragOverRootSpace(null);
+        }}
+        onDragOver={(e) => {
+          if (targetFolderId && (draggingDocId !== doc.id || draggingFolderId)) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+            if (dragOverFolderId !== targetFolderId) {
+              setDragOverFolderId(targetFolderId);
+            }
+          }
+        }}
+        onDrop={(e) => {
+          if (targetFolderId) {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOverFolderId(null);
+            const targetFolder = folders.find((f) => f.id === targetFolderId);
+            const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
+            const rawPlain = e.dataTransfer.getData('text/plain') || '';
+            let fldId = rawFolder || (rawPlain.startsWith('folder:') ? rawPlain.replace('folder:', '') : null);
+            let draggedDocId = rawPlain.startsWith('doc:') ? rawPlain.replace('doc:', '') : rawPlain;
+
+            if (!fldId && draggingFolderId) fldId = draggingFolderId;
+            if (!draggedDocId && draggingDocId) draggedDocId = draggingDocId;
+
+            if (fldId && targetFolder) {
+              handleDirectMoveFolder(fldId, targetFolder.id, targetFolder.space);
+            } else if (draggedDocId && draggedDocId !== doc.id && targetFolder) {
+              handleDirectMoveDocument(draggedDocId, targetFolder, targetFolder.space);
+            }
+          }
         }}
         onClick={() => {
           if (!isRenaming) {
@@ -425,7 +578,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isActive
             ? 'bg-[var(--ui-active-note)] text-[var(--ui-active-note-text)] font-semibold shadow-2xs'
             : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text-secondary)]'
-        } ${isDragging ? 'opacity-30 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''}`}
+        } ${isDragging ? 'opacity-30 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''} ${
+          isTargetFolderOver ? 'bg-[var(--ui-selected)]/50 ring-1 ring-[var(--ui-primary)]/40' : ''
+        }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {doc.icon === '💬' || doc.tags?.includes('Đoạn chat') ? (
@@ -501,17 +656,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
-  // Rail Mode (when collapsed)
-  const renderFolderTree = (space: SpaceType) => <FolderTree folders={folders} documents={activeDocs}
-    newFolderId={newFolderId} onFinishNewFolder={onFinishNewFolder} onRenameNewFolder={onRenameNewFolder}
-    space={space} view={viewState} expanded={expandedFolders} dragOverFolderId={dragOverFolderId}
-    onToggle={id => setExpandedFolders(previous => ({ ...previous, [id]: !previous[id] }))}
-    onNavigate={onNavigate} onCreateFolder={onCreateFolder} onEditFolder={onEditFolder} onDeleteFolder={onDeleteFolder}
-    onDragOverFolder={setDragOverFolderId} draggingDocumentId={draggingDocId} renderDocument={renderDocumentItem}
-    onDropDocument={(folder, documentId) => {
-      setDragOverFolderId(null); setDraggingDocId(null); setDragOverRootSpace(null);
-      handlePromptMove(documentId, folder);
-    }} />;
+  const renderFolderTree = (space: SpaceType) => (
+    <FolderTree
+      folders={folders}
+      documents={activeDocs}
+      newFolderId={newFolderId}
+      onFinishNewFolder={onFinishNewFolder}
+      onRenameNewFolder={onRenameNewFolder}
+      space={space}
+      view={viewState}
+      expanded={expandedFolders}
+      dragOverFolderId={dragOverFolderId}
+      onToggle={(id) => setExpandedFolders((previous) => ({ ...previous, [id]: !previous[id] }))}
+      onNavigate={onNavigate}
+      onCreateFolder={onCreateFolder}
+      onEditFolder={onEditFolder}
+      onMoveFolder={(f) => setMoveFolderModal({ isOpen: true, folder: f })}
+      onDeleteFolder={onDeleteFolder}
+      onDragOverFolder={setDragOverFolderId}
+      draggingDocumentId={draggingDocId}
+      draggingFolderId={draggingFolderId}
+      onDragStartFolder={setDraggingFolderId}
+      onDragEndFolder={() => {
+        setDraggingFolderId(null);
+        setDragOverFolderId(null);
+        setDragOverRootSpace(null);
+      }}
+      renderDocument={renderDocumentItem}
+      onDropDocument={(folder, documentId) => {
+        setDragOverFolderId(null);
+        setDraggingDocId(null);
+        setDragOverRootSpace(null);
+        handleDirectMoveDocument(documentId, folder);
+      }}
+      onDropFolder={(targetFolder, draggedFolderId) => {
+        setDragOverFolderId(null);
+        setDraggingFolderId(null);
+        setDragOverRootSpace(null);
+        handleDirectMoveFolder(draggedFolderId, targetFolder.id, targetFolder.space);
+      }}
+    />
+  );
 
   if (collapsed) {
     return (
@@ -920,6 +1105,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               aria-selected={spaceTab === space} tabIndex={spaceTab === space ? 0 : -1}
               onClick={() => { setSpaceTab(space); onNavigate({ type: space === 'personal' ? 'private' : 'company' }); }}
               onDragEnter={() => setSpaceTab(space)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => handleDropOnRoot(e, space)}
               onKeyDown={event => {
                 if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
                   event.preventDefault();
@@ -944,29 +1134,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Section 1: GHI CHÉP CỦA TÔI */}
         <div
           role="tabpanel" id="space-panel-personal" aria-labelledby="space-tab-personal" hidden={spaceTab !== 'personal'}
-          className={`px-2 pt-4 transition-all ${
-            dragOverRootSpace === 'personal' ? 'bg-[var(--ui-hover)] ring-1 ring-dashed ring-[var(--ui-primary)] rounded-2xl' : ''
-          }`}
+          data-space-panel="personal"
           onDragOver={(e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            if (dragOverRootSpace !== 'personal') setDragOverRootSpace('personal');
           }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const docId = e.dataTransfer.getData('text/plain') || draggingDocId;
-            setDragOverRootSpace(null);
-            setDraggingDocId(null);
-            if (docId) {
-              handlePromptMove(docId, null, 'personal');
-            }
-          }}
+          onDrop={(e) => handleDropOnRoot(e, 'personal')}
+          className={`px-2 pt-4 transition-all`}
         >
-          <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase group">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = 'move';
+              if (dragOverRootSpace !== 'personal') setDragOverRootSpace('personal');
+            }}
+            onDragLeave={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              if (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom) {
+                if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
+              }
+            }}
+            onDrop={(e) => handleDropOnRoot(e, 'personal')}
+            className={`flex items-center justify-between px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase group rounded-lg transition-colors ${
+              dragOverRootSpace === 'personal' ? 'bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : ''
+            }`}
+          >
             <button
               onClick={() => { setPersonalExpanded(true); onNavigate({ type: 'private' }); }}
               className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -991,6 +1185,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
+          {/* Root Drop Zone for Personal Space */}
+          {(draggingDocId || draggingFolderId) && (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverRootSpace !== 'personal') setDragOverRootSpace('personal');
+              }}
+              onDragLeave={(e) => {
+                e.stopPropagation();
+                if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
+              }}
+              onDrop={(e) => handleDropOnRoot(e, 'personal')}
+              className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${
+                dragOverRootSpace === 'personal'
+                  ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] font-bold scale-[1.02]'
+                  : 'border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-muted)] hover:border-[var(--ui-primary)]'
+              }`}
+            >
+              📂 Thả vào đây để đưa ra thư mục gốc (Ghi chép của tôi)
+            </div>
+          )}
+
           {personalExpanded && (
             <div className="space-y-0.5 mt-1">
               {/* Unfiled Personal Documents: Ghi chú chưa phân loại at top, above folders (e.g. above "Công việc") */}
@@ -1004,29 +1222,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Section 2: TÀI LIỆU CÔNG TY */}
         <div
           role="tabpanel" id="space-panel-company" aria-labelledby="space-tab-company" hidden={spaceTab !== 'company'}
-          className={`px-2 pt-4 transition-all ${
-            dragOverRootSpace === 'company' ? 'bg-[var(--ui-hover)] ring-1 ring-dashed ring-[var(--ui-primary)] rounded-2xl' : ''
-          }`}
+          data-space-panel="company"
           onDragOver={(e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            if (dragOverRootSpace !== 'company') setDragOverRootSpace('company');
           }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            const docId = e.dataTransfer.getData('text/plain') || draggingDocId;
-            setDragOverRootSpace(null);
-            setDraggingDocId(null);
-            if (docId) {
-              handlePromptMove(docId, null, 'company');
-            }
-          }}
+          onDrop={(e) => handleDropOnRoot(e, 'company')}
+          className={`px-2 pt-4 transition-all`}
         >
-          <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-bold text-[var(--ui-tertiary)] tracking-wider uppercase group">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = 'move';
+              if (dragOverRootSpace !== 'company') setDragOverRootSpace('company');
+            }}
+            onDragLeave={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              if (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom) {
+                if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
+              }
+            }}
+            onDrop={(e) => handleDropOnRoot(e, 'company')}
+            className={`flex items-center justify-between px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase group rounded-lg transition-colors ${
+              dragOverRootSpace === 'company' ? 'bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] ring-1 ring-[var(--ui-primary)]' : 'text-[var(--ui-tertiary)]'
+            }`}
+          >
             <button
               onClick={() => { setCompanyExpanded(true); onNavigate({ type: 'company' }); }}
               className="flex items-center gap-1.5 hover:text-[var(--ui-text)] transition-colors cursor-pointer"
@@ -1050,6 +1272,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Root Drop Zone for Company Space */}
+          {(draggingDocId || draggingFolderId) && (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverRootSpace !== 'company') setDragOverRootSpace('company');
+              }}
+              onDragLeave={(e) => {
+                e.stopPropagation();
+                if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
+              }}
+              onDrop={(e) => handleDropOnRoot(e, 'company')}
+              className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${
+                dragOverRootSpace === 'company'
+                  ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] font-bold scale-[1.02]'
+                  : 'border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-muted)] hover:border-[var(--ui-primary)]'
+              }`}
+            >
+              📂 Thả vào đây để đưa ra thư mục gốc (Tài liệu công ty)
+            </div>
+          )}
 
           {companyExpanded && (
             <div className="space-y-0.5 mt-1">
@@ -1297,6 +1543,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             targetLocationName: '',
           })
         }
+      />
+
+      {/* Move Folder Modal */}
+      <MoveFolderModal
+        folder={moveFolderModal.folder}
+        folders={folders}
+        isOpen={moveFolderModal.isOpen}
+        onClose={() => setMoveFolderModal({ isOpen: false, folder: null })}
+        onMove={(folderId, targetParentId, targetSpace) => {
+          onMoveFolder?.(folderId, targetParentId, targetSpace);
+          setMoveFolderModal({ isOpen: false, folder: null });
+        }}
+        onToast={onToast}
       />
 
       {/* Resizer Handle on right border */}

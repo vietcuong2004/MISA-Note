@@ -69,114 +69,82 @@ export const FolderModal: React.FC<FolderModalProps> = ({
 
     try { onSaveFolder(folder); }
     catch (error) { setError(error instanceof Error ? error.message : 'Không lưu được thư mục.'); return; }
-    onToast(folderToEdit ? 'Đã đổi tên thư mục' : 'Đã tạo thư mục mới');
+    onToast(folderToEdit ? `Đã đổi tên thư mục thành "${name.trim()}"` : 'Đã tạo thư mục mới');
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4"
-      onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
-          <h3 id="folder-dialog-title" className="text-sm font-semibold text-[var(--ui-text)]">
-            {folderToEdit ? 'Đổi tên thư mục' : parentFolder ? 'Tạo thư mục con' : 'Tạo thư mục mới'}
-          </h3>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="folder-dialog-title"
+        className="bg-white dark:bg-[#1E1E20] rounded-[24px] shadow-2xl border border-neutral-100 dark:border-neutral-800 w-full max-w-[400px] p-6 animate-in zoom-in-95 duration-150"
+      >
+        {/* Header matching image: Title + Subtitle on left, small subtle X on right */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 id="folder-dialog-title" className="text-[17px] font-bold text-neutral-900 dark:text-neutral-100">
+              {folderToEdit ? 'Đặt lại tên thư mục' : parentFolder ? 'Tạo thư mục con' : 'Tạo thư mục mới'}
+            </h3>
+            <p className="text-sm text-neutral-400 dark:text-neutral-400 mt-0.5">
+              Ngắn gọn và dễ nhận ra
+            </p>
+          </div>
           <button
             type="button"
             aria-label="Đóng thư mục"
             title="Đóng"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+            className="p-1 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors cursor-pointer -mr-1 -mt-0.5"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {error && <p role="alert" className="text-xs text-red-600">{error}</p>}
-          {parentFolder && <p className="text-xs text-[var(--ui-muted)]">Thư mục cha: <strong className="text-[var(--ui-text)]">{parentFolder.name}</strong></p>}
-          {!folderToEdit && !parentFolder && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[var(--ui-text)] block">Khu vực</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSpace('personal')}
-                  className={`p-3 rounded-2xl border text-xs font-semibold transition-all ios-interactive ${
-                    space === 'personal'
-                      ? 'border-[var(--ui-primary)] theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
-                      : 'border-[var(--ui-border)] bg-[var(--ui-subtle)] text-[var(--ui-text)] hover:border-[var(--ui-border-strong)]'
-                  }`}
-                >
-                  Ghi chép của tôi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSpace('company')}
-                  className={`p-3 rounded-2xl border text-xs font-semibold transition-all ios-interactive ${
-                    space === 'company'
-                      ? 'border-[var(--ui-primary)] theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
-                      : 'border-[var(--ui-border)] bg-[var(--ui-subtle)] text-[var(--ui-text)] hover:border-[var(--ui-border-strong)]'
-                  }`}
-                >
-                  Tài liệu công ty
-                </button>
-              </div>
-            </div>
+          {parentFolder && !folderToEdit && (
+            <p className="text-xs text-[var(--ui-muted)]">
+              Thư mục cha: <strong className="text-[var(--ui-text)]">{parentFolder.name}</strong>
+            </p>
           )}
 
-          {/* Icon picker */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--ui-text)] block">Biểu tượng thư mục</label>
-            <div className="flex flex-wrap gap-2">
-              {EMOJI_OPTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setIcon(emoji)}
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm transition-all ios-interactive ${
-                    icon === emoji
-                      ? 'theme-primary bg-[var(--ui-primary)] text-white shadow-xs scale-105'
-                      : 'bg-[var(--ui-hover)] hover:bg-[var(--ui-border)] text-[var(--ui-text)]'
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Folder name input */}
-          <div className="space-y-1.5">
-            <label htmlFor="folder-name" className="text-xs font-bold text-[var(--ui-text)] block">Tên thư mục</label>
+          {/* Folder name input with active blue ring matching screenshot */}
+          <div>
             <input
               id="folder-name"
               type="text"
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="VD: Dự án Sprint 14..."
-              className="w-full px-3.5 py-2.5 text-xs bg-[var(--ui-subtle)] border border-[var(--ui-border)] rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--ui-primary)] focus:border-[var(--ui-primary)] text-[var(--ui-text)]"
+              onFocus={(e) => e.target.select()}
+              placeholder={folderToEdit ? 'Nhập tên thư mục...' : 'VD: Dự án Sprint 14...'}
+              className="w-full px-3.5 py-2.5 text-[14px] bg-white dark:bg-[#151516] border border-[#007AFF] ring-1 ring-[#007AFF] rounded-xl outline-none text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 transition-all"
             />
           </div>
 
-          {/* Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2">
+          {/* Buttons: Pill shape Huỷ and Lưu matching screenshot */}
+          <div className="flex items-center justify-end gap-2.5 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-[var(--ui-muted)] hover:text-[var(--ui-text)] rounded-xl transition-colors"
+              className="px-5 py-1.5 text-sm font-medium rounded-full border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#252528] text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-[#2e2e32] transition-colors cursor-pointer"
             >
-              Hủy
+              Huỷ
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="px-4 py-2 text-xs font-semibold text-white theme-primary bg-[var(--ui-primary)] hover:bg-[var(--ui-primary-hover)] rounded-xl shadow-xs disabled:opacity-40 transition-colors ios-interactive"
+              className="px-5 py-1.5 text-sm font-semibold rounded-full bg-black hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200 text-white transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {folderToEdit ? 'Cập nhật' : 'Tạo thư mục'}
+              {folderToEdit ? 'Lưu' : 'Tạo'}
             </button>
           </div>
         </form>

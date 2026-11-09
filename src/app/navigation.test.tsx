@@ -375,3 +375,65 @@ test('selecting text in block editor renders EditTextDialog with side-by-side su
   dialog = document.querySelector('[aria-label="Định dạng văn bản"]');
   assert.equal(dialog, null, 'Expected EditTextDialog to close when text is no longer highlighted');
 });
+
+test('folder and document drag and drop updates hierarchy and persists to storage', async () => {
+  const { getStoredFolders, saveStoredFolders } = await import('../utils/storage');
+  await mount('/private');
+
+  // Verify initial state: fld_personal and fld_work are roots
+  let folders = getStoredFolders();
+  const personalFolder = folders.find(f => f.id === 'fld_personal')!;
+  const workFolder = folders.find(f => f.id === 'fld_work')!;
+  assert.equal(personalFolder.parentId, undefined);
+  assert.equal(workFolder.parentId, undefined);
+
+  // 1. Simulate dragging fld_personal onto fld_work row
+  const workFolderRow = document.querySelector('[data-folder-id="fld_work"] > div')!;
+  assert(workFolderRow, 'Expected fld_work row to exist');
+
+  const createDragEvent = (type: string, data: Record<string, string>) => {
+    const event = new window.Event(type, { bubbles: true, cancelable: true });
+    Object.assign(event, {
+      dataTransfer: {
+        data,
+        getData: (key: string) => data[key] || '',
+        setData: (key: string, val: string) => { data[key] = val; },
+        dropEffect: 'move',
+        effectAllowed: 'move',
+      },
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    });
+    return event;
+  };
+
+  await act(async () => {
+    workFolderRow.dispatchEvent(createDragEvent('drop', {
+      'text/plain': 'folder:fld_personal',
+      'text/folder-id': 'fld_personal',
+      'application/x-folder-id': 'fld_personal',
+    }));
+  });
+
+  // Verify fld_personal is now a child of fld_work
+  folders = getStoredFolders();
+  const updatedPersonal = folders.find(f => f.id === 'fld_personal')!;
+  assert.equal(updatedPersonal.parentId, 'fld_work', 'Expected fld_personal to be nested under fld_work');
+
+  // 2. Simulate dragging fld_personal onto root drop area (GHI CHÉP CỦA TÔI)
+  const rootPanel = document.querySelector('[data-space-panel="personal"]')!;
+  assert(rootPanel, 'Expected data-space-panel="personal" to exist');
+
+  await act(async () => {
+    rootPanel.dispatchEvent(createDragEvent('drop', {
+      'text/plain': 'folder:fld_personal',
+      'text/folder-id': 'fld_personal',
+      'application/x-folder-id': 'fld_personal',
+    }));
+  });
+
+  // Verify fld_personal is promoted back to root (parentId: null)
+  folders = getStoredFolders();
+  assert.equal(folders.find(f => f.id === 'fld_personal')?.parentId, null, 'Expected fld_personal to be restored to root');
+});
+

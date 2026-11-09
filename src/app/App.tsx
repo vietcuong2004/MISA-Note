@@ -15,6 +15,7 @@ import {
   permanentDeleteDocument,
   emptyTrashPermanently,
   moveDocumentToFolderOrSpace,
+  moveFolderToParentOrSpace,
   toggleDocumentFavorite,
   upsertFolder,
   deleteFolderAndReassign,
@@ -27,6 +28,7 @@ import { FolderModal } from '../components/modals/FolderModal';
 import { DeleteFolderDialog } from '../components/modals/DeleteFolderDialog';
 import { getFolderPath } from '../utils/folders';
 import { MoveModal } from '../components/modals/MoveModal';
+import { MoveFolderModal } from '../components/modals/MoveFolderModal';
 import { NewChatModal } from '../components/modals/NewChatModal';
 import { SpotlightSearchModal } from '../components/modals/SpotlightSearchModal';
 import { ImportDocumentModal } from '../components/modals/ImportDocumentModal';
@@ -69,6 +71,7 @@ export default function App() {
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [moveModalDoc, setMoveModalDoc] = useState<Document | null>(null);
+  const [moveModalFolder, setMoveModalFolder] = useState<Folder | null>(null);
 
   // Toast feedback
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -142,6 +145,20 @@ export default function App() {
   ) => {
     const newDocs = moveDocumentToFolderOrSpace(docId, targetFolderId, targetSpace);
     setDocuments(newDocs);
+  };
+
+  const handleMoveFolder = (
+    folderId: string,
+    targetParentId: string | null,
+    targetSpace: SpaceType
+  ) => {
+    try {
+      const result = moveFolderToParentOrSpace(folderId, targetParentId, targetSpace);
+      setFolders(result.folders);
+      setDocuments(result.docs);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Không thể di chuyển thư mục', 'error');
+    }
   };
 
   const handleToggleFavorite = (docId: string) => {
@@ -434,6 +451,7 @@ export default function App() {
         onRenameDocument={handleRenameDocument}
         onMoveDocumentRequest={(doc) => setMoveModalDoc(doc)}
         onMoveDocument={handleMoveDocument}
+        onMoveFolder={handleMoveFolder}
         onToast={addToast}
       />
 
@@ -450,10 +468,15 @@ export default function App() {
             onNavigatePage: type => navigate({ type }),
             onImportDoc: () => setShowImportModal(true),
             onCreateFolder: handleCreateFolder,
+            onEditFolder: handleOpenEditFolder,
+            onMoveFolderRequest: (folder) => setMoveModalFolder(folder),
+            onDeleteFolder: handleDeleteFolder,
             onRecordAudioNote: () => addToast('Tính năng ghi âm thành ghi chú OneAI đang được kết nối'),
             onDuplicateDocument: handleDuplicateDocument,
             onRenameDocument: handleRenameDocument,
             onMoveDocumentRequest: setMoveModalDoc,
+            onMoveDocument: handleMoveDocument,
+            onMoveFolder: handleMoveFolder,
             onToast: addToast,
           }}
           editor={{ folders, currentRole, onUpdateDocument: handleUpdateDocument, onNavigate: navigate,
@@ -559,6 +582,20 @@ export default function App() {
           onMove={(docId, folderId, space) => {
             handleMoveDocument(docId, folderId, space);
             setMoveModalDoc(null);
+          }}
+          onToast={addToast}
+        />
+      )}
+
+      {moveModalFolder && (
+        <MoveFolderModal
+          folder={moveModalFolder}
+          folders={folders}
+          isOpen={!!moveModalFolder}
+          onClose={() => setMoveModalFolder(null)}
+          onMove={(folderId, parentId, space) => {
+            handleMoveFolder(folderId, parentId, space);
+            setMoveModalFolder(null);
           }}
           onToast={addToast}
         />

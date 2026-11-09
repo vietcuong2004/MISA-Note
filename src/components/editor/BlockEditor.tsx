@@ -86,7 +86,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
 
   useEffect(() => {
     setDoc(document);
-  }, [document.id]);
+  }, [document.id, document.folderId, document.space, document.title, document.updatedAt]);
 
   // Commit pending edits before navigating away or refreshing a document URL.
   useEffect(() => {

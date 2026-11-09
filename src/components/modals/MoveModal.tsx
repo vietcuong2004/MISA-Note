@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Folder, User, Building2, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, User, Building2, Check, ArrowRight } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType } from '../../types';
 import { getFolderPath } from '../../utils/folders';
 
@@ -9,7 +9,7 @@ interface MoveModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMove: (docId: string, targetFolderId: string | null, targetSpace: SpaceType) => void;
-  onToast: (msg: string) => void;
+  onToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
 export const MoveModal: React.FC<MoveModalProps> = ({
@@ -23,6 +23,25 @@ export const MoveModal: React.FC<MoveModalProps> = ({
   const [selectedSpace, setSelectedSpace] = useState<SpaceType>(document.space);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(document.folderId);
 
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedSpace(document.space);
+      setSelectedFolderId(document.folderId ?? null);
+    }
+  }, [isOpen, document.id, document.space, document.folderId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const filteredFolders = folders.filter((f) => f.space === selectedSpace);
@@ -35,28 +54,62 @@ export const MoveModal: React.FC<MoveModalProps> = ({
     }
   };
 
+  const isUnchanged =
+    selectedSpace === document.space &&
+    selectedFolderId === (document.folderId ?? null);
+
   const handleConfirm = () => {
+    if (isUnchanged) {
+      onToast('Tài liệu đã ở vị trí này rồi', 'info');
+      onClose();
+      return;
+    }
+
     onMove(document.id, selectedFolderId, selectedSpace);
     const targetFolder = folders.find((f) => f.id === selectedFolderId);
+    const spaceLabel = selectedSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
     const locationName = targetFolder
-      ? `thư mục "${getFolderPath(targetFolder.id, folders)}"`
-      : selectedSpace === 'personal'
-      ? 'không gian "Ghi chép của tôi"'
-      : 'không gian "Tài liệu công ty"';
+      ? `thư mục "${targetFolder.name}"`
+      : `thư mục gốc ("${spaceLabel}")`;
+
     onToast(`Đã di chuyển tài liệu vào ${locationName}`);
     onClose();
   };
 
+  const currentSpaceLabel = document.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+  const currentFolder = folders.find((f) => f.id === document.folderId);
+  const currentPath = currentFolder ? getFolderPath(currentFolder.id, folders) : null;
+
+  const targetSpaceLabel = selectedSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+  const targetFolder = folders.find((f) => f.id === selectedFolderId);
+  const targetPath = targetFolder ? getFolderPath(targetFolder.id, folders) : null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
-      <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="move-modal-title"
+        className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
-          <div>
-            <h3 className="text-sm font-semibold text-[var(--ui-text)]">Di chuyển tài liệu</h3>
-            {document.title && (
-              <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[280px]">{document.title}</p>
-            )}
+          <div className="flex items-center gap-2">
+            <span className="text-base">{document.icon || '📄'}</span>
+            <div>
+              <h3 id="move-modal-title" className="text-sm font-semibold text-[var(--ui-text)]">
+                Di chuyển tài liệu
+              </h3>
+              {document.title && (
+                <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[280px]">
+                  {document.title}
+                </p>
+              )}
+            </div>
           </div>
           <button
             type="button"
@@ -73,12 +126,14 @@ export const MoveModal: React.FC<MoveModalProps> = ({
         <div className="p-6 space-y-4">
           {/* Space selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--ui-text)] block">Chọn không gian</label>
+            <label className="text-xs font-bold text-[var(--ui-text)] block">
+              1. Chọn không gian đích
+            </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleSpaceChange('personal')}
-                className={`flex items-center gap-2.5 p-3.5 rounded-2xl border text-left transition-all ios-interactive ${
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all ios-interactive cursor-pointer ${
                   selectedSpace === 'personal'
                     ? 'border-[var(--ui-primary)] theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
                     : 'border-[var(--ui-border)] hover:border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-text)]'
@@ -100,7 +155,7 @@ export const MoveModal: React.FC<MoveModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSpaceChange('company')}
-                className={`flex items-center gap-2.5 p-3.5 rounded-2xl border text-left transition-all ios-interactive ${
+                className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all ios-interactive cursor-pointer ${
                   selectedSpace === 'company'
                     ? 'border-[var(--ui-primary)] theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
                     : 'border-[var(--ui-border)] hover:border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-text)]'
@@ -123,22 +178,32 @@ export const MoveModal: React.FC<MoveModalProps> = ({
 
           {/* Folder selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--ui-text)] block">Chọn thư mục đích</label>
+            <label className="text-xs font-bold text-[var(--ui-text)] block">
+              2. Chọn thư mục đích
+            </label>
             <div className="border border-[var(--ui-border)] rounded-2xl max-h-56 overflow-y-auto divide-y divide-[var(--ui-border)] bg-[var(--ui-subtle)]">
+              {/* Option: Root level */}
               <button
                 type="button"
                 onClick={() => setSelectedFolderId(null)}
-                className={`w-full flex items-center justify-between p-3 text-xs text-left transition-colors ios-interactive ${
+                className={`w-full flex items-center justify-between p-3 text-xs text-left transition-colors ios-interactive cursor-pointer ${
                   selectedFolderId === null
-                    ? 'bg-[var(--ui-surface)] font-semibold text-[var(--ui-text)]'
+                    ? 'bg-[var(--ui-surface)] font-semibold text-[var(--ui-text)] ring-1 ring-[var(--ui-primary)]/40'
                     : 'hover:bg-[var(--ui-surface)] text-[var(--ui-text)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <span className="text-base">📂</span>
-                  <span>(Thư mục gốc)</span>
+                  <div>
+                    <span className="font-semibold block">(Thư mục gốc)</span>
+                    <span className="text-[10px] text-[var(--ui-tertiary)] block">
+                      Đưa ra cấp ngoài cùng của {targetSpaceLabel} (không nằm trong thư mục)
+                    </span>
+                  </div>
                 </div>
-                {selectedFolderId === null && <Check className="w-4 h-4 text-[var(--ui-text)] stroke-[2]" />}
+                {selectedFolderId === null && (
+                  <Check className="w-4 h-4 text-[var(--ui-primary)] stroke-[2.5]" />
+                )}
               </button>
 
               {filteredFolders.map((folder) => (
@@ -146,25 +211,59 @@ export const MoveModal: React.FC<MoveModalProps> = ({
                   key={folder.id}
                   type="button"
                   onClick={() => setSelectedFolderId(folder.id)}
-                  className={`w-full flex items-center justify-between p-3 text-xs text-left transition-colors ios-interactive ${
+                  className={`w-full flex items-center justify-between p-3 text-xs text-left transition-colors ios-interactive cursor-pointer ${
                     selectedFolderId === folder.id
-                      ? 'bg-[var(--ui-surface)] font-semibold text-[var(--ui-text)]'
+                      ? 'bg-[var(--ui-surface)] font-semibold text-[var(--ui-text)] ring-1 ring-[var(--ui-primary)]/40'
                       : 'hover:bg-[var(--ui-surface)] text-[var(--ui-text)]'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">{folder.icon || '📁'}</span>
-                    <span className="truncate">{getFolderPath(folder.id, folders)}</span>
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="text-base shrink-0">{folder.icon || '📁'}</span>
+                    <div className="truncate min-w-0">
+                      <span className="truncate block font-medium">{folder.name}</span>
+                      <span className="text-[10px] text-[var(--ui-tertiary)] truncate block">
+                        {getFolderPath(folder.id, folders)}
+                      </span>
+                    </div>
                   </div>
-                  {selectedFolderId === folder.id && <Check className="w-4 h-4 text-[var(--ui-text)] stroke-[2]" />}
+                  {selectedFolderId === folder.id && (
+                    <Check className="w-4 h-4 text-[var(--ui-primary)] stroke-[2.5] shrink-0" />
+                  )}
                 </button>
               ))}
 
               {filteredFolders.length === 0 && (
-                <div className="p-4 text-center text-xs text-[var(--ui-tertiary)]">
-                  Chưa có thư mục nào trong không gian này.
+                <div className="p-3 text-center text-xs text-[var(--ui-tertiary)]">
+                  Chưa có thư mục nào trong không gian này. Tài liệu sẽ nằm ở thư mục gốc.
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Path Transition Preview Card */}
+          <div className="p-3.5 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] space-y-2">
+            <div className="flex items-center justify-between text-xs gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] uppercase font-bold text-[var(--ui-tertiary)] block">
+                  Vị trí hiện tại
+                </span>
+                <span className="font-medium text-[var(--ui-text)] truncate block mt-0.5">
+                  {currentSpaceLabel} {currentPath ? ` / ${currentPath}` : ' (Thư mục gốc)'}
+                </span>
+              </div>
+
+              <div className="px-2 text-[var(--ui-tertiary)] shrink-0">
+                <ArrowRight className="w-4 h-4 stroke-[2]" />
+              </div>
+
+              <div className="flex-1 min-w-0 text-right">
+                <span className="text-[10px] uppercase font-bold text-[var(--ui-tertiary)] block">
+                  Vị trí mới
+                </span>
+                <span className="font-bold text-[var(--ui-primary)] truncate block mt-0.5">
+                  {targetSpaceLabel} {targetPath ? ` / ${targetPath}` : ' (Thư mục gốc)'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -174,14 +273,15 @@ export const MoveModal: React.FC<MoveModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-[var(--ui-muted)] hover:text-[var(--ui-text)] rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-[var(--ui-muted)] hover:text-[var(--ui-text)] rounded-xl transition-colors cursor-pointer"
           >
             Hủy
           </button>
           <button
             type="button"
             onClick={handleConfirm}
-            className="px-4 py-2 text-xs font-semibold text-white theme-primary bg-[var(--ui-primary)] hover:bg-[var(--ui-primary-hover)] rounded-xl shadow-xs transition-colors ios-interactive"
+            disabled={isUnchanged}
+            className="px-4 py-2 text-xs font-semibold text-white theme-primary bg-[var(--ui-primary)] hover:bg-[var(--ui-primary-hover)] rounded-xl shadow-xs transition-colors ios-interactive cursor-pointer disabled:opacity-40"
           >
             Xác nhận di chuyển
           </button>

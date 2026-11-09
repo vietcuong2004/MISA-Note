@@ -198,3 +198,61 @@ export const deleteFolderAndReassign = (folderId: string): { folders: Folder[]; 
 
   return { folders, docs };
 };
+
+export const moveFolderToParentOrSpace = (
+  folderId: string,
+  targetParentId: string | null,
+  targetSpace: SpaceType
+): { folders: Folder[]; docs: Document[] } => {
+  const folders = getStoredFolders();
+  const target = folders.find((f) => f.id === folderId);
+  if (!target) return { folders, docs: getStoredDocuments() };
+
+  const now = new Date().toISOString();
+  const updatedFolder: Folder = {
+    ...target,
+    parentId: targetParentId,
+    space: targetSpace,
+    updatedAt: now,
+  };
+
+  validateFolderParent(updatedFolder, folders);
+
+  const descendants = new Set<string>();
+  const collectDescendants = (parentId: string) => {
+    folders
+      .filter((f) => f.parentId === parentId)
+      .forEach((f) => {
+        descendants.add(f.id);
+        collectDescendants(f.id);
+      });
+  };
+  collectDescendants(folderId);
+
+  const updatedFolders = folders.map((f) => {
+    if (f.id === folderId) return updatedFolder;
+    if (descendants.has(f.id)) {
+      return { ...f, space: targetSpace, updatedAt: now };
+    }
+    return f;
+  });
+
+  const docs = getStoredDocuments();
+  const affectedFolderIds = new Set([folderId, ...descendants]);
+  const updatedDocs = docs.map((d) => {
+    if (d.folderId && affectedFolderIds.has(d.folderId)) {
+      return {
+        ...d,
+        space: targetSpace,
+        isPrivate: targetSpace === 'personal',
+        updatedAt: now,
+      };
+    }
+    return d;
+  });
+
+  saveStoredFolders(updatedFolders);
+  saveStoredDocuments(updatedDocs);
+
+  return { folders: updatedFolders, docs: updatedDocs };
+};

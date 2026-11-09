@@ -24,6 +24,7 @@ import {
   Mic,
   FolderPlus,
   FolderTree,
+  FolderInput,
   Folder as FolderIcon,
   ChevronRight,
   Clock,
@@ -53,6 +54,11 @@ export interface LibraryViewProps {
   onDuplicateDocument?: (docId: string) => void;
   onRenameDocument?: (docId: string, newTitle: string) => void;
   onMoveDocumentRequest?: (doc: Document) => void;
+  onMoveDocument?: (docId: string, targetFolderId: string | null, targetSpace: SpaceType) => void;
+  onEditFolder?: (folder: Folder) => void;
+  onMoveFolderRequest?: (folder: Folder) => void;
+  onMoveFolder?: (folderId: string, targetParentId: string | null, targetSpace: SpaceType) => void;
+  onDeleteFolder?: (folderId: string) => void;
   onToast?: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
 
@@ -77,6 +83,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onDuplicateDocument,
   onRenameDocument,
   onMoveDocumentRequest,
+  onMoveDocument,
+  onEditFolder,
+  onMoveFolderRequest,
+  onMoveFolder,
+  onDeleteFolder,
   onToast,
 }) => {
   // Navigation Tab matching screenshot: Tất cả, Của tôi, Công ty, Được chia sẻ, Cuộc họp, Mẫu
@@ -390,10 +401,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return (
       <tr
         key={doc.id}
+        draggable={!isRenaming}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.setData('text/plain', doc.id);
+          e.dataTransfer.setData('application/x-doc-id', doc.id);
+          e.dataTransfer.effectAllowed = 'move';
+        }}
         onClick={() => {
           if (!isRenaming) onOpenDocument(doc.id);
         }}
-        className="hover:bg-[var(--ui-subtle)] cursor-pointer transition-colors group border-b border-[#F2F2F7]"
+        className="hover:bg-[var(--ui-subtle)] cursor-grab active:cursor-grabbing transition-colors group border-b border-[#F2F2F7]"
       >
         {/* Checkbox */}
         <td className="py-2.5 px-2 text-center" onClick={(e) => toggleSelectDoc(doc.id, e)}>
@@ -506,7 +524,48 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     return (
       <React.Fragment key={folder.id}>
-        <tr className="bg-[var(--ui-hover)]/35 hover:bg-[var(--ui-hover)] transition-colors group border-b border-[var(--ui-border)]/50">
+        <tr
+          draggable={true}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData('text/plain', `folder:${folder.id}`);
+            e.dataTransfer.setData('text/folder-id', folder.id);
+            e.dataTransfer.setData('application/x-folder-id', folder.id);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'move';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
+            const rawPlain = e.dataTransfer.getData('text/plain') || '';
+            const rawDoc = e.dataTransfer.getData('application/x-doc-id') || '';
+
+            let draggedFolderId: string | null = rawFolder || (rawPlain.startsWith('folder:') ? rawPlain.replace('folder:', '') : null);
+            let docId: string | null = rawDoc || (rawPlain.startsWith('doc:') ? rawPlain.replace('doc:', '') : null);
+
+            if (!draggedFolderId && !docId && rawPlain) {
+              if (folders.some(f => f.id === rawPlain)) {
+                draggedFolderId = rawPlain;
+              } else {
+                docId = rawPlain;
+              }
+            }
+
+            if (draggedFolderId && draggedFolderId !== folder.id) {
+              onMoveFolder?.(draggedFolderId, folder.id, folder.space);
+              onToast?.(`Đã di chuyển thư mục vào thư mục "${folder.name}"`);
+            } else if (docId) {
+              onMoveDocument?.(docId, folder.id, folder.space);
+              onToast?.(`Đã di chuyển tài liệu vào thư mục "${folder.name}"`);
+            }
+          }}
+          className="bg-[var(--ui-hover)]/35 hover:bg-[var(--ui-hover)] transition-colors group border-b border-[var(--ui-border)]/50 cursor-grab active:cursor-grabbing"
+        >
           <td className="py-2 px-2 text-center">
             {/* Blank check cell for alignment */}
           </td>
@@ -533,7 +592,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   {folderDocs.length} tài liệu
                 </span>
               </button>
-              <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onCreateDocument && (
                   <button
                     type="button"
@@ -545,7 +604,48 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     title={`Tạo ghi chú trong ${folder.name}`}
                   >
                     <Plus className="w-3 h-3 stroke-[2]" />
-                    <span>Tạo ghi chú</span>
+                    <span>Ghi chú</span>
+                  </button>
+                )}
+                {onEditFolder && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditFolder(folder);
+                    }}
+                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
+                    title={`Đổi tên thư mục ${folder.name}`}
+                  >
+                    <Edit2 className="w-3 h-3 stroke-[1.75]" />
+                    <span>Đổi tên</span>
+                  </button>
+                )}
+                {onMoveFolderRequest && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMoveFolderRequest(folder);
+                    }}
+                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
+                    title={`Di chuyển thư mục ${folder.name}`}
+                  >
+                    <FolderInput className="w-3 h-3 stroke-[1.75]" />
+                    <span>Di chuyển</span>
+                  </button>
+                )}
+                {onDeleteFolder && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteFolder(folder.id);
+                    }}
+                    className="text-[11px] text-red-500 hover:text-red-700 hover:bg-red-50 px-1.5 py-0.5 rounded-lg flex items-center transition-colors cursor-pointer"
+                    title={`Xóa thư mục ${folder.name}`}
+                  >
+                    <Trash2 className="w-3 h-3 stroke-[1.75]" />
                   </button>
                 )}
               </div>
@@ -1291,8 +1391,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             {filteredDocs.map((doc) => (
               <div
                 key={doc.id}
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.setData('text/plain', doc.id);
+                  e.dataTransfer.setData('application/x-doc-id', doc.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
                 onClick={() => onOpenDocument(doc.id)}
-                className="p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)] hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between h-40 space-y-2 shadow-2xs"
+                className="p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)] hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing flex flex-col justify-between h-40 space-y-2 shadow-2xs"
               >
                 <div>
                   <div className="flex items-center justify-between">
