@@ -1553,7 +1553,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <span>{getRelativeTime(doc.updatedAt)}</span>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

@@ -101,16 +101,25 @@ export function FolderTree(props: Props) {
 
   const autoExpandTimerRef = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
 
+  const cancelAutoExpand = () => {
+    if (autoExpandTimerRef.current) clearTimeout(autoExpandTimerRef.current.timer);
+    autoExpandTimerRef.current = null;
+  };
+
+  useEffect(() => cancelAutoExpand, []);
+
   const handleFolderHover = (folderId: string, isOpen: boolean) => {
     if (props.dragOverFolderId !== folderId) {
       props.onDragOverFolder(folderId);
     }
+    if (isOpen) cancelAutoExpand();
     if (!isOpen) {
       if (autoExpandTimerRef.current?.id !== folderId) {
         if (autoExpandTimerRef.current?.timer) clearTimeout(autoExpandTimerRef.current.timer);
         autoExpandTimerRef.current = {
           id: folderId,
           timer: setTimeout(() => {
+            autoExpandTimerRef.current = null;
             if (!props.expanded[folderId]) {
               props.onToggle(folderId);
             }
@@ -123,10 +132,12 @@ export function FolderTree(props: Props) {
   const handleFolderDrop = (event: React.DragEvent, targetFolder: Folder) => {
     event.preventDefault();
     event.stopPropagation();
-    if (autoExpandTimerRef.current?.timer) clearTimeout(autoExpandTimerRef.current.timer);
+    cancelAutoExpand();
     props.onDragOverFolder(null);
 
     const payload = getDragPayload(event, props.folders, props.documents);
+    clearActiveDrag();
+    props.onDragEndFolder?.();
     if (!payload) return;
 
     if (payload.type === 'folder') {
@@ -162,7 +173,7 @@ export function FolderTree(props: Props) {
         };
 
         const handleFolderDragEnd = () => {
-          if (autoExpandTimerRef.current?.timer) clearTimeout(autoExpandTimerRef.current.timer);
+          cancelAutoExpand();
           clearActiveDrag();
           props.onDragEndFolder?.();
           props.onDragOverFolder(null);
@@ -180,6 +191,8 @@ export function FolderTree(props: Props) {
                 event.preventDefault();
                 event.stopPropagation();
                 if (isDropBlocked) {
+                  cancelAutoExpand();
+                  props.onDragOverFolder(null);
                   event.dataTransfer.dropEffect = 'none';
                   return;
                 }
@@ -189,20 +202,20 @@ export function FolderTree(props: Props) {
               onDragLeave={(event) => {
                 event.stopPropagation();
                 if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                  cancelAutoExpand();
                   if (props.dragOverFolderId === folder.id) {
                     props.onDragOverFolder(null);
                   }
                 }
               }}
               onDrop={(event) => {
-                if (isDropBlocked) return;
                 handleFolderDrop(event, folder);
               }}
-              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl text-[var(--ui-text)] transition-all select-none ${
+              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl text-[var(--ui-text)] transition-colors select-none ${
                 isDropBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-grab active:cursor-grabbing'
               } ${
                 isDraggingThis
-                  ? 'opacity-30 scale-95 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]'
+                  ? 'opacity-50 bg-[var(--ui-hover)]'
                   : ''
               } ${
                 draggingOver
@@ -353,7 +366,6 @@ export function FolderTree(props: Props) {
                       if (props.dragOverFolderId !== folder.id) props.onDragOverFolder(folder.id);
                     }}
                     onDrop={(e) => {
-                      if (isDropBlocked) return;
                       handleFolderDrop(e, folder);
                     }}
                     className={`text-[10px] italic px-2 py-2 rounded-lg border border-dashed transition-colors text-center my-1 ${

@@ -401,8 +401,6 @@ test('folder and document drag and drop updates hierarchy and persists to storag
         dropEffect: 'move',
         effectAllowed: 'move',
       },
-      preventDefault: () => {},
-      stopPropagation: () => {},
     });
     return event;
   };
@@ -439,18 +437,18 @@ test('folder and document drag and drop updates hierarchy and persists to storag
   // 3. Simulate dragging a document onto fld_work folder row
   const { getStoredDocuments } = await import('../utils/storage');
   let docs = getStoredDocuments();
-  const testDoc = docs.find(d => d.id === 'doc_1')!;
-  assert(testDoc, 'Expected doc_1 to exist');
+  const testDoc = docs.find(d => !d.isTrash)!;
+  assert(testDoc, 'Expected an active document to exist');
 
   await act(async () => {
     workFolderRow.dispatchEvent(createDragEvent('drop', {
-      'text/plain': 'doc:doc_1',
-      'text/document-id': 'doc_1',
-      'application/x-doc-id': 'doc_1',
+      'text/plain': `doc:${testDoc.id}`,
+      'text/document-id': testDoc.id,
+      'application/x-doc-id': testDoc.id,
     }));
   });
 
   docs = getStoredDocuments();
-  assert.equal(docs.find(d => d.id === 'doc_1')?.folderId, 'fld_work', 'Expected doc_1 to be moved into fld_work');
+  assert.equal(docs.find(d => d.id === testDoc.id)?.folderId, 'fld_work', 'Expected the document to be moved into fld_work');
 });
 

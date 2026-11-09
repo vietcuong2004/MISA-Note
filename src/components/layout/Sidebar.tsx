@@ -360,9 +360,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragOverRootSpace(null);
-    clearActiveDrag();
-
     const payload = getDragPayload(e, folders, documents);
+    clearActiveDrag();
     let fldId = payload?.type === 'folder' ? payload.id : null;
     let docId = payload?.type === 'document' ? payload.id : null;
 
@@ -507,7 +506,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // Helper to render individual document row with 2 hover action icons (+ and ···) and drag-and-drop
-  const renderDocumentItem = (doc: Document, _defaultFolderId?: string | null) => {
+  const renderDocumentItem = (doc: Document, defaultFolderId?: string | null) => {
     const isActive = isDocActive(doc.id);
     const isRenaming = renamingDocId === doc.id;
     const isDragging = draggingDocId === doc.id || (isGlobalDragging && globalDraggedId === doc.id);
@@ -1098,7 +1097,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             e.dataTransfer.dropEffect = 'move';
           }}
           onDrop={(e) => handleDropOnRoot(e, 'personal')}
-          className={`px-2 pt-4 transition-all`}
+          className={`relative px-2 pt-4 transition-all`}
         >
           <div
             onDragOver={(e) => {
@@ -1143,7 +1142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Root Drop Zone for Personal Space */}
+          {/* Keep this overlay out of flow: moving the source row during dragstart cancels native dragging in Chrome. */}
           {isDraggingAny && (
             <div
               onDragOver={(e) => {
@@ -1159,7 +1158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnRoot(e, 'personal')}
-              className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${
+              className={`absolute top-0 inset-x-2 z-20 p-2.5 rounded-xl border-2 border-dashed text-xs text-center transition-colors cursor-pointer ${
                 dragOverRootSpace === 'personal'
                   ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] font-bold scale-[1.02]'
                   : 'border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-muted)] hover:border-[var(--ui-primary)]'
@@ -1188,7 +1187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             e.dataTransfer.dropEffect = 'move';
           }}
           onDrop={(e) => handleDropOnRoot(e, 'company')}
-          className={`px-2 pt-4 transition-all`}
+          className={`relative px-2 pt-4 transition-all`}
         >
           <div
             onDragOver={(e) => {
@@ -1233,7 +1232,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Root Drop Zone for Company Space */}
+          {/* Keep the root target out of flow so starting a drag does not move the source row. */}
           {isDraggingAny && (
             <div
               onDragOver={(e) => {
@@ -1249,7 +1248,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 }
               }}
               onDrop={(e) => handleDropOnRoot(e, 'company')}
-              className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${
+              className={`absolute top-0 inset-x-2 z-20 p-2.5 rounded-xl border-2 border-dashed text-xs text-center transition-colors cursor-pointer ${
                 dragOverRootSpace === 'company'
                   ? 'border-[var(--ui-primary)] bg-[var(--ui-primary)]/15 text-[var(--ui-primary)] font-bold scale-[1.02]'
                   : 'border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] text-[var(--ui-muted)] hover:border-[var(--ui-primary)]'

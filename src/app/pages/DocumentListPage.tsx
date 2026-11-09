@@ -77,10 +77,11 @@ export function DocumentListPage({
                 }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <GripVertical
-                    className="w-3.5 h-3.5 text-[var(--ui-tertiary)] opacity-0 group-hover:opacity-70 transition-opacity shrink-0"
-                    title="Kéo thả vào thư mục ở thanh bên"
-                  />
+                  <span className="shrink-0" title="Kéo thả vào thư mục ở thanh bên">
+                    <GripVertical
+                      className="w-3.5 h-3.5 text-[var(--ui-tertiary)] opacity-0 group-hover:opacity-70 transition-opacity"
+                    />
+                  </span>
                   <span className="text-base shrink-0">{doc.icon || '📄'}</span>
                   <span className="font-semibold truncate text-[var(--ui-text)] group-hover:text-[var(--ui-primary)] transition-colors">
                     {doc.title || 'Không có tiêu đề'}

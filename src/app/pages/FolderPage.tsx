@@ -34,9 +34,8 @@ export function FolderPage({
     e.preventDefault();
     e.stopPropagation();
     setDragOverTarget(null);
-    clearActiveDrag();
-
     const payload = getDragPayload(e, folders, documents);
+    clearActiveDrag();
     if (!payload) return;
 
     if (payload.type === 'folder') {
