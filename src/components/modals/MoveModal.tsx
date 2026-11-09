@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Folder, ArrowRight, User, Building2, Check } from 'lucide-react';
+import { X, Folder, User, Building2, Check } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType } from '../../types';
 import { getFolderPath } from '../../utils/folders';
 
@@ -51,19 +51,19 @@ export const MoveModal: React.FC<MoveModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
       <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center">
-              <ArrowRight className="w-4 h-4 stroke-[1.75]" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--ui-text)]">Di chuyển tài liệu</h3>
-              <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[260px]">{document.title}</p>
-            </div>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--ui-text)]">Di chuyển tài liệu</h3>
+            {document.title && (
+              <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[280px]">{document.title}</p>
+            )}
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+            aria-label="Đóng"
+            title="Đóng"
+            className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>

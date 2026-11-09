@@ -321,3 +321,57 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   assert(button('Thư mục mới', document.querySelector('aside')!));
   assert(button('Thư mục mới 2', document.querySelector('aside')!));
 });
+
+test('clicking tab Của tôi highlights it and plus button creates note above folder Công việc', async () => {
+  await mount('/company');
+  assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
+  await click(document.getElementById('space-tab-personal'));
+  assert.equal(document.getElementById('space-tab-personal')?.getAttribute('aria-selected'), 'true');
+  assert.equal(window.location.pathname, '/private');
+
+  const personalPanel = document.getElementById('space-panel-personal')!;
+  const createNoteButton = personalPanel.querySelector('button[title="Tạo ghi chú mới"]')!;
+  await click(createNoteButton);
+
+  const workFolder = personalPanel.querySelector('[data-folder-id="fld_work"]')!;
+  assert(workFolder, 'Expected folder fld_work to exist');
+  const noteTextElement = Array.from(personalPanel.querySelectorAll('span')).find(el => el.textContent === 'Ghi chú mới');
+  assert(noteTextElement, 'Expected new note to be rendered in personal panel');
+  const noteItem = noteTextElement.closest('.group')!;
+  assert(workFolder.compareDocumentPosition(noteItem) & Node.DOCUMENT_POSITION_PRECEDING, 'Expected new note to appear above folder Công việc');
+});
+
+test('selecting text in block editor renders EditTextDialog with side-by-side submenu and closing on unselect', async () => {
+  const initialDoc = getStoredDocuments()[0];
+  await mount(`/documents/${initialDoc.id}`);
+  const textarea = document.querySelector('#document-editor-container textarea') as HTMLTextAreaElement;
+  assert(textarea, 'Expected at least one textarea in document editor');
+  assert(textarea.value.length >= 7, 'Expected textarea to contain initial document text');
+  await act(async () => {
+    textarea.focus();
+    textarea.setSelectionRange(0, 7);
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  let dialog = document.querySelector('[aria-label="Định dạng văn bản"]');
+  assert(dialog, 'Expected EditTextDialog to open upon text selection');
+  assert(dialog.querySelector('input[placeholder="Tìm kiếm hành động…"]'));
+  assert(dialog.textContent?.includes('Chuyển thành'));
+  assert(dialog.textContent?.includes('Màu'));
+  assert(dialog.textContent?.includes('7 ký tự'));
+  // Submenu is closed initially; clicking 'Chuyển thành' opens menu cấp 2 side-by-side
+  const turnIntoBtn = Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent?.includes('Chuyển thành'));
+  assert(turnIntoBtn, 'Expected Chuyển thành button in menu cấp 1');
+  await act(async () => {
+    turnIntoBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  });
+  assert(dialog.textContent?.includes('Đề mục 1'));
+  assert(dialog.textContent?.includes('Danh sách có dấu đầu dòng'));
+
+  // When selection is cleared, dialog closes
+  await act(async () => {
+    textarea.setSelectionRange(0, 0);
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  dialog = document.querySelector('[aria-label="Định dạng văn bản"]');
+  assert.equal(dialog, null, 'Expected EditTextDialog to close when text is no longer highlighted');
+});

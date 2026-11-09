@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Send, MessageSquare, Folder, Check, Star } from 'lucide-react';
+import { X, Send, Folder, Check, Star } from 'lucide-react';
 import { TEAM_MEMBERS } from '../../data/mockData';
 import { Folder as FolderType, SpaceType } from '../../types';
 
@@ -102,17 +102,14 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
       <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col h-[530px]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 stroke-[1.75]" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-[var(--ui-text)]">Thảo luận nội bộ nhanh</h3>
-              <p className="text-xs text-[var(--ui-tertiary)]">
-                {documentTitle ? `Ngữ cảnh: ${documentTitle}` : 'Trao đổi nhóm dự án'}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--ui-text)]">Thảo luận nội bộ nhanh</h3>
+            {documentTitle && (
+              <p className="text-xs text-[var(--ui-tertiary)] truncate max-w-[200px]">
+                Ngữ cảnh: {documentTitle}
               </p>
-            </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {/* Button Thêm vào yêu thích */}
@@ -172,8 +169,11 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+              aria-label="Đóng"
+              title="Đóng"
+              className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4 stroke-[1.75]" />
             </button>
@@ -242,16 +242,20 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
         {/* Confirmation Modal to Save Chat into Folder */}
         {confirmSaveToFolder && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-100">
-            <div className="bg-[var(--ui-surface)] rounded-[24px] border border-[var(--ui-border)] shadow-2xl p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center">
-                  <Folder className="w-4 h-4 stroke-[1.75]" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-[var(--ui-text)]">Xác nhận lưu vào thư mục</h4>
-                  <p className="text-[11px] text-[var(--ui-tertiary)]">Chuyển cuộc trò chuyện thành ghi chú</p>
-                </div>
+            <div className="bg-[var(--ui-surface)] rounded-[24px] border border-[var(--ui-border)] shadow-2xl overflow-hidden max-w-sm w-full animate-in zoom-in-95 duration-100">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
+                <h4 className="text-sm font-semibold text-[var(--ui-text)]">Xác nhận lưu vào thư mục</h4>
+                <button
+                  type="button"
+                  onClick={() => setConfirmSaveToFolder(null)}
+                  aria-label="Đóng"
+                  title="Đóng"
+                  className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4 stroke-[1.75]" />
+                </button>
               </div>
+              <div className="p-5 space-y-4">
 
               <div className="p-3 bg-[var(--ui-subtle)] rounded-xl border border-[var(--ui-border)] text-xs space-y-1">
                 <div className="font-semibold text-[var(--ui-text)]">
@@ -285,6 +289,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
                 >
                   Xác nhận lưu
                 </button>
+              </div>
               </div>
             </div>
           </div>

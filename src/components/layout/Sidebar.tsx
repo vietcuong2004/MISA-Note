@@ -347,9 +347,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
 
 
-  const personalRootDocs = activeDocs.filter(
-    (d) => d.space === 'personal' && !d.folderId && d.id !== 'doc_meeting_notes'
-  );
+  const personalRootDocs = activeDocs
+    .filter((d) => d.space === 'personal' && !d.folderId && d.id !== 'doc_meeting_notes')
+    .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
   const companyRootDocs = activeDocs
     .filter((d) => d.space === 'company' && !d.folderId)
     .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
@@ -929,7 +929,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   document.getElementById(`space-tab-${target}`)?.focus();
                 }
               }}
-              className={`space-tab py-2 px-2 rounded-lg text-xs font-semibold transition-colors ${spaceTab === space ? 'bg-[var(--ui-surface)] text-[var(--ui-text)]' : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'}`}>
+              className={`space-tab py-2 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                spaceTab === space
+                  ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] font-bold shadow-xs border border-[var(--ui-border)] ring-1 ring-black/5'
+                  : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-surface)]/50'
+              }`}
+              title={space === 'personal' ? 'Ghi chép của tôi (Cá nhân)' : 'Tài liệu công ty'}
+            >
               {space === 'personal' ? 'Của tôi' : 'Công ty'}
             </button>)}
           </div>
@@ -960,10 +966,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }
           }}
         >
-          <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-bold text-[var(--ui-tertiary)] tracking-wider uppercase group">
+          <div className="flex items-center justify-between px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase group">
             <button
               onClick={() => { setPersonalExpanded(true); onNavigate({ type: 'private' }); }}
-              className="flex items-center gap-1.5 hover:text-[var(--ui-text)] transition-colors cursor-pointer"
+              className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
+                viewState.type === 'private'
+                  ? 'text-[var(--ui-text)] font-extrabold'
+                  : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
+              }`}
             >
               <span>GHI CHÉP CỦA TÔI</span>
             </button>
@@ -983,10 +993,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {personalExpanded && (
             <div className="space-y-0.5 mt-1">
-              {renderFolderTree('personal')}
-
-              {/* Unfiled Personal Documents: Ghi chú chưa phân loại */}
+              {/* Unfiled Personal Documents: Ghi chú chưa phân loại at top, above folders (e.g. above "Công việc") */}
               {personalRootDocs.map((doc) => renderDocumentItem(doc, null))}
+
+              {renderFolderTree('personal')}
             </div>
           )}
         </div>
@@ -1133,7 +1143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Trang
             </div>
 
-            {/* Thêm vào mục Yêu thích */}
+            {/* 1. Thêm vào mục Yêu thích */}
             <button
               type="button"
               onClick={() => {
@@ -1156,37 +1166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </button>
 
-            {/* Sao chép liên kết */}
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(documentUrl(window.location.origin, docMenuState.doc!.id));
-                onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-              <span>Sao chép liên kết</span>
-            </button>
-
-            {/* Sao chép (Ctrl+D) */}
-            <button
-              type="button"
-              onClick={() => {
-                onDuplicateDocument?.(docMenuState.doc!.id);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Sao chép</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+D</span>
-            </button>
-
-            {/* Đổi tên (Ctrl+Shift+R) */}
+            {/* 2. Đổi tên (Ctrl+Shift+R) */}
             <button
               type="button"
               onClick={() => {
@@ -1203,7 +1183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+R</span>
             </button>
 
-            {/* Di chuyển đến (Ctrl+Shift+P) */}
+            {/* 3. Di chuyển đến (Ctrl+Shift+P) */}
             <button
               type="button"
               onClick={() => {
@@ -1219,7 +1199,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+P</span>
             </button>
 
-            {/* Chuyển vào Thùng rác */}
+            {/* 4. Chuyển vào Thùng rác */}
             <button
               type="button"
               onClick={() => {
@@ -1230,6 +1210,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               <Trash2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
               <span>Chuyển vào Thùng rác</span>
+            </button>
+
+            {/* 5. Sao chép liên kết */}
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(documentUrl(window.location.origin, docMenuState.doc!.id));
+                onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
+                closeDocMenu();
+              }}
+              className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+            >
+              <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
+              <span>Sao chép liên kết</span>
+            </button>
+
+            {/* 6. Sao chép (Ctrl+D) */}
+            <button
+              type="button"
+              onClick={() => {
+                onDuplicateDocument?.(docMenuState.doc!.id);
+                closeDocMenu();
+              }}
+              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
+                <span>Sao chép</span>
+              </div>
+              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+D</span>
             </button>
           </div>
 
@@ -1264,26 +1274,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Alt+Click</span>
             </button>
-          </div>
-
-          {/* Footer: Lần chỉnh sửa gần nhất */}
-          <div className="px-3 pt-2 pb-1.5 text-[11px] text-[var(--ui-tertiary)]">
-            <div>Lần chỉnh sửa gần nhất</div>
-            <div className="flex items-center gap-1.5 text-[var(--ui-text)] font-semibold mt-1">
-              <span className="w-4 h-4 rounded-full bg-[var(--ui-border)] text-[9px] flex items-center justify-center font-bold">
-                {docMenuState.doc.author?.name ? docMenuState.doc.author.name[0] : 'V'}
-              </span>
-              <span className="truncate">
-                {docMenuState.doc.author?.name || 'Vương Việt Cường'}
-              </span>
-            </div>
-            <div className="text-[10px] text-[var(--ui-tertiary)] mt-0.5">
-              Hôm nay lúc{' '}
-              {new Date(docMenuState.doc.updatedAt).toLocaleTimeString('vi-VN', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </div>
           </div>
         </div>
       )}

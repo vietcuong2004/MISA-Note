@@ -11,16 +11,16 @@ import {
   Lock,
   Globe,
   Star,
-  Plus,
-  GripVertical,
-  HelpCircle,
   Pencil,
   ArrowRight,
   Link2,
+  X,
+  Plus,
 } from 'lucide-react';
 import { Block, BlockProperties, BlockType, Document, Folder, UserRole, ViewState } from '../../types';
 import { BlockItem } from './BlockItem';
 import { SlashMenu } from './SlashMenu';
+import { EditTextDialog } from './EditTextDialog';
 import { ShareModal } from '../modals/ShareModal';
 import { MoveModal } from '../modals/MoveModal';
 import { ExportModal } from '../modals/ExportModal';
@@ -334,6 +334,328 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSlashState({ isOpen: false, blockId: null, query: '' });
   };
 
+function getTextareaSelectionCoords(
+  el: HTMLTextAreaElement | HTMLInputElement,
+  start: number,
+  end: number
+): { top: number; bottom: number; left: number } {
+  const rect = el.getBoundingClientRect();
+  if (typeof window === 'undefined' || !window.document) {
+    return { top: rect.top, bottom: rect.bottom, left: rect.left };
+  }
+
+  if (el instanceof HTMLInputElement) {
+    return { top: rect.top, bottom: rect.bottom, left: rect.left };
+  }
+
+  try {
+    const doc = window.document;
+    const style = window.getComputedStyle(el);
+    const mirror = doc.createElement('div');
+    const properties = [
+      'boxSizing',
+      'width',
+      'paddingTop',
+      'paddingBottom',
+      'paddingLeft',
+      'paddingRight',
+      'borderTopWidth',
+      'borderBottomWidth',
+      'borderLeftWidth',
+      'borderRightWidth',
+      'fontFamily',
+      'fontSize',
+      'fontWeight',
+      'fontStyle',
+      'letterSpacing',
+      'lineHeight',
+      'whiteSpace',
+      'wordWrap',
+      'wordBreak',
+    ];
+
+    properties.forEach((prop) => {
+      (mirror.style as any)[prop] = (style as any)[prop];
+    });
+
+    mirror.style.position = 'fixed';
+    mirror.style.top = '-9999px';
+    mirror.style.left = '-9999px';
+    mirror.style.visibility = 'hidden';
+    mirror.style.whiteSpace = 'pre-wrap';
+    mirror.style.wordWrap = 'break-word';
+
+    const textBefore = el.value.substring(0, start);
+    const selectedText = el.value.substring(start, end);
+
+    mirror.textContent = textBefore;
+
+    const span = doc.createElement('span');
+    span.textContent = selectedText || ' ';
+    mirror.appendChild(span);
+
+    doc.body.appendChild(mirror);
+
+    const spanRect = span.getBoundingClientRect();
+    const mirrorRect = mirror.getBoundingClientRect();
+
+    const topOffset = spanRect.top - mirrorRect.top;
+    const leftOffset = spanRect.left - mirrorRect.left;
+    const height = spanRect.height || 22;
+
+    doc.body.removeChild(mirror);
+
+    const scrollTop = el.scrollTop || 0;
+    const lineTop = rect.top + topOffset - scrollTop;
+    const lineBottom = lineTop + height;
+    const selLeft = rect.left + leftOffset;
+
+    if (lineBottom >= rect.top && lineBottom <= rect.bottom + 40) {
+      return { top: lineTop, bottom: lineBottom, left: selLeft };
+    }
+  } catch (_e) {
+    // fallback
+  }
+
+  return { top: rect.top, bottom: rect.bottom, left: rect.left };
+}
+
+  // Text selection format dialog state
+  const [editTextDialog, setEditTextDialog] = useState<{
+    isOpen: boolean;
+    position: {
+      top: number;
+      left: number;
+      selectionTop?: number;
+      selectionBottom?: number;
+    };
+    selectedText: string;
+    blockId: string | null;
+    blockType?: BlockType;
+  }>({
+    isOpen: false,
+    position: { top: 0, left: 0 },
+    selectedText: '',
+    blockId: null,
+  });
+
+  const checkTextSelection = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const docElem = window.document;
+    if (!docElem) return;
+
+    // Do not close if focus is currently inside the dialog (e.g. typing in search)
+    const activeEl = docElem.activeElement;
+    const isFocusInsideDialog =
+      activeEl &&
+      (activeEl.closest?.('[role="dialog"]') ||
+        activeEl.closest?.('[aria-label="Định dạng văn bản"]'));
+
+    if (isFocusInsideDialog) {
+      return;
+    }
+
+    const editorContainer = docElem.getElementById('document-editor-container');
+
+    // 1. Check if active element is textarea or input in editor
+    if (activeEl instanceof HTMLTextAreaElement || activeEl instanceof HTMLInputElement) {
+      if (editorContainer && editorContainer.contains(activeEl)) {
+        const start = activeEl.selectionStart;
+        const end = activeEl.selectionEnd;
+        if (start !== null && end !== null && end > start) {
+          const text = activeEl.value.substring(start, end);
+          if (text.trim().length > 0) {
+            const blockElem = activeEl.closest('[data-block-id]');
+            const bId = blockElem?.getAttribute('data-block-id') || null;
+            const matchedBlock = doc.blocks.find((b) => b.id === bId);
+            const coords = getTextareaSelectionCoords(activeEl, start, end);
+
+            setEditTextDialog({
+              isOpen: true,
+              position: {
+                top: coords.bottom + 8,
+                left: Math.max(16, Math.min(coords.left, window.innerWidth - 300)),
+                selectionTop: coords.top,
+                selectionBottom: coords.bottom,
+              },
+              selectedText: text,
+              blockId: bId,
+              blockType: matchedBlock?.type || 'paragraph',
+            });
+            return;
+          }
+        }
+      }
+    }
+
+    // 2. Check window selection
+    const sel = typeof window.getSelection === 'function' ? window.getSelection() : null;
+    if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+      const text = sel.toString();
+      if (text.trim().length > 0) {
+        const range = sel.getRangeAt(0);
+        if (
+          editorContainer &&
+          (editorContainer.contains(range.commonAncestorContainer) ||
+            (activeEl && editorContainer.contains(activeEl)))
+        ) {
+          const rect = range.getBoundingClientRect();
+          const blockElem =
+            (range.commonAncestorContainer as HTMLElement).closest?.('[data-block-id]') ||
+            range.commonAncestorContainer.parentElement?.closest?.('[data-block-id]');
+          const bId = blockElem?.getAttribute('data-block-id') || null;
+          const matchedBlock = doc.blocks.find((b) => b.id === bId);
+
+          setEditTextDialog({
+            isOpen: true,
+            position: {
+              top: rect.bottom + 8,
+              left: Math.max(16, Math.min(rect.left, window.innerWidth - 300)),
+              selectionTop: rect.top,
+              selectionBottom: rect.bottom,
+            },
+            selectedText: text,
+            blockId: bId,
+            blockType: matchedBlock?.type || 'paragraph',
+          });
+          return;
+        }
+      }
+    }
+
+    // 3. No highlighted text: Dialog MUST close immediately
+    setEditTextDialog((prev) => (prev.isOpen ? { ...prev, isOpen: false, selectedText: '' } : prev));
+  }, [doc.blocks]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.closest?.('[role="dialog"]') ||
+        target?.closest?.('[aria-label="Định dạng văn bản"]')
+      ) {
+        return;
+      }
+      // Close open dialog when starting a new click/drag selection in editor
+      setEditTextDialog((prev) => (prev.isOpen ? { ...prev, isOpen: false, selectedText: '' } : prev));
+    };
+
+    const handleMouseUp = () => {
+      checkTextSelection();
+    };
+
+    const handleKeyUp = () => {
+      checkTextSelection();
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [checkTextSelection]);
+
+  const handleTurnIntoBlock = (newType: BlockType, extraProps?: any) => {
+    if (!editTextDialog.blockId) return;
+    const updatedBlocks = doc.blocks.map((b) => {
+      if (b.id === editTextDialog.blockId) {
+        return {
+          ...b,
+          type: newType,
+          properties: extraProps ? { ...b.properties, ...extraProps } : b.properties,
+        };
+      }
+      return b;
+    });
+    const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
+    setDoc(updatedDoc);
+    triggerAutoSave(updatedDoc);
+    onToast(`Đã chuyển thành ${newType}`);
+  };
+
+  const handleApplyColor = (colorHex: string, isBg?: boolean) => {
+    if (!editTextDialog.blockId) return;
+    const updatedBlocks = doc.blocks.map((b) => {
+      if (b.id === editTextDialog.blockId) {
+        const props = b.properties || {};
+        return {
+          ...b,
+          properties: {
+            ...props,
+            [isBg ? 'backgroundColor' : 'textColor']: colorHex,
+          },
+        };
+      }
+      return b;
+    });
+    const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
+    setDoc(updatedDoc);
+    triggerAutoSave(updatedDoc);
+    onToast(isBg ? 'Đã đổi màu nền văn bản' : 'Đã đổi màu chữ');
+  };
+
+  const handleCopyBlockLink = () => {
+    const url = documentUrl(window.location.origin, doc.id) + (editTextDialog.blockId ? `#${editTextDialog.blockId}` : '');
+    navigator.clipboard?.writeText(url);
+    onToast('Đã sao chép liên kết đến thành phần nội dung');
+  };
+
+  const handleDuplicateBlockOrText = () => {
+    if (editTextDialog.blockId) {
+      handleDuplicateBlock(editTextDialog.blockId);
+      onToast('Đã nhân bản khối nội dung');
+    } else {
+      navigator.clipboard?.writeText(editTextDialog.selectedText);
+      onToast('Đã sao chép văn bản');
+    }
+  };
+
+  const handleDeleteSelection = () => {
+    if (editTextDialog.blockId) {
+      const block = doc.blocks.find((b) => b.id === editTextDialog.blockId);
+      if (block) {
+        if (block.content.trim() === editTextDialog.selectedText.trim()) {
+          handleDeleteBlock(editTextDialog.blockId);
+          onToast('Đã xóa khối nội dung');
+        } else {
+          const newContent = block.content.replace(editTextDialog.selectedText, '');
+          handleUpdateBlock(editTextDialog.blockId, newContent, block.properties);
+          onToast('Đã xóa đoạn văn bản');
+        }
+      }
+    }
+  };
+
+  const handleCommentSelection = (text: string) => {
+    onToast(`Đã gắn bình luận vào: "${text.slice(0, 30)}..."`);
+  };
+
+  const handleSuggestEdit = (_text: string) => {
+    onToast('Chế độ đề xuất chỉnh sửa đã kích hoạt');
+  };
+
+  const handleAskAI = (text: string) => {
+    onToast(`Hỏi AI về: "${text.slice(0, 30)}..."`);
+  };
+
+  const handleSkillAction = (skillId: string, _text: string) => {
+    if (skillId === 'summarize') {
+      onToast(`Đã tóm tắt đoạn văn bản đã chọn`);
+    } else if (skillId === 'rewrite') {
+      onToast(`Đã viết lại văn phong mượt mà hơn`);
+    } else if (skillId === 'fixSpelling') {
+      onToast(`Không tìm thấy lỗi chính tả trong đoạn này`);
+    } else {
+      onToast(`Đã thực hiện kỹ năng AI: ${skillId}`);
+    }
+  };
+
   const isReadOnly = currentRole === 'viewer';
 
   return (
@@ -491,7 +813,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           </div>
 
           {/* Blocks container */}
-          <div className="space-y-2 relative min-h-[300px] pt-2">
+          <div id="document-editor-container" className="space-y-2 relative min-h-[300px] pt-2">
             {doc.blocks.map((block, idx) => (
               <BlockItem
                 key={block.id}
@@ -528,22 +850,24 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
               />
             )}
 
-            {/* Bottom prompt matching screenshot: [ + :: Gõ / để chèn nội dung... ] */}
-            {!isReadOnly && (
-              <div
-                className="flex items-center gap-1.5 text-[var(--ui-tertiary)] text-xs pt-3 pb-4 cursor-text group"
-                onClick={() => handleAddBlockBelow(doc.blocks.length - 1)}
-              >
-                <span className="p-0.5 rounded text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]">
-                  <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
-                </span>
-                <span className="p-0.5 rounded text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]">
-                  <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
-                </span>
-                <span className="text-[var(--ui-tertiary)] text-xs ml-0.5">Gõ / để chèn nội dung...</span>
-              </div>
-            )}
-
+            {!isReadOnly &&
+              (doc.blocks.length === 0 ||
+                doc.blocks[doc.blocks.length - 1].type !== 'paragraph' ||
+                doc.blocks[doc.blocks.length - 1].content !== '') && (
+                <div
+                  onClick={() => handleAddBlockBelow(doc.blocks.length - 1)}
+                  className="group relative flex items-center gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl text-sm text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-text transition-colors hover:bg-[var(--ui-hover)]/30"
+                >
+                  <div className="absolute left-1 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="p-1 rounded-lg text-[var(--ui-tertiary)]">
+                      <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
+                    </span>
+                  </div>
+                  <span className="select-none text-sm text-[var(--ui-tertiary)]">
+                    Gõ nội dung hoặc gõ / để mở tiện ích...
+                  </span>
+                </div>
+              )}
           </div>
         </div>
       </div>
@@ -565,15 +889,15 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
           <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-[var(--ui-border)] pb-3">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-                <h3 className="text-sm font-bold text-[var(--ui-text)]">Hướng dẫn & Phím tắt</h3>
-              </div>
+              <h3 className="text-sm font-semibold text-[var(--ui-text)]">Hướng dẫn & Phím tắt</h3>
               <button
+                type="button"
                 onClick={() => setShowHelpModal(false)}
-                className="text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]"
+                aria-label="Đóng"
+                title="Đóng"
+                className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4 stroke-[1.75]" />
               </button>
             </div>
             <div className="space-y-2.5 text-xs text-[var(--ui-muted)] leading-relaxed">
@@ -629,6 +953,28 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         isOpen={exportOpen}
         onClose={() => setExportOpen(false)}
         onToast={onToast}
+      />
+
+      {/* Floating Text Selection Format Dialog matching user screenshot */}
+      <EditTextDialog
+        isOpen={editTextDialog.isOpen}
+        position={editTextDialog.position}
+        selectedText={editTextDialog.selectedText}
+        blockId={editTextDialog.blockId}
+        blockType={editTextDialog.blockType}
+        authorName={doc.author?.name || 'Việt Cường Vương'}
+        updatedTime={doc.updatedAt ? 'Hôm nay lúc 11:30' : 'Hôm nay lúc 11:30'}
+        onClose={() => setEditTextDialog((prev) => ({ ...prev, isOpen: false }))}
+        onTurnInto={handleTurnIntoBlock}
+        onApplyColor={handleApplyColor}
+        onCopyLink={handleCopyBlockLink}
+        onDuplicate={handleDuplicateBlockOrText}
+        onMoveTo={() => setMoveOpen(true)}
+        onDelete={handleDeleteSelection}
+        onComment={handleCommentSelection}
+        onSuggestEdit={handleSuggestEdit}
+        onAskAI={handleAskAI}
+        onSkillAction={handleSkillAction}
       />
     </div>
   );

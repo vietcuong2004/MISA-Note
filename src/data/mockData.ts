@@ -197,6 +197,11 @@ export const INITIAL_DOCUMENTS: Document[] = [
           },
         },
       },
+      {
+        id: 'blk_wp_08',
+        type: 'paragraph',
+        content: '',
+      },
     ],
   },
   {

@@ -653,7 +653,6 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && !d.folderId);
       return (
         <>
-          {personalRoots.map((f) => renderFolderBranch(f, 0))}
           {personalUnfiled.length > 0 && (
             <>
               <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
@@ -668,6 +667,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               {personalUnfiled.map((d) => renderDocumentTableRow(d, 0))}
             </>
           )}
+          {personalRoots.map((f) => renderFolderBranch(f, 0))}
         </>
       );
     }
@@ -1333,7 +1333,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           style={{ top: `${rowMenuPos.top}px`, left: `${rowMenuPos.left}px` }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 1. Yêu thích */}
+          {/* 1. Thêm vào mục Yêu thích */}
           <button
             type="button"
             onClick={() => {
@@ -1350,34 +1350,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <span>{activeRowDoc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào Yêu thích'}</span>
           </button>
 
-          {/* 2. Sao chép liên kết */}
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(documentUrl(window.location.origin, activeRowDoc.id));
-              onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Sao chép liên kết</span>
-          </button>
-
-          {/* 3. Sao chép / Nhân bản */}
-          <button
-            type="button"
-            onClick={() => {
-              onDuplicateDocument?.(activeRowDoc.id);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Sao chép</span>
-          </button>
-
-          {/* 4. Đổi tên */}
+          {/* 2. Đổi tên */}
           <button
             type="button"
             onClick={() => {
@@ -1391,7 +1364,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <span>Đổi tên</span>
           </button>
 
-          {/* 5. Di chuyển đến */}
+          {/* 3. Di chuyển đến */}
           <button
             type="button"
             onClick={() => {
@@ -1404,9 +1377,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <span>Di chuyển đến</span>
           </button>
 
-          <div className="border-t border-[#F2F2F7] my-1" />
-
-          {/* 6. Xóa vào thùng rác */}
+          {/* 4. Xóa vào thùng rác */}
           <button
             type="button"
             onClick={() => {
@@ -1417,6 +1388,33 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           >
             <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
             <span>Chuyển vào Thùng rác</span>
+          </button>
+
+          {/* 5. Sao chép liên kết */}
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard?.writeText(documentUrl(window.location.origin, activeRowDoc.id));
+              onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
+              setActiveRowDoc(null);
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+          >
+            <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
+            <span>Sao chép liên kết</span>
+          </button>
+
+          {/* 6. Sao chép / Nhân bản */}
+          <button
+            type="button"
+            onClick={() => {
+              onDuplicateDocument?.(activeRowDoc.id);
+              setActiveRowDoc(null);
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
+          >
+            <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
+            <span>Sao chép</span>
           </button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Send, Bot, Lightbulb, Clock, CheckCircle2 } from 'lucide-react';
+import { X, Send, Bot, Lightbulb, Clock, CheckCircle2 } from 'lucide-react';
 
 interface OneAIModalProps {
   isOpen: boolean;
@@ -54,24 +54,19 @@ export const OneAIModal: React.FC<OneAIModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
       <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center shadow-xs">
-              <Sparkles className="w-4 h-4 text-white stroke-[1.75]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-[var(--ui-text)]">One AI Assistant</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[var(--ui-hover)] text-[var(--ui-text)] border border-[var(--ui-border)]">
-                  Chờ kết nối One AI
-                </span>
-              </div>
-              <p className="text-xs text-[var(--ui-tertiary)]">Trợ lý trí tuệ nhân tạo tích hợp cho tài liệu</p>
-            </div>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-[var(--ui-text)]">One AI Assistant</h3>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-[var(--ui-hover)] text-[var(--ui-text)] border border-[var(--ui-border)]">
+              Chờ kết nối One AI
+            </span>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+            aria-label="Đóng"
+            title="Đóng"
+            className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>

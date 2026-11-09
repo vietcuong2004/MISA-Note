@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, FolderPlus, FolderEdit } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Folder, SpaceType } from '../../types';
 
 interface FolderModalProps {
@@ -78,20 +78,16 @@ export const FolderModal: React.FC<FolderModalProps> = ({
       onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div role="dialog" aria-modal="true" aria-labelledby="folder-dialog-title" className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--ui-border)]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center">
-              {folderToEdit ? <FolderEdit className="w-4 h-4 stroke-[1.75]" /> : <FolderPlus className="w-4 h-4 stroke-[1.75]" />}
-            </div>
-            <h3 id="folder-dialog-title" className="text-sm font-bold text-[var(--ui-text)]">
-              {folderToEdit ? 'Đổi tên thư mục' : parentFolder ? 'Tạo thư mục con' : 'Tạo thư mục mới'}
-            </h3>
-          </div>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)]">
+          <h3 id="folder-dialog-title" className="text-sm font-semibold text-[var(--ui-text)]">
+            {folderToEdit ? 'Đổi tên thư mục' : parentFolder ? 'Tạo thư mục con' : 'Tạo thư mục mới'}
+          </h3>
           <button
             type="button"
             aria-label="Đóng thư mục"
+            title="Đóng"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4 stroke-[1.75]" />
           </button>

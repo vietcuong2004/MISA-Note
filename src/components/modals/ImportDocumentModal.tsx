@@ -58,9 +58,9 @@ export const ImportDocumentModal: React.FC<Props> = ({ folders, onClose, onImpor
         try { onImport(title.trim(), blocks, space, folders.some(folder => folder.id === folderId && folder.space === space) ? folderId : null); }
         catch { setError('Không lưu được tài liệu. Vui lòng thử lại.'); }
       }}>
-      <div className="flex items-center justify-between">
-        <h2 id="import-title" className="text-base font-semibold">Nhập tài liệu</h2>
-        <button type="button" onClick={onClose} aria-label="Đóng nhập tài liệu" className="p-1.5 rounded-md hover:bg-[var(--ui-hover)]"><X className="w-5 h-5" /></button>
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--ui-border)] -mx-5 -mt-5 mb-4">
+        <h2 id="import-title" className="text-sm font-semibold text-[var(--ui-text)]">Nhập tài liệu</h2>
+        <button type="button" onClick={onClose} aria-label="Đóng nhập tài liệu" title="Đóng" className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
       </div>
       <label className="block space-y-2 text-sm">
         <span className="flex items-center gap-2"><Upload className="w-4 h-4" />Chọn tệp Markdown, TXT hoặc DOCX</span>

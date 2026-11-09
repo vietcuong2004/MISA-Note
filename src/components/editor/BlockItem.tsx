@@ -494,6 +494,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
           });
         };
 
+        const deleteRow = (rowIndex?: number) => {
+          if (tableData.rows.length <= 1) return;
+          const targetIndex = rowIndex !== undefined ? rowIndex : tableData.rows.length - 1;
+          const newRows = tableData.rows.filter((_, idx) => idx !== targetIndex);
+          onUpdate(block.id, block.content, {
+            ...block.properties,
+            tableData: { ...tableData, rows: newRows },
+          });
+        };
+
         const cycleStatus = (rowIndex: number, colIndex: number, currentVal: string) => {
           if (isReadOnly) return;
           const statusCycle = ['Chưa bắt đầu', 'Đang thực hiện', 'Hoàn thành', 'Chờ duyệt'];
@@ -560,15 +570,28 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             </div>
 
             {!isReadOnly && (
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={addRow}
-                  className="inline-flex items-center gap-1 text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] font-medium transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2]" />
-                  <span>Thêm dòng</span>
-                </button>
+              <div className="pt-2 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="inline-flex items-center gap-1.5 text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] font-medium transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2]" />
+                    <span>Thêm hàng</span>
+                  </button>
+                  {tableData.rows.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => deleteRow()}
+                      className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium transition-colors cursor-pointer"
+                      title="Xóa hàng cuối"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
+                      <span>Xóa hàng</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -874,6 +897,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
   return (
     <div
+      data-block-id={block.id}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
