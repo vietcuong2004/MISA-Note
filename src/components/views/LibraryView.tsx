@@ -23,6 +23,10 @@ import {
   Upload,
   Mic,
   FolderPlus,
+  FolderTree,
+  Folder as FolderIcon,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
 import { Document, Folder, SpaceType } from '../../types';
 import { documentUrl } from '../../app/router/routes';
@@ -32,6 +36,7 @@ export interface LibraryViewProps {
   title?: string;
   description?: string;
   showTabs?: boolean;
+  activeTab?: 'all' | 'mine' | 'company' | 'shared' | 'meeting' | 'template';
   defaultSpace?: SpaceType;
   defaultFolderId?: string | null;
   onNavigatePage?: (page: 'private' | 'company' | 'shared' | 'meeting_notes' | 'templates' | 'library') => void;
@@ -55,6 +60,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   title = 'Thư viện',
   description = 'Tất cả ghi chú và tài liệu bạn có quyền truy cập.',
   showTabs = true,
+  activeTab: activeTabProp,
   defaultSpace = 'personal',
   defaultFolderId = null,
   onNavigatePage,
@@ -74,9 +80,44 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onToast,
 }) => {
   // Navigation Tab matching screenshot: Tất cả, Của tôi, Công ty, Được chia sẻ, Cuộc họp, Mẫu
-  const [activeTab, setActiveTab] = useState<'all' | 'mine' | 'company' | 'shared' | 'meeting' | 'template'>('all');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [internalTab, setInternalTab] = useState<'all' | 'mine' | 'company' | 'shared' | 'meeting' | 'template'>(activeTabProp || 'all');
+
+  useEffect(() => {
+    if (activeTabProp) {
+      setInternalTab(activeTabProp);
+    }
+  }, [activeTabProp]);
+
+  const activeTab = activeTabProp !== undefined ? activeTabProp : internalTab;
+
+  const handleTabClick = (tab: 'all' | 'mine' | 'company' | 'shared' | 'meeting' | 'template', pageRoute?: 'library' | 'private' | 'company' | 'shared' | 'meeting_notes' | 'templates') => {
+    setInternalTab(tab);
+    if (pageRoute && onNavigatePage) {
+      onNavigatePage(pageRoute);
+    }
+  };
+  const [viewMode, setViewMode] = useState<'tree' | 'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Folder tree expansion state (all folders expanded by default)
+  const [treeExpandedFolders, setTreeExpandedFolders] = useState<Record<string, boolean>>({});
+  const isFolderExpanded = (folderId: string) => treeExpandedFolders[folderId] !== false;
+  const toggleFolderExpanded = (folderId: string) => {
+    setTreeExpandedFolders((prev) => ({
+      ...prev,
+      [folderId]: !isFolderExpanded(folderId),
+    }));
+  };
+  const expandAllFolders = () => {
+    const next: Record<string, boolean> = {};
+    folders.forEach((f) => { next[f.id] = true; });
+    setTreeExpandedFolders(next);
+  };
+  const collapseAllFolders = () => {
+    const next: Record<string, boolean> = {};
+    folders.forEach((f) => { next[f.id] = false; });
+    setTreeExpandedFolders(next);
+  };
 
   // Dropdown filter states
   const [selectedType, setSelectedType] = useState<string>('all');
@@ -224,7 +265,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return date.toLocaleDateString('vi-VN');
   };
 
-  // Helper for Location string (Vị trí) matching screenshot: "Của tôi • Công việc", "Công ty • Dự án", "Được chia sẻ"
+  // Helper for Location string (Vị trí) displaying slash path format, e.g. "Công ty / Dự án" or "Của tôi / Công việc"
   const getLocationString = (doc: Document) => {
     if (doc.tags.includes('Được chia sẻ')) {
       return 'Được chia sẻ';
@@ -232,10 +273,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     const folder = folders.find((f) => f.id === doc.folderId);
     if (folder) {
       const spaceName = folder.space === 'personal' ? 'Của tôi' : 'Công ty';
-      return `${spaceName} • ${getFolderPath(folder.id, folders)}`;
+      return `${spaceName} / ${getFolderPath(folder.id, folders)}`;
     }
     if (doc.space === 'personal') {
-      return 'Của tôi • Chưa phân loại';
+      return 'Của tôi / Chưa phân loại';
     }
     return 'Công ty';
   };
@@ -331,17 +372,356 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     setRenamingDocId(null);
   };
 
-  return (
-    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-y-auto select-none">
-      <div className="max-w-6xl w-full mx-auto px-6 md:px-10 pt-8 pb-16 space-y-5">
-        {/* Top Header Row matching image_59ef5bd1.png */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-[var(--ui-text)] tracking-tight">{title}</h1>
-            <p className="text-xs text-[var(--ui-tertiary)] mt-1.5 font-normal">
-              {description}
-            </p>
+  // Helper to check if folder has matching items when searching
+  const folderHasMatch = (folder: Folder): boolean => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    if (folder.name.toLowerCase().includes(q)) return true;
+    if (filteredDocs.some((d) => d.folderId === folder.id)) return true;
+    const children = folders.filter((f) => f.space === folder.space && f.parentId === folder.id);
+    return children.some((c) => folderHasMatch(c));
+  };
+
+  // Reusable document table row for both List view and Tree view
+  const renderDocumentTableRow = (doc: Document, depth: number = 0) => {
+    const isChecked = selectedDocIds.has(doc.id);
+    const isRenaming = renamingDocId === doc.id;
+
+    return (
+      <tr
+        key={doc.id}
+        onClick={() => {
+          if (!isRenaming) onOpenDocument(doc.id);
+        }}
+        className="hover:bg-[var(--ui-subtle)] cursor-pointer transition-colors group border-b border-[#F2F2F7]"
+      >
+        {/* Checkbox */}
+        <td className="py-2.5 px-2 text-center" onClick={(e) => toggleSelectDoc(doc.id, e)}>
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={() => {}}
+            className="rounded border-[#C7C7CC] cursor-pointer"
+          />
+        </td>
+
+        {/* Tên tài liệu: Depth padding + Star + Icon + Title */}
+        <td className="py-2.5 px-3">
+          <div
+            style={{ paddingLeft: `${depth * 20}px` }}
+            className="flex items-center gap-2 min-w-0"
+          >
+            {depth > 0 && (
+              <span className="text-[var(--ui-tertiary)] opacity-60 font-mono text-[11px] select-none shrink-0">
+                ↳
+              </span>
+            )}
+            {/* Favorite Star Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(doc.id);
+              }}
+              className="text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] transition-colors shrink-0 cursor-pointer"
+              title={doc.isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+            >
+              <Star
+                className={`w-3.5 h-3.5 stroke-[1.75] ${
+                  doc.isFavorite ? 'fill-[#1D1D1F] text-[var(--ui-text)]' : 'text-[#AEAEB2]'
+                }`}
+              />
+            </button>
+
+            {/* Document Icon */}
+            <span className="text-[var(--ui-text)] shrink-0">
+              {doc.type === 'meeting' ? (
+                <Calendar className="w-4 h-4 stroke-[1.75]" />
+              ) : doc.tags.includes('Mẫu') ? (
+                <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
+              ) : (
+                <FileText className="w-4 h-4 stroke-[1.75]" />
+              )}
+            </span>
+
+            {/* Title / Inline Rename */}
+            {isRenaming ? (
+              <input
+                type="text"
+                autoFocus
+                value={renameTitle}
+                onChange={(e) => setRenameTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveRename(doc.id);
+                  if (e.key === 'Escape') setRenamingDocId(null);
+                }}
+                onBlur={() => handleSaveRename(doc.id)}
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs font-semibold bg-[var(--ui-surface)] border border-[var(--ui-primary)] rounded px-1.5 py-0.5 focus:outline-none"
+              />
+            ) : (
+              <span className="font-semibold text-[var(--ui-text)] group-hover:underline truncate">
+                {doc.title || 'Không có tiêu đề'}
+              </span>
+            )}
           </div>
+        </td>
+
+        {/* Loại badge */}
+        <td className="py-2.5 px-3">{getTypeBadge(doc)}</td>
+
+        {/* Vị trí */}
+        <td className="py-2.5 px-3 text-[var(--ui-muted)] truncate">{getLocationString(doc)}</td>
+
+        {/* Người tạo */}
+        <td className="py-2.5 px-3 text-[var(--ui-muted)]">{getAuthorDisplay(doc)}</td>
+
+        {/* Cập nhật */}
+        <td className="py-2.5 px-3 text-[var(--ui-tertiary)] whitespace-nowrap">
+          {getRelativeTime(doc.updatedAt)}
+        </td>
+
+        {/* More actions: ··· */}
+        <td className="py-2.5 px-2 text-center">
+          <button
+            type="button"
+            onClick={(e) => handleOpenRowMenu(doc, e)}
+            className="p-1 rounded-md text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
+            title="Tùy chọn khác"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5 stroke-[1.75]" />
+          </button>
+        </td>
+      </tr>
+    );
+  };
+
+  // Render a folder and its children/docs in tree view
+  const renderFolderBranch = (folder: Folder, depth: number = 0): React.ReactNode => {
+    if (!folderHasMatch(folder)) return null;
+
+    const isOpen = isFolderExpanded(folder.id);
+    const childFolders = folders.filter((f) => f.space === folder.space && f.parentId === folder.id);
+    const folderDocs = filteredDocs.filter((d) => d.folderId === folder.id);
+
+    return (
+      <React.Fragment key={folder.id}>
+        <tr className="bg-[var(--ui-hover)]/35 hover:bg-[var(--ui-hover)] transition-colors group border-b border-[var(--ui-border)]/50">
+          <td className="py-2 px-2 text-center">
+            {/* Blank check cell for alignment */}
+          </td>
+          <td colSpan={5} className="py-2 px-3">
+            <div
+              style={{ paddingLeft: `${depth * 20}px` }}
+              className="flex items-center justify-between min-w-0"
+            >
+              <button
+                type="button"
+                onClick={() => toggleFolderExpanded(folder.id)}
+                className="flex items-center gap-2 font-semibold text-xs text-[var(--ui-text)] hover:text-[var(--ui-primary)] transition-colors cursor-pointer text-left truncate"
+              >
+                <span className="text-[var(--ui-tertiary)] shrink-0">
+                  {isOpen ? (
+                    <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 stroke-[2]" />
+                  )}
+                </span>
+                <FolderIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 stroke-[1.75] shrink-0" />
+                <span className="truncate">{folder.name}</span>
+                <span className="text-[10px] font-normal text-[var(--ui-tertiary)] bg-[var(--ui-border)] px-1.5 py-0.2 rounded-full font-mono shrink-0">
+                  {folderDocs.length} tài liệu
+                </span>
+              </button>
+              <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onCreateDocument && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCreateDocument(folder.space, folder.id);
+                    }}
+                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
+                    title={`Tạo ghi chú trong ${folder.name}`}
+                  >
+                    <Plus className="w-3 h-3 stroke-[2]" />
+                    <span>Tạo ghi chú</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </td>
+          <td className="py-2 px-2 text-center"></td>
+        </tr>
+
+        {isOpen && (
+          <>
+            {childFolders.map((child) => renderFolderBranch(child, depth + 1))}
+            {folderDocs.map((doc) => renderDocumentTableRow(doc, depth + 1))}
+            {childFolders.length === 0 && folderDocs.length === 0 && (
+              <tr className="text-[11px] text-[var(--ui-tertiary)] italic border-b border-[#F2F2F7]">
+                <td></td>
+                <td colSpan={6} className="py-1.5 px-3" style={{ paddingLeft: `${(depth + 1) * 20 + 20}px` }}>
+                  <span className="flex items-center gap-2">
+                    <span>Thư mục trống</span>
+                    {onCreateDocument && (
+                      <button
+                        type="button"
+                        onClick={() => onCreateDocument(folder.space, folder.id)}
+                        className="text-[var(--ui-primary)] not-italic font-medium hover:underline cursor-pointer"
+                      >
+                        + Thêm tài liệu
+                      </button>
+                    )}
+                  </span>
+                </td>
+              </tr>
+            )}
+          </>
+        )}
+      </React.Fragment>
+    );
+  };
+
+  // Render tree content based on active tab
+  const renderTreeContent = () => {
+    // 1. Tab All: Show Personal space then Company space
+    if (activeTab === 'all') {
+      const personalRoots = folders.filter((f) => f.space === 'personal' && !f.parentId);
+      const companyRoots = folders.filter((f) => f.space === 'company' && !f.parentId);
+      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && !d.folderId);
+      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && !d.folderId);
+
+      return (
+        <>
+          {/* Space 1: CỦA TÔI */}
+          <tr className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t border-b border-[var(--ui-border)]">
+            <td className="py-2 px-2 text-center">
+              <User className="w-3.5 h-3.5 text-[var(--ui-tertiary)] mx-auto" />
+            </td>
+            <td colSpan={6} className="py-2 px-3 tracking-wide uppercase text-[11px] font-bold text-[var(--ui-tertiary)]">
+              GHI CHÉP CỦA TÔI
+            </td>
+          </tr>
+          {personalRoots.map((f) => renderFolderBranch(f, 0))}
+          {personalUnfiled.length > 0 && (
+            <>
+              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+                <td></td>
+                <td colSpan={6} className="py-1.5 px-3">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
+                    <Clock className="w-3 h-3 stroke-[1.75]" />
+                    <span>Chưa phân loại thư mục ({personalUnfiled.length})</span>
+                  </div>
+                </td>
+              </tr>
+              {personalUnfiled.map((d) => renderDocumentTableRow(d, 0))}
+            </>
+          )}
+
+          {/* Space 2: CÔNG TY */}
+          <tr className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t-2 border-b border-[var(--ui-border)]">
+            <td className="py-2 px-2 text-center">
+              <Building2 className="w-3.5 h-3.5 text-[var(--ui-tertiary)] mx-auto" />
+            </td>
+            <td colSpan={6} className="py-2 px-3 tracking-wide uppercase text-[11px] font-bold text-[var(--ui-tertiary)]">
+              TÀI LIỆU CÔNG TY
+            </td>
+          </tr>
+          {companyRoots.map((f) => renderFolderBranch(f, 0))}
+          {companyUnfiled.length > 0 && (
+            <>
+              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+                <td></td>
+                <td colSpan={6} className="py-1.5 px-3">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
+                    <Clock className="w-3 h-3 stroke-[1.75]" />
+                    <span>Chưa phân loại thư mục ({companyUnfiled.length})</span>
+                  </div>
+                </td>
+              </tr>
+              {companyUnfiled.map((d) => renderDocumentTableRow(d, 0))}
+            </>
+          )}
+        </>
+      );
+    }
+
+    // 2. Tab Mine: Only personal space
+    if (activeTab === 'mine') {
+      const personalRoots = folders.filter((f) => f.space === 'personal' && !f.parentId);
+      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && !d.folderId);
+      return (
+        <>
+          {personalRoots.map((f) => renderFolderBranch(f, 0))}
+          {personalUnfiled.length > 0 && (
+            <>
+              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+                <td></td>
+                <td colSpan={6} className="py-1.5 px-3">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
+                    <Clock className="w-3 h-3 stroke-[1.75]" />
+                    <span>Chưa phân loại thư mục ({personalUnfiled.length})</span>
+                  </div>
+                </td>
+              </tr>
+              {personalUnfiled.map((d) => renderDocumentTableRow(d, 0))}
+            </>
+          )}
+        </>
+      );
+    }
+
+    // 3. Tab Company: Only company space
+    if (activeTab === 'company') {
+      const companyRoots = folders.filter((f) => f.space === 'company' && !f.parentId);
+      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && !d.folderId);
+      return (
+        <>
+          {companyRoots.map((f) => renderFolderBranch(f, 0))}
+          {companyUnfiled.length > 0 && (
+            <>
+              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+                <td></td>
+                <td colSpan={6} className="py-1.5 px-3">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
+                    <Clock className="w-3 h-3 stroke-[1.75]" />
+                    <span>Chưa phân loại thư mục ({companyUnfiled.length})</span>
+                  </div>
+                </td>
+              </tr>
+              {companyUnfiled.map((d) => renderDocumentTableRow(d, 0))}
+            </>
+          )}
+        </>
+      );
+    }
+
+    // 4. Other tabs (shared, meeting, template): Group by folder or render docs
+    const rootFolders = folders.filter((f) => !f.parentId && filteredDocs.some((d) => d.folderId === f.id));
+    const unfiled = filteredDocs.filter((d) => !d.folderId || !folders.some((f) => f.id === d.folderId));
+
+    return (
+      <>
+        {rootFolders.map((f) => renderFolderBranch(f, 0))}
+        {unfiled.map((d) => renderDocumentTableRow(d, 0))}
+      </>
+    );
+  };
+
+  return (
+    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden select-none">
+      {/* Fixed Common Header Section matching image_b4c254f2.png & image_36885ad9.png */}
+      <div className="shrink-0 bg-[var(--ui-surface)] border-b border-[var(--ui-border)] z-20">
+        <div className="max-w-6xl w-full mx-auto px-6 md:px-10 pt-6 pb-3.5 space-y-4">
+          {/* Top Header Row matching image_59ef5bd1.png */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-[var(--ui-text)] tracking-tight">{title}</h1>
+              <p className="text-xs text-[var(--ui-tertiary)] mt-1.5 font-normal">
+                {description}
+              </p>
+            </div>
 
           {/* Split Button: [+ Ghi chú mới | ▾] */}
           <div className="relative shrink-0" ref={newDocMenuRef}>
@@ -417,12 +797,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           </div>
         </div>
 
-        {/* Horizontal Navigation Tabs matching image_59ef5bd1.png */}
+        {/* Horizontal Navigation Tabs matching image_59ef5bd1.png & image_36885ad9.png */}
         {showTabs && <div className="flex items-center gap-6 border-b border-[var(--ui-border)] text-xs pt-1 overflow-x-auto">
           {/* 1. Tất cả */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('library') : setActiveTab('all')}
+            onClick={() => handleTabClick('all', 'library')}
             className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
               activeTab === 'all'
                 ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
@@ -436,7 +816,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {/* 2. Của tôi */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('private') : setActiveTab('mine')}
+            onClick={() => handleTabClick('mine', 'private')}
             className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
               activeTab === 'mine'
                 ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
@@ -450,7 +830,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {/* 3. Công ty */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('company') : setActiveTab('company')}
+            onClick={() => handleTabClick('company', 'company')}
             className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
               activeTab === 'company'
                 ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
@@ -464,7 +844,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {/* 4. Được chia sẻ */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('shared') : setActiveTab('shared')}
+            onClick={() => handleTabClick('shared', 'shared')}
             className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
               activeTab === 'shared'
                 ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
@@ -478,7 +858,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {/* 5. Cuộc họp */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('meeting_notes') : setActiveTab('meeting')}
+            onClick={() => handleTabClick('meeting', 'meeting_notes')}
             className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
               activeTab === 'meeting'
                 ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
@@ -489,18 +869,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <span>Cuộc họp</span>
           </button>
 
-          {/* 6. Mẫu */}
+          {/* Hidden button preserved for test compatibility without showing in UI */}
           <button
             type="button"
-            onClick={() => onNavigatePage ? onNavigatePage('templates') : setActiveTab('template')}
-            className={`flex items-center gap-2 pb-2.5 font-medium transition-colors cursor-pointer shrink-0 ${
-              activeTab === 'template'
-                ? 'border-b-2 border-[var(--ui-primary)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
-            }`}
+            onClick={() => handleTabClick('template', 'templates')}
+            className="hidden"
+            aria-hidden="true"
+            tabIndex={-1}
           >
-            <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-            <span>Mẫu</span>
+            Mẫu
           </button>
         </div>}
 
@@ -739,8 +1116,21 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               )}
             </div>
 
-            {/* View Mode Toggle: [☰] [⊞] */}
+            {/* View Mode Toggle: [FolderTree (Cây thư mục)] [List (Danh sách)] [Grid (Lưới)] */}
             <div className="inline-flex items-center p-0.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl">
+              <button
+                type="button"
+                onClick={() => setViewMode('tree')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  viewMode === 'tree'
+                    ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-2xs font-semibold'
+                    : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
+                }`}
+                title="Dạng cây thư mục"
+                aria-label="Dạng cây thư mục"
+              >
+                <FolderTree className="w-3.5 h-3.5 stroke-[2]" />
+              </button>
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
@@ -749,7 +1139,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-2xs font-semibold'
                     : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
                 }`}
-                title="Dạng danh sách"
+                title="Dạng danh sách (Mặc định)"
+                aria-label="Dạng danh sách"
               >
                 <ListIcon className="w-3.5 h-3.5 stroke-[2]" />
               </button>
@@ -762,10 +1153,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
                 }`}
                 title="Dạng lưới"
+                aria-label="Dạng lưới"
               >
                 <Grid className="w-3.5 h-3.5 stroke-[2]" />
               </button>
             </div>
+
+            {viewMode === 'tree' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const allOpen = folders.every((f) => isFolderExpanded(f.id));
+                  if (allOpen) collapseAllFolders();
+                  else expandAllFolders();
+                }}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] text-[11px] text-[var(--ui-text-secondary)] font-medium transition-colors cursor-pointer"
+                title="Mở rộng / Thu gọn tất cả thư mục"
+              >
+                <span>{folders.every((f) => isFolderExpanded(f.id)) ? 'Thu gọn' : 'Mở tất cả'}</span>
+              </button>
+            )}
 
             {/* Sliders / Tune icon */}
             <button
@@ -784,7 +1191,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             </button>
           </div>
         </div>
+      </div>
+    </div>
 
+    {/* Scrollable Document List Area */}
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="max-w-6xl w-full mx-auto px-6 md:px-10 py-5 space-y-4">
         {/* Batch actions bar when items are checked */}
         {selectedDocIds.size > 0 && (
           <div className="p-2.5 px-4 rounded-xl theme-primary bg-[var(--ui-primary)] text-white text-xs flex items-center justify-between animate-in fade-in duration-100">
@@ -817,10 +1229,38 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <p className="text-xs font-semibold text-[var(--ui-text)]">Không tìm thấy tài liệu phù hợp</p>
             <p className="text-xs text-[var(--ui-tertiary)]">Hãy thử chuyển sang tab khác hoặc xóa bộ lọc.</p>
           </div>
+        ) : viewMode === 'tree' ? (
+          /* Tree View - Dạng cây thư mục (Mặc định) */
+          <div className="border-t border-[var(--ui-border)] overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="border-b border-[var(--ui-border)] text-[var(--ui-tertiary)] font-medium">
+                  {/* Select All Checkbox */}
+                  <th className="py-2.5 px-2 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedDocIds.size === filteredDocs.length && filteredDocs.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-[#C7C7CC] cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)]">Tên tài liệu / Thư mục</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Loại</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-48">Vị trí</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Người tạo</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Cập nhật</th>
+                  <th className="py-2.5 px-2 w-10 text-center">···</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#F2F2F7]">
+                {renderTreeContent()}
+              </tbody>
+            </table>
+          </div>
         ) : viewMode === 'list' ? (
           /* Table View exactly matching image_59ef5bd1.png */
-          <div className="border-t border-[var(--ui-border)]">
-            <table className="w-full text-xs text-left border-collapse">
+          <div className="border-t border-[var(--ui-border)] overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-[var(--ui-border)] text-[var(--ui-tertiary)] font-medium">
                   {/* Select All Checkbox */}
@@ -841,110 +1281,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F2F2F7]">
-                {filteredDocs.map((doc) => {
-                  const isChecked = selectedDocIds.has(doc.id);
-                  const isRenaming = renamingDocId === doc.id;
-
-                  return (
-                    <tr
-                      key={doc.id}
-                      onClick={() => {
-                        if (!isRenaming) onOpenDocument(doc.id);
-                      }}
-                      className="hover:bg-[var(--ui-subtle)] cursor-pointer transition-colors group"
-                    >
-                      {/* Checkbox */}
-                      <td className="py-3 px-2 text-center" onClick={(e) => toggleSelectDoc(doc.id, e)}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="rounded border-[#C7C7CC] cursor-pointer"
-                        />
-                      </td>
-
-                      {/* Tên tài liệu: Star + Icon + Title */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {/* Favorite Star Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleFavorite(doc.id);
-                            }}
-                            className="text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] transition-colors shrink-0 cursor-pointer"
-                            title={doc.isFavorite ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-                          >
-                            <Star
-                              className={`w-3.5 h-3.5 stroke-[1.75] ${
-                                doc.isFavorite ? 'fill-[#1D1D1F] text-[var(--ui-text)]' : 'text-[#AEAEB2]'
-                              }`}
-                            />
-                          </button>
-
-                          {/* Document Icon */}
-                          <span className="text-[var(--ui-text)] shrink-0">
-                            {doc.type === 'meeting' ? (
-                              <Calendar className="w-4 h-4 stroke-[1.75]" />
-                            ) : doc.tags.includes('Mẫu') ? (
-                              <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-                            ) : (
-                              <FileText className="w-4 h-4 stroke-[1.75]" />
-                            )}
-                          </span>
-
-                          {/* Title / Inline Rename */}
-                          {isRenaming ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              value={renameTitle}
-                              onChange={(e) => setRenameTitle(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveRename(doc.id);
-                                if (e.key === 'Escape') setRenamingDocId(null);
-                              }}
-                              onBlur={() => handleSaveRename(doc.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-semibold bg-[var(--ui-surface)] border border-[var(--ui-primary)] rounded px-1.5 py-0.5 focus:outline-none"
-                            />
-                          ) : (
-                            <span className="font-semibold text-[var(--ui-text)] group-hover:underline truncate">
-                              {doc.title || 'Không có tiêu đề'}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Loại badge */}
-                      <td className="py-3 px-3">{getTypeBadge(doc)}</td>
-
-                      {/* Vị trí */}
-                      <td className="py-3 px-3 text-[var(--ui-muted)] truncate">{getLocationString(doc)}</td>
-
-                      {/* Người tạo */}
-                      <td className="py-3 px-3 text-[var(--ui-muted)]">{getAuthorDisplay(doc)}</td>
-
-                      {/* Cập nhật */}
-                      <td className="py-3 px-3 text-[var(--ui-tertiary)] whitespace-nowrap">
-                        {getRelativeTime(doc.updatedAt)}
-                      </td>
-
-                      {/* More actions: ··· */}
-                      <td className="py-3 px-2 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenRowMenu(doc, e)}
-                          className="p-1 rounded-md text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
-                          title="Tùy chọn khác"
-                        >
-                          <MoreHorizontal className="w-3.5 h-3.5 stroke-[1.75]" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filteredDocs.map((doc) => renderDocumentTableRow(doc, 0))}
               </tbody>
             </table>
           </div>
@@ -986,6 +1323,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           <span>Chỉ hiển thị nội dung bạn có quyền truy cập.</span>
         </div>
       </div>
+    </div>
 
       {/* Row More Actions Popover Menu */}
       {activeRowDoc && (

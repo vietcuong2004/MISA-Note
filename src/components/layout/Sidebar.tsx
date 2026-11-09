@@ -30,7 +30,7 @@ import {
   LayoutGrid,
 } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType, UserRole, ViewState } from '../../types';
-import { CURRENT_USER } from '../../data/mockData';
+import { CURRENT_USER, TEMPLATES } from '../../data/mockData';
 import { ConfirmMoveDialog } from '../modals/ConfirmMoveDialog';
 import { FolderTree } from './FolderTree';
 import { getFolderAncestors, getFolderPath } from '../../utils/folders';
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentRole,
   collapsed,
   onToggleCollapse,
-  sidebarWidth = 260,
+  sidebarWidth = 280,
   onWidthChange,
   onNavigate,
   onCreateDocument,
@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onMoveDocument,
   onToast,
 }) => {
-  const DEFAULT_SIDEBAR_WIDTH = 260;
+  const DEFAULT_SIDEBAR_WIDTH = 280;
   const MIN_SIDEBAR_WIDTH = 200;
   const MAX_SIDEBAR_WIDTH = 520;
 
@@ -116,6 +116,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       widthRef.current = sidebarWidth;
     }
   }, [sidebarWidth]);
+
+  const isNarrowFooter = width < 260;
+  const isNarrowHeader = width < 240;
 
   const handleStartResizing = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -156,11 +159,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     try {
       localStorage.setItem('misa_sidebar_width', String(DEFAULT_SIDEBAR_WIDTH));
     } catch (err) {}
-    onToast?.('Đã đặt lại độ rộng thanh bên về mặc định (260px)', 'info');
+    onToast?.(`Đã đặt lại độ rộng thanh bên về mặc định (${DEFAULT_SIDEBAR_WIDTH}px)`, 'info');
   };
 
   const [personalExpanded, setPersonalExpanded] = useState(true);
   const [companyExpanded, setCompanyExpanded] = useState(true);
+  const [templatesExpanded, setTemplatesExpanded] = useState(true);
   const [spaceTab, setSpaceTab] = useState<SpaceType>('personal');
   useEffect(() => {
     const folder = folders.find(folder => folder.id === newFolderId);
@@ -180,6 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
+  const [showCreateTooltip, setShowCreateTooltip] = useState(false);
 
   // Drag and Drop state
   const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
@@ -260,10 +265,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const getLocationName = (doc: Document) => {
     const fld = folders.find((f) => f.id === doc.folderId);
     if (fld) {
-      const spaceLabel = fld.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+      const spaceLabel = fld.space === 'personal' ? 'Của tôi' : 'Công ty';
       return `${spaceLabel} / ${getFolderPath(fld.id, folders)}`;
     }
-    return doc.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty';
+    return doc.space === 'personal' ? 'Của tôi' : 'Công ty';
   };
 
   const handlePromptMove = (
@@ -284,8 +289,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const currentLoc = getLocationName(doc);
     const targetLoc = targetFolder
-      ? `${targetFolder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'} / ${getFolderPath(targetFolder.id, folders)}`
-      : `${resolvedSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}`;
+      ? `${targetFolder.space === 'personal' ? 'Của tôi' : 'Công ty'} / ${getFolderPath(targetFolder.id, folders)}`
+      : `${resolvedSpace === 'personal' ? 'Của tôi' : 'Công ty'}`;
 
     setConfirmMoveState({
       isOpen: true,
@@ -336,16 +341,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeDocs = documents.filter((d) => !d.isTrash);
   const trashDocs = documents.filter((d) => d.isTrash);
 
-  const recentDocs = activeDocs.filter(doc => !doc.folderId).sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
+  const recentDocs = activeDocs
+    .filter((doc) => doc.space === 'personal' && !doc.folderId)
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
 
 
   const personalRootDocs = activeDocs.filter(
     (d) => d.space === 'personal' && !d.folderId && d.id !== 'doc_meeting_notes'
   );
-  const companyRootDocs = activeDocs.filter((d) => d.space === 'company' && !d.folderId);
+  const companyRootDocs = activeDocs
+    .filter((d) => d.space === 'company' && !d.folderId)
+    .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
 
   const isDocActive = (docId: string) =>
     viewState.type === 'document' && viewState.documentId === docId;
@@ -551,12 +558,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Search className="w-4 h-4 stroke-[1.75]" />
           </button>
 
-          {/* Gần đây */}
-          <button type="button" onClick={() => onNavigate({ type: 'templates' })}
-            title="Mẫu ghi chú" aria-label="Mẫu ghi chú"
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${viewState.type === 'templates' ? 'bg-[var(--ui-selected)] text-[var(--ui-text)]' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'}`}>
-            <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-          </button>
           <button
             onClick={() => onNavigate({ type: 'recent' })}
             className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
@@ -582,6 +583,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Star className="w-4 h-4 stroke-[1.75]" />
           </button>
 
+          {/* Mẫu */}
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'templates' })}
+            title="Mẫu"
+            aria-label="Mẫu"
+            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
+              viewState.type === 'templates'
+                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
+                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
+          </button>
+
           {/* Thư viện */}
           <button
             onClick={() => onNavigate({ type: 'library' })}
@@ -598,6 +614,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom Rail Actions */}
         <div className="flex flex-col items-center gap-3 w-full px-2">
+
           {/* Thùng rác icon */}
           <button
             onClick={() => onNavigate({ type: 'trash' })}
@@ -636,44 +653,66 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onToggleCollapse}
-              className="w-9 h-9 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-selected)] flex items-center justify-center text-[var(--ui-text)] ios-interactive transition-colors shrink-0 cursor-pointer"
+              className={`h-9 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-selected)] flex items-center justify-center text-[var(--ui-text)] ios-interactive transition-colors cursor-pointer ${
+                isNarrowHeader ? 'flex-1 min-w-0' : 'w-9 shrink-0'
+              }`}
               title="Thu gọn thanh bên"
             >
               <ChevronsLeft className="w-4 h-4 stroke-[2]" />
             </button>
 
             {/* Tạo mới button */}
-            <button
-              type="button"
-              onClick={() => {
-                setRecentExpanded(true);
-                onCreateDocument('personal', null);
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer"
-              title="Tạo mới"
-            >
-              <SquarePen className="w-3.5 h-3.5 stroke-[2] shrink-0" />
-              <span className="truncate">Tạo mới</span>
-            </button>
+            <div className={`relative ${isNarrowHeader ? 'flex-1 min-w-0' : 'flex-1 min-w-0'}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setRecentExpanded(true);
+                  onCreateDocument('personal', null);
+                }}
+                onMouseEnter={() => setShowCreateTooltip(true)}
+                onMouseLeave={() => setShowCreateTooltip(false)}
+                className={`w-full flex items-center justify-center gap-1.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer h-9 ${
+                  isNarrowHeader ? 'px-0' : 'py-2 px-2.5'
+                }`}
+                title="Tạo mới"
+              >
+                <SquarePen className="w-4 h-4 stroke-[2] shrink-0" />
+                <span className={isNarrowHeader ? "sr-only" : "whitespace-nowrap"}>Tạo mới</span>
+              </button>
 
-            {/* Hỏi AI button with tooltip "Kết nối OneAI sắp ra mắt" */}
-            <div className="relative">
+              {/* Tooltip on hover when narrow */}
+              {isNarrowHeader && showCreateTooltip && (
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100 pointer-events-none">
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
+                  <span className="relative z-10">Tạo mới</span>
+                </div>
+              )}
+            </div>
+
+            {/* Hỏi AI button with tooltip */}
+            <div className={`relative ${isNarrowHeader ? 'flex-1 min-w-0' : 'flex-1 min-w-0'}`}>
               <button
                 type="button"
                 onClick={onOpenOneAI}
                 onMouseEnter={() => setShowAITooltip(true)}
                 onMouseLeave={() => setShowAITooltip(false)}
-                className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] font-semibold text-xs transition-colors ios-interactive cursor-pointer"
+                className={`w-full flex items-center justify-center gap-1.5 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] font-semibold text-xs transition-colors ios-interactive cursor-pointer h-9 ${
+                  isNarrowHeader ? 'px-0' : 'py-2 px-2'
+                }`}
+                title="Hỏi AI"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[var(--ui-text)] stroke-[1.75]" />
-                <span className="truncate">Hỏi AI</span>
+                <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
+                <span className={isNarrowHeader ? "sr-only" : "whitespace-nowrap"}>Hỏi AI</span>
               </button>
 
-              {/* Dark Pill Tooltip matching screenshot: "Kết nối OneAI sắp ra mắt" */}
+              {/* Tooltip positioned below the button so it is never obscured by the top header */}
               {showAITooltip && (
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap theme-primary bg-[var(--ui-primary)] text-white text-[10px] font-medium px-2 py-1 rounded-md shadow-md animate-in fade-in duration-100 pointer-events-none">
-                  Kết nối OneAI sắp ra mắt
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1D1D1F]" />
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1.5 rounded-md shadow-xl animate-in fade-in zoom-in-95 duration-100 pointer-events-none flex flex-col items-center">
+                  <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
+                  {isNarrowHeader && <span className="font-semibold text-white">Hỏi AI</span>}
+                  <span className={isNarrowHeader ? "text-[9px] text-white/80" : "relative z-10"}>
+                    {isNarrowHeader ? "OneAI sắp ra mắt" : "Kết nối OneAI sắp ra mắt"}
+                  </span>
                 </div>
               )}
             </div>
@@ -686,7 +725,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               aria-expanded={showQuickActionMenu}
               aria-controls="quick-action-dialog"
               aria-haspopup="dialog"
-              className="w-9 h-9 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] flex items-center justify-center ios-interactive shrink-0 cursor-pointer"
+              className={`h-9 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] flex items-center justify-center ios-interactive cursor-pointer ${
+                isNarrowHeader ? 'flex-1 min-w-0' : 'w-9 shrink-0'
+              }`}
               title="Thao tác nhanh khác"
             >
               <MoreHorizontal className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
@@ -762,12 +803,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Smart Sections: Gần đây & Yêu thích */}
         <div className="px-2 pt-2 space-y-1">
-          <button type="button" onClick={() => onNavigate({ type: 'templates' })}
-            aria-current={viewState.type === 'templates' ? 'page' : undefined}
-            className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-medium text-left transition-colors ${viewState.type === 'templates' ? 'bg-[var(--ui-selected)]' : 'hover:bg-[var(--ui-selected)]'}`}>
-            <LayoutGrid className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} />
-            <span>Mẫu ghi chú</span>
-          </button>
           {/* Section: Gần đây */}
           <div className="space-y-0.5">
             <div
@@ -993,7 +1028,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {companyExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               <button
-                onClick={() => onCreateDocument('company', null)}
+                onClick={() => {
+                  setCompanyExpanded(true);
+                  setSpaceTab('company');
+                  onCreateDocument('company', null);
+                }}
                 className="p-1 rounded-md hover:bg-[var(--ui-border)] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-pointer"
                 title="Tạo tài liệu công ty mới"
               >
@@ -1004,48 +1043,72 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {companyExpanded && (
             <div className="space-y-0.5 mt-1">
-              {renderFolderTree('company')}
-
-              {/* Unfiled Company Documents */}
+              {/* Unfiled Company Documents at the top */}
               {companyRootDocs.map((doc) => renderDocumentItem(doc, null))}
+
+              {renderFolderTree('company')}
             </div>
           )}
         </div>
       </div>
 
-      {/* Bottom Fixed Utilities: Thư viện & Thùng rác trên 1 hàng */}
+      {/* Bottom Fixed Utilities: Mẫu, Thư viện & Thùng rác (3 cái trên 1 hàng: Mẫu -> Thư viện -> Thùng rác) */}
       <div className="p-2 border-t border-[var(--ui-border)] bg-[var(--ui-sidebar)]">
-        <div className="grid grid-cols-2 gap-1.5">
-          {/* Thư viện */}
+        <div className="grid grid-cols-3 gap-1">
+          {/* 1. Mẫu */}
+          <button
+            type="button"
+            onClick={() => onNavigate({ type: 'templates' })}
+            aria-current={viewState.type === 'templates' ? 'page' : undefined}
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer ${
+              viewState.type === 'templates'
+                ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
+                : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
+            }`}
+            title="Mẫu ghi chú"
+          >
+            <LayoutGrid className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
+            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Mẫu</span>
+            <span className="hidden"> ghi chú</span>
+          </button>
+
+          {/* 2. Thư viện */}
           <button
             type="button"
             onClick={() => onNavigate({ type: 'library' })}
-            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer ${
               viewState.type === 'library'
                 ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
                 : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
             }`}
             title="Thư viện"
           >
-            <BookOpen className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
-            <span className="truncate">Thư viện</span>
+            <BookOpen className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
+            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Thư viện</span>
           </button>
 
-          {/* Thùng rác */}
+          {/* 3. Thùng rác */}
           <button
             type="button"
             onClick={() => onNavigate({ type: 'trash' })}
-            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer relative ${
+            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer relative ${
               viewState.type === 'trash'
                 ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
                 : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
             }`}
             title="Thùng rác"
           >
-            <Trash2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
-            <span className="truncate">Thùng rác</span>
-            {trashDocs.length > 0 && (
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono px-1 py-0.2 rounded bg-[var(--ui-border)]">
+            <div className="relative flex items-center justify-center shrink-0">
+              <Trash2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
+              {isNarrowFooter && trashDocs.length > 0 && (
+                <span className="absolute -top-1.5 -right-2 px-1 min-w-[14px] h-[14px] text-[9px] font-bold text-white theme-primary bg-[var(--ui-primary)] rounded-full flex items-center justify-center">
+                  {trashDocs.length}
+                </span>
+              )}
+            </div>
+            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Thùng rác</span>
+            {!isNarrowFooter && trashDocs.length > 0 && (
+              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono px-1 py-0.2 rounded bg-[var(--ui-border)] shrink-0">
                 {trashDocs.length}
               </span>
             )}

@@ -3,9 +3,9 @@ import { INITIAL_DOCUMENTS, INITIAL_FOLDERS } from '../data/mockData';
 import { validateFolderParent } from './folders';
 
 const STORAGE_KEYS = {
-  DOCUMENTS: 'ghi_chu_noi_bo_documents_v7',
-  FOLDERS: 'ghi_chu_noi_bo_folders_v7',
-  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v7',
+  DOCUMENTS: 'ghi_chu_noi_bo_documents_v8',
+  FOLDERS: 'ghi_chu_noi_bo_folders_v8',
+  CURRENT_USER_ROLE: 'ghi_chu_noi_bo_user_role_v8',
 };
 
 export const getStoredDocuments = (): Document[] => {
@@ -16,15 +16,17 @@ export const getStoredDocuments = (): Document[] => {
       return INITIAL_DOCUMENTS;
     }
     const docs: Document[] = JSON.parse(raw);
-    return docs.map((doc) => ({
-      ...doc,
-      blocks: doc.blocks?.filter(
-        (b) =>
-          b.id !== 'blk_u_02' &&
-          b.id !== 'b_t1_2' &&
-          b.content !== 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.'
-      ) || [],
-    }));
+    return docs
+      .filter((d) => d.id !== 'doc_quick_notes' && d.id !== 'doc_team_meeting_template' && d.title !== 'Ghi chú nhanh' && d.title !== 'Mẫu họp nhóm')
+      .map((doc) => ({
+        ...doc,
+        blocks: doc.blocks?.filter(
+          (b) =>
+            b.id !== 'blk_u_02' &&
+            b.id !== 'b_t1_2' &&
+            b.content !== 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.'
+        ) || [],
+      }));
   } catch (err) {
     console.error('Error reading documents from localStorage:', err);
     return INITIAL_DOCUMENTS;

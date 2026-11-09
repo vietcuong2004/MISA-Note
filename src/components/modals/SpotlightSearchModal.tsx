@@ -12,6 +12,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { Document, Folder } from '../../types';
+import { getFolderPath } from '../../utils/folders';
 
 interface SpotlightSearchModalProps {
   isOpen: boolean;
@@ -225,11 +226,11 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                         {doc.title || 'Không có tiêu đề'}
                       </div>
                       <div className={`text-[10px] flex items-center gap-2 truncate mt-0.5 ${isSelected ? 'text-white/70' : 'text-[var(--ui-tertiary)]'}`}>
-                        <span>{doc.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}</span>
+                        <span>{doc.space === 'personal' ? 'Của tôi' : 'Công ty'}</span>
                         {folder && (
                           <>
                             <span>/</span>
-                            <span>{folder.name}</span>
+                            <span>{getFolderPath(folder.id, folders)}</span>
                           </>
                         )}
                         <span>·</span>

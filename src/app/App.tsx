@@ -47,11 +47,12 @@ export default function App() {
       if (saved) {
         const parsed = Number(saved);
         if (!isNaN(parsed) && parsed >= 200 && parsed <= 520) {
+          if (parsed === 260) return 280;
           return parsed;
         }
       }
     } catch (e) {}
-    return 260;
+    return 280;
   });
 
   // Modals
