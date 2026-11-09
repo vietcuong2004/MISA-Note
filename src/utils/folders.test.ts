@@ -89,3 +89,31 @@ test('moving a folder updates its parentId or promotes it to root', () => {
   assert.throws(() => moveFolderToParentOrSpace('Root', 'Child', 'personal'), /chính nó/);
   assert.throws(() => moveFolderToParentOrSpace('Child', 'Child', 'personal'), /chính nó/);
 });
+
+test('dnd utilities validate hierarchy and prevent circular drops', async () => {
+  const { canDropFolderInto, isFolderDescendant, getDragPayload } = await import('./dnd');
+
+  assert.equal(canDropFolderInto('Child', 'Child', tree), false, 'Cannot drop folder into itself');
+  assert.equal(canDropFolderInto('Root', 'Child', tree), false, 'Cannot drop root into child');
+  assert.equal(canDropFolderInto('Root', 'Grandchild', tree), false, 'Cannot drop root into grandchild');
+  assert.equal(canDropFolderInto('Grandchild', 'Root', tree), true, 'Can drop grandchild into root');
+  assert.equal(canDropFolderInto('Child', null, tree), true, 'Can drop child to root level');
+
+  assert.equal(isFolderDescendant('Grandchild', 'Root', tree), true);
+  assert.equal(isFolderDescendant('Root', 'Grandchild', tree), false);
+
+  // Test getDragPayload
+  const mockEvent1 = {
+    dataTransfer: {
+      getData: (type: string) => (type === 'application/x-folder-id' ? 'Root' : ''),
+    },
+  } as unknown as DragEvent;
+  assert.deepEqual(getDragPayload(mockEvent1), { type: 'folder', id: 'Root' });
+
+  const mockEvent2 = {
+    dataTransfer: {
+      getData: (type: string) => (type === 'text/plain' ? 'doc:in-child' : ''),
+    },
+  } as unknown as DragEvent;
+  assert.deepEqual(getDragPayload(mockEvent2), { type: 'document', id: 'in-child' });
+});

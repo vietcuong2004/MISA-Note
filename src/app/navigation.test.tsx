@@ -435,5 +435,22 @@ test('folder and document drag and drop updates hierarchy and persists to storag
   // Verify fld_personal is promoted back to root (parentId: null)
   folders = getStoredFolders();
   assert.equal(folders.find(f => f.id === 'fld_personal')?.parentId, null, 'Expected fld_personal to be restored to root');
+
+  // 3. Simulate dragging a document onto fld_work folder row
+  const { getStoredDocuments } = await import('../utils/storage');
+  let docs = getStoredDocuments();
+  const testDoc = docs.find(d => d.id === 'doc_1')!;
+  assert(testDoc, 'Expected doc_1 to exist');
+
+  await act(async () => {
+    workFolderRow.dispatchEvent(createDragEvent('drop', {
+      'text/plain': 'doc:doc_1',
+      'text/document-id': 'doc_1',
+      'application/x-doc-id': 'doc_1',
+    }));
+  });
+
+  docs = getStoredDocuments();
+  assert.equal(docs.find(d => d.id === 'doc_1')?.folderId, 'fld_work', 'Expected doc_1 to be moved into fld_work');
 });
 

@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Folder as FolderIcon, FolderInput, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Folder as FolderIcon, FolderOpen, FolderInput, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { Document, Folder, SpaceType, ViewState } from '../../types';
+import {
+  canDropFolderInto,
+  clearActiveDrag,
+  getDragPayload,
+  setDragFolder,
+  useActiveDrag,
+} from '../../utils/dnd';
 
 interface Props {
   folders: Folder[];
@@ -28,36 +35,71 @@ interface Props {
   renderDocument: (document: Document, folderId: string) => React.ReactNode;
 }
 
-function NewFolderName({ folder, onSave, onFinish }: { folder: Folder; onSave: (folder: Folder, name: string) => void; onFinish: () => void }) {
+function NewFolderName({
+  folder,
+  onSave,
+  onFinish,
+}: {
+  folder: Folder;
+  onSave: (folder: Folder, name: string) => void;
+  onFinish: () => void;
+}) {
   const [name, setName] = useState(folder.name);
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const finished = useRef(false);
-  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); inputRef.current?.scrollIntoView({ block: 'nearest' }); }, []);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+    inputRef.current?.scrollIntoView({ block: 'nearest' });
+  }, []);
+
   const save = () => {
     if (finished.current) return;
-    try { onSave(folder, name.trim() || folder.name); finished.current = true; }
-    catch (error) { setError(error instanceof Error ? error.message : 'Không lưu được tên thư mục.'); }
+    try {
+      onSave(folder, name.trim() || folder.name);
+      finished.current = true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Không lưu được tên thư mục.');
+    }
   };
-  return <span className="min-w-0 flex-1">
-    <input ref={inputRef} aria-label="Tên thư mục mới" value={name} onChange={event => setName(event.target.value)}
-      onClick={event => event.stopPropagation()} onBlur={save}
-      onKeyDown={event => {
-        event.stopPropagation();
-        if (event.key === 'Enter') { event.preventDefault(); save(); }
-        if (event.key === 'Escape') { event.preventDefault(); finished.current = true; onFinish(); }
-      }} className="w-full min-w-0 px-1 py-0.5 rounded border border-[var(--ui-accent)] bg-[var(--ui-surface)] text-xs text-[var(--ui-text)] outline-none" />
-    {error && <span role="alert" className="block text-[10px] text-red-600">{error}</span>}
-  </span>;
+
+  return (
+    <span className="min-w-0 flex-1">
+      <input
+        ref={inputRef}
+        aria-label="Tên thư mục mới"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onBlur={save}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            save();
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            finished.current = true;
+            onFinish();
+          }
+        }}
+        className="w-full min-w-0 px-1 py-0.5 rounded border border-[var(--ui-accent)] bg-[var(--ui-surface)] text-xs text-[var(--ui-text)] outline-none"
+      />
+      {error && <span role="alert" className="block text-[10px] text-red-600">{error}</span>}
+    </span>
+  );
 }
 
 export function FolderTree(props: Props) {
+  const { isDraggingFolder, draggedId } = useActiveDrag();
   const folders = props.folders.filter((folder) => folder.space === props.space);
   const parentId = (folder: Folder) =>
     folders.some((parent) => parent.id === folder.parentId) ? folder.parentId : null;
 
   const autoExpandTimerRef = useRef<{ id: string; timer: ReturnType<typeof setTimeout> } | null>(null);
-  const isDraggingAny = !!(props.draggingDocumentId || props.draggingFolderId);
 
   const handleFolderHover = (folderId: string, isOpen: boolean) => {
     if (props.dragOverFolderId !== folderId) {
@@ -84,39 +126,16 @@ export function FolderTree(props: Props) {
     if (autoExpandTimerRef.current?.timer) clearTimeout(autoExpandTimerRef.current.timer);
     props.onDragOverFolder(null);
 
-    const rawFolder =
-      event.dataTransfer.getData('text/folder-id') ||
-      event.dataTransfer.getData('application/x-folder-id');
-    const rawPlain = event.dataTransfer.getData('text/plain') || '';
+    const payload = getDragPayload(event, props.folders, props.documents);
+    if (!payload) return;
 
-    let draggedFolderId: string | null = null;
-    let docId: string | null = null;
-
-    if (rawFolder) {
-      draggedFolderId = rawFolder;
-    } else if (rawPlain.startsWith('folder:')) {
-      draggedFolderId = rawPlain.replace('folder:', '');
-    } else if (rawPlain.startsWith('doc:')) {
-      docId = rawPlain.replace('doc:', '');
-    } else if (rawPlain) {
-      if (props.folders.some((f) => f.id === rawPlain)) {
-        draggedFolderId = rawPlain;
-      } else {
-        docId = rawPlain;
+    if (payload.type === 'folder') {
+      if (!canDropFolderInto(payload.id, targetFolder.id, props.folders)) {
+        return;
       }
-    }
-
-    if (!draggedFolderId && props.draggingFolderId) {
-      draggedFolderId = props.draggingFolderId;
-    }
-    if (!docId && props.draggingDocumentId) {
-      docId = props.draggingDocumentId;
-    }
-
-    if (draggedFolderId && draggedFolderId !== targetFolder.id) {
-      props.onDropFolder?.(targetFolder, draggedFolderId);
-    } else if (docId) {
-      props.onDropDocument(targetFolder, docId);
+      props.onDropFolder?.(targetFolder, payload.id);
+    } else if (payload.type === 'document') {
+      props.onDropDocument(targetFolder, payload.id);
     }
   };
 
@@ -129,22 +148,22 @@ export function FolderTree(props: Props) {
           (document) => document.folderId === folder.id && !document.isTrash
         );
         const hasChildren = folders.some((child) => child.parentId === folder.id);
-        const draggingOver = props.dragOverFolderId === folder.id;
-        const isDraggingThis = props.draggingFolderId === folder.id;
-        const isDescendantOfDragging = props.draggingFolderId ? ancestors.has(props.draggingFolderId) : false;
-        const isDropBlocked = isDraggingThis || isDescendantOfDragging;
+
+        const currentDraggedFolderId = (isDraggingFolder ? draggedId : null) || props.draggingFolderId || null;
+        const isDraggingThis = currentDraggedFolderId === folder.id;
+        const isDropBlocked =
+          !!currentDraggedFolderId && !canDropFolderInto(currentDraggedFolderId, folder.id, props.folders);
+        const draggingOver = props.dragOverFolderId === folder.id && !isDropBlocked;
 
         const handleFolderDragStart = (event: React.DragEvent) => {
           event.stopPropagation();
-          event.dataTransfer.setData('text/plain', `folder:${folder.id}`);
-          event.dataTransfer.setData('text/folder-id', folder.id);
-          event.dataTransfer.setData('application/x-folder-id', folder.id);
-          event.dataTransfer.effectAllowed = 'move';
+          setDragFolder(event, folder.id);
           props.onDragStartFolder?.(folder.id);
         };
 
         const handleFolderDragEnd = () => {
           if (autoExpandTimerRef.current?.timer) clearTimeout(autoExpandTimerRef.current.timer);
+          clearActiveDrag();
           props.onDragEndFolder?.();
           props.onDragOverFolder(null);
         };
@@ -169,10 +188,7 @@ export function FolderTree(props: Props) {
               }}
               onDragLeave={(event) => {
                 event.stopPropagation();
-                const rect = event.currentTarget.getBoundingClientRect();
-                const x = event.clientX;
-                const y = event.clientY;
-                if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) {
+                if (!event.currentTarget.contains(event.relatedTarget as Node)) {
                   if (props.dragOverFolderId === folder.id) {
                     props.onDragOverFolder(null);
                   }
@@ -182,11 +198,15 @@ export function FolderTree(props: Props) {
                 if (isDropBlocked) return;
                 handleFolderDrop(event, folder);
               }}
-              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl text-[var(--ui-text)] transition-all cursor-grab active:cursor-grabbing ${
-                isDraggingThis ? 'opacity-30 scale-95 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''
+              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl text-[var(--ui-text)] transition-all select-none ${
+                isDropBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-grab active:cursor-grabbing'
+              } ${
+                isDraggingThis
+                  ? 'opacity-30 scale-95 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]'
+                  : ''
               } ${
                 draggingOver
-                  ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] font-bold scale-[1.01] shadow-xs'
+                  ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] text-[var(--ui-primary)] font-bold scale-[1.01] shadow-xs'
                   : 'hover:bg-[var(--ui-selected)]'
               }`}
             >
@@ -208,7 +228,11 @@ export function FolderTree(props: Props) {
                   title="Kéo thả để di chuyển thư mục"
                 >
                   <GripVertical className="w-3 h-3 text-[var(--ui-tertiary)] opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity" />
-                  <FolderIcon className={`w-3.5 h-3.5 shrink-0 ${draggingOver ? 'text-[var(--ui-primary)]' : ''}`} strokeWidth={1.75} />
+                  {draggingOver || open ? (
+                    <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${draggingOver ? 'text-[var(--ui-primary)]' : ''}`} strokeWidth={1.75} />
+                  ) : (
+                    <FolderIcon className={`w-3.5 h-3.5 shrink-0 ${draggingOver ? 'text-[var(--ui-primary)]' : ''}`} strokeWidth={1.75} />
+                  )}
                 </div>
                 {props.newFolderId === folder.id ? (
                   <NewFolderName
@@ -237,6 +261,11 @@ export function FolderTree(props: Props) {
                     >
                       {folder.name}
                     </span>
+                    {draggingOver && (
+                      <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 py-0.2 rounded font-medium shrink-0 animate-in fade-in duration-100">
+                        Thả vào đây
+                      </span>
+                    )}
                     <button
                       type="button"
                       tabIndex={-1}
@@ -304,35 +333,37 @@ export function FolderTree(props: Props) {
               </div>
             </div>
 
-            {/* Folder Open Contents Area (also accepts drops) */}
+            {/* Folder Open Contents Area */}
             {open && (
               <div
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (isDropBlocked) {
-                    event.dataTransfer.dropEffect = 'none';
-                    return;
-                  }
-                  event.dataTransfer.dropEffect = 'move';
-                  handleFolderHover(folder.id, true);
-                }}
-                onDrop={(event) => {
-                  if (isDropBlocked) return;
-                  handleFolderDrop(event, folder);
-                }}
-                className={`pl-3 space-y-0.5 border-l ml-3.5 my-0.5 transition-all ${
-                  draggingOver
-                    ? 'border-[var(--ui-primary)] bg-[var(--ui-selected)]/50 rounded-r-xl ring-1 ring-[var(--ui-primary)]/40'
-                    : 'border-[var(--ui-border)]'
-                }`}
+                className={`pl-3 space-y-0.5 border-l ml-3.5 my-0.5 transition-all border-[var(--ui-border)]`}
               >
                 {renderBranch(folder.id, new Set([...ancestors, folder.id]))}
                 {notes.map((document) => props.renderDocument(document, folder.id))}
                 {!hasChildren && !notes.length && (
-                  <p className="text-[10px] text-[var(--ui-tertiary)] italic px-2 py-1.5 rounded-lg border border-dashed border-[var(--ui-border)] text-center my-1">
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (isDropBlocked) {
+                        e.dataTransfer.dropEffect = 'none';
+                        return;
+                      }
+                      e.dataTransfer.dropEffect = 'move';
+                      if (props.dragOverFolderId !== folder.id) props.onDragOverFolder(folder.id);
+                    }}
+                    onDrop={(e) => {
+                      if (isDropBlocked) return;
+                      handleFolderDrop(e, folder);
+                    }}
+                    className={`text-[10px] italic px-2 py-2 rounded-lg border border-dashed transition-colors text-center my-1 ${
+                      props.dragOverFolderId === folder.id
+                        ? 'border-[var(--ui-primary)] bg-[var(--ui-selected)] text-[var(--ui-primary)] font-medium'
+                        : 'border-[var(--ui-border)] text-[var(--ui-tertiary)]'
+                    }`}
+                  >
                     Thư mục trống • Kéo thả tệp hoặc thư mục vào đây
-                  </p>
+                  </div>
                 )}
               </div>
             )}

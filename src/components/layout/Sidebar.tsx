@@ -35,6 +35,13 @@ import { ConfirmMoveDialog } from '../modals/ConfirmMoveDialog';
 import { MoveFolderModal } from '../modals/MoveFolderModal';
 import { FolderTree } from './FolderTree';
 import { getFolderAncestors, getFolderPath } from '../../utils/folders';
+import {
+  canDropFolderInto,
+  clearActiveDrag,
+  getDragPayload,
+  setDragDocument,
+  useActiveDrag,
+} from '../../utils/dnd';
 import { documentUrl } from '../../app/router/routes';
 
 interface SidebarProps {
@@ -190,10 +197,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [showCreateTooltip, setShowCreateTooltip] = useState(false);
 
   // Drag and Drop state
+  const {
+    isDragging: isGlobalDragging,
+    isDraggingFolder: isGlobalFolder,
+    isDraggingDocument: isGlobalDoc,
+    draggedId: globalDraggedId,
+  } = useActiveDrag();
   const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
   const [draggingFolderId, setDraggingFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [dragOverRootSpace, setDragOverRootSpace] = useState<SpaceType | null>(null);
+  const isDraggingAny = isGlobalDragging || !!draggingDocId || !!draggingFolderId;
 
   // Folder Move Modal state
   const [moveFolderModal, setMoveFolderModal] = useState<{
@@ -316,16 +330,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const fld = folders.find((f) => f.id === folderId);
     if (!fld) return;
 
-    if (targetParentId === folderId) {
-      onToast?.('Không thể di chuyển thư mục vào chính nó', 'error');
+    if (!canDropFolderInto(folderId, targetParentId, folders)) {
+      onToast?.('Không thể di chuyển thư mục vào chính nó hoặc thư mục con của nó', 'error');
       return;
-    }
-    if (targetParentId) {
-      const ancestors = getFolderAncestors(targetParentId, folders);
-      if (ancestors.some((a) => a.id === folderId)) {
-        onToast?.('Không thể di chuyển thư mục vào thư mục con của nó', 'error');
-        return;
-      }
     }
 
     if (fld.parentId === targetParentId && fld.space === targetSpace) {
@@ -353,29 +360,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     e.preventDefault();
     e.stopPropagation();
     setDragOverRootSpace(null);
+    clearActiveDrag();
 
-    const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
-    const rawPlain = e.dataTransfer.getData('text/plain') || '';
-
-    let fldId: string | null = null;
-    let docId: string | null = null;
-
-    if (rawFolder) {
-      fldId = rawFolder;
-    } else if (rawPlain.startsWith('folder:')) {
-      fldId = rawPlain.replace('folder:', '');
-    } else if (rawPlain.startsWith('doc:')) {
-      docId = rawPlain.replace('doc:', '');
-    } else if (rawPlain) {
-      if (folders.some(f => f.id === rawPlain)) {
-        fldId = rawPlain;
-      } else {
-        docId = rawPlain;
-      }
-    }
+    const payload = getDragPayload(e, folders, documents);
+    let fldId = payload?.type === 'folder' ? payload.id : null;
+    let docId = payload?.type === 'document' ? payload.id : null;
 
     if (!fldId && draggingFolderId) fldId = draggingFolderId;
     if (!docId && draggingDocId) docId = draggingDocId;
+    if (!fldId && !docId && globalDraggedId) {
+      if (isGlobalFolder) fldId = globalDraggedId;
+      else if (isGlobalDoc) docId = globalDraggedId;
+    }
 
     setDraggingDocId(null);
     setDraggingFolderId(null);
@@ -511,13 +507,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // Helper to render individual document row with 2 hover action icons (+ and ···) and drag-and-drop
-  const renderDocumentItem = (doc: Document, defaultFolderId?: string | null) => {
+  const renderDocumentItem = (doc: Document, _defaultFolderId?: string | null) => {
     const isActive = isDocActive(doc.id);
     const isRenaming = renamingDocId === doc.id;
-    const isDragging = draggingDocId === doc.id;
-    const isAnyDragging = !!(draggingDocId || draggingFolderId);
-    const targetFolderId = defaultFolderId ?? doc.folderId;
-    const isTargetFolderOver = !!(targetFolderId && dragOverFolderId === targetFolderId);
+    const isDragging = draggingDocId === doc.id || (isGlobalDragging && globalDraggedId === doc.id);
 
     return (
       <div
@@ -525,62 +518,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         draggable={!isRenaming}
         onDragStart={(e) => {
           e.stopPropagation();
-          e.dataTransfer.setData('text/plain', `doc:${doc.id}`);
-          e.dataTransfer.setData('application/x-doc-id', doc.id);
-          e.dataTransfer.setData('text/uri-list', `#doc-${doc.id}`);
-          e.dataTransfer.effectAllowed = 'move';
+          setDragDocument(e, doc.id);
           setDraggingDocId(doc.id);
         }}
         onDragEnd={() => {
+          clearActiveDrag();
           setDraggingDocId(null);
           setDragOverFolderId(null);
           setDragOverRootSpace(null);
-        }}
-        onDragOver={(e) => {
-          if (targetFolderId && (draggingDocId !== doc.id || draggingFolderId)) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'move';
-            if (dragOverFolderId !== targetFolderId) {
-              setDragOverFolderId(targetFolderId);
-            }
-          }
-        }}
-        onDrop={(e) => {
-          if (targetFolderId) {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverFolderId(null);
-            const targetFolder = folders.find((f) => f.id === targetFolderId);
-            const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
-            const rawPlain = e.dataTransfer.getData('text/plain') || '';
-            let fldId = rawFolder || (rawPlain.startsWith('folder:') ? rawPlain.replace('folder:', '') : null);
-            let draggedDocId = rawPlain.startsWith('doc:') ? rawPlain.replace('doc:', '') : rawPlain;
-
-            if (!fldId && draggingFolderId) fldId = draggingFolderId;
-            if (!draggedDocId && draggingDocId) draggedDocId = draggingDocId;
-
-            if (fldId && targetFolder) {
-              handleDirectMoveFolder(fldId, targetFolder.id, targetFolder.space);
-            } else if (draggedDocId && draggedDocId !== doc.id && targetFolder) {
-              handleDirectMoveDocument(draggedDocId, targetFolder, targetFolder.space);
-            }
-          }
         }}
         onClick={() => {
           if (!isRenaming) {
             onNavigate({ type: 'document', documentId: doc.id });
           }
         }}
-        className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all ${
+        className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all select-none ${
           isRenaming ? 'cursor-text' : 'cursor-grab active:cursor-grabbing'
         } ${
           isActive
             ? 'bg-[var(--ui-active-note)] text-[var(--ui-active-note-text)] font-semibold shadow-2xs'
             : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text-secondary)]'
-        } ${isDragging ? 'opacity-30 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''} ${
-          isTargetFolderOver ? 'bg-[var(--ui-selected)]/50 ring-1 ring-[var(--ui-primary)]/40' : ''
-        }`}
+        } ${isDragging ? 'opacity-30 scale-95 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''}`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {doc.icon === '💬' || doc.tags?.includes('Đoạn chat') ? (
@@ -1186,7 +1144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Root Drop Zone for Personal Space */}
-          {(draggingDocId || draggingFolderId) && (
+          {isDraggingAny && (
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1196,7 +1154,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               onDragLeave={(e) => {
                 e.stopPropagation();
-                if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
+                }
               }}
               onDrop={(e) => handleDropOnRoot(e, 'personal')}
               className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${
@@ -1274,7 +1234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* Root Drop Zone for Company Space */}
-          {(draggingDocId || draggingFolderId) && (
+          {isDraggingAny && (
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1284,7 +1244,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               onDragLeave={(e) => {
                 e.stopPropagation();
-                if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
+                }
               }}
               onDrop={(e) => handleDropOnRoot(e, 'company')}
               className={`p-2.5 my-1.5 rounded-xl border-2 border-dashed text-xs text-center transition-all cursor-pointer ${

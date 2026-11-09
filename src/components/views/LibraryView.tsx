@@ -32,6 +32,14 @@ import {
 import { Document, Folder, SpaceType } from '../../types';
 import { documentUrl } from '../../app/router/routes';
 import { getFolderPath } from '../../utils/folders';
+import {
+  canDropFolderInto,
+  clearActiveDrag,
+  getDragPayload,
+  setDragDocument,
+  setDragFolder,
+  useActiveDrag,
+} from '../../utils/dnd';
 
 export interface LibraryViewProps {
   title?: string;
@@ -145,6 +153,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
   // Selected row checkboxes for batch operations
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+
+  // Global drag state & dragOver target
+  const { isDraggingFolder, isDraggingDocument, draggedId } = useActiveDrag();
+  const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
 
   // Row context menu state
   const [activeRowDoc, setActiveRowDoc] = useState<Document | null>(null);
@@ -397,6 +409,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const renderDocumentTableRow = (doc: Document, depth: number = 0) => {
     const isChecked = selectedDocIds.has(doc.id);
     const isRenaming = renamingDocId === doc.id;
+    const isBeingDragged = isDraggingDocument && draggedId === doc.id;
 
     return (
       <tr
@@ -404,14 +417,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         draggable={!isRenaming}
         onDragStart={(e) => {
           e.stopPropagation();
-          e.dataTransfer.setData('text/plain', doc.id);
-          e.dataTransfer.setData('application/x-doc-id', doc.id);
-          e.dataTransfer.effectAllowed = 'move';
+          setDragDocument(e, doc.id);
+        }}
+        onDragEnd={() => {
+          clearActiveDrag();
         }}
         onClick={() => {
           if (!isRenaming) onOpenDocument(doc.id);
         }}
-        className="hover:bg-[var(--ui-subtle)] cursor-grab active:cursor-grabbing transition-colors group border-b border-[#F2F2F7]"
+        className={`hover:bg-[var(--ui-subtle)] cursor-grab active:cursor-grabbing transition-colors group border-b border-[#F2F2F7] select-none ${
+          isBeingDragged ? 'opacity-40 bg-[var(--ui-hover)]' : ''
+        }`}
       >
         {/* Checkbox */}
         <td className="py-2.5 px-2 text-center" onClick={(e) => toggleSelectDoc(doc.id, e)}>
@@ -522,49 +538,70 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     const childFolders = folders.filter((f) => f.space === folder.space && f.parentId === folder.id);
     const folderDocs = filteredDocs.filter((d) => d.folderId === folder.id);
 
+    const isDraggingThis = isDraggingFolder && draggedId === folder.id;
+    const isDropBlocked = isDraggingFolder && !!draggedId && !canDropFolderInto(draggedId, folder.id, folders);
+    const isOver = dragOverFolderId === folder.id && !isDropBlocked;
+
     return (
       <React.Fragment key={folder.id}>
         <tr
           draggable={true}
           onDragStart={(e) => {
             e.stopPropagation();
-            e.dataTransfer.setData('text/plain', `folder:${folder.id}`);
-            e.dataTransfer.setData('text/folder-id', folder.id);
-            e.dataTransfer.setData('application/x-folder-id', folder.id);
-            e.dataTransfer.effectAllowed = 'move';
+            setDragFolder(e, folder.id);
+          }}
+          onDragEnd={() => {
+            clearActiveDrag();
+            setDragOverFolderId(null);
           }}
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (isDropBlocked) {
+              e.dataTransfer.dropEffect = 'none';
+              return;
+            }
             e.dataTransfer.dropEffect = 'move';
+            if (dragOverFolderId !== folder.id) {
+              setDragOverFolderId(folder.id);
+            }
+          }}
+          onDragLeave={(e) => {
+            e.stopPropagation();
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              if (dragOverFolderId === folder.id) setDragOverFolderId(null);
+            }
           }}
           onDrop={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const rawFolder = e.dataTransfer.getData('text/folder-id') || e.dataTransfer.getData('application/x-folder-id');
-            const rawPlain = e.dataTransfer.getData('text/plain') || '';
-            const rawDoc = e.dataTransfer.getData('application/x-doc-id') || '';
+            setDragOverFolderId(null);
+            clearActiveDrag();
 
-            let draggedFolderId: string | null = rawFolder || (rawPlain.startsWith('folder:') ? rawPlain.replace('folder:', '') : null);
-            let docId: string | null = rawDoc || (rawPlain.startsWith('doc:') ? rawPlain.replace('doc:', '') : null);
+            if (isDropBlocked) return;
 
-            if (!draggedFolderId && !docId && rawPlain) {
-              if (folders.some(f => f.id === rawPlain)) {
-                draggedFolderId = rawPlain;
-              } else {
-                docId = rawPlain;
+            const payload = getDragPayload(e, folders, filteredDocs);
+            if (!payload) return;
+
+            if (payload.type === 'folder') {
+              if (canDropFolderInto(payload.id, folder.id, folders)) {
+                onMoveFolder?.(payload.id, folder.id, folder.space);
+                onToast?.(`Đã di chuyển thư mục vào thư mục "${folder.name}"`);
               }
-            }
-
-            if (draggedFolderId && draggedFolderId !== folder.id) {
-              onMoveFolder?.(draggedFolderId, folder.id, folder.space);
-              onToast?.(`Đã di chuyển thư mục vào thư mục "${folder.name}"`);
-            } else if (docId) {
-              onMoveDocument?.(docId, folder.id, folder.space);
+            } else if (payload.type === 'document') {
+              onMoveDocument?.(payload.id, folder.id, folder.space);
               onToast?.(`Đã di chuyển tài liệu vào thư mục "${folder.name}"`);
             }
           }}
-          className="bg-[var(--ui-hover)]/35 hover:bg-[var(--ui-hover)] transition-colors group border-b border-[var(--ui-border)]/50 cursor-grab active:cursor-grabbing"
+          className={`transition-all group border-b border-[var(--ui-border)]/50 select-none ${
+            isDropBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-grab active:cursor-grabbing'
+          } ${
+            isDraggingThis ? 'opacity-30 bg-[var(--ui-hover)]' : ''
+          } ${
+            isOver
+              ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] text-[var(--ui-primary)] font-bold shadow-xs'
+              : 'bg-[var(--ui-hover)]/35 hover:bg-[var(--ui-hover)]'
+          }`}
         >
           <td className="py-2 px-2 text-center">
             {/* Blank check cell for alignment */}
@@ -586,11 +623,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     <ChevronRight className="w-3.5 h-3.5 stroke-[2]" />
                   )}
                 </span>
-                <FolderIcon className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20 stroke-[1.75] shrink-0" />
+                <FolderIcon className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isOver ? 'text-[var(--ui-primary)]' : 'text-amber-500 fill-amber-500/20'}`} />
                 <span className="truncate">{folder.name}</span>
                 <span className="text-[10px] font-normal text-[var(--ui-tertiary)] bg-[var(--ui-border)] px-1.5 py-0.2 rounded-full font-mono shrink-0">
                   {folderDocs.length} tài liệu
                 </span>
+                {isOver && (
+                  <span className="text-[10px] bg-[var(--ui-primary)] text-white px-2 py-0.5 rounded-full font-medium ml-2 animate-in fade-in">
+                    Thả vào đây
+                  </span>
+                )}
               </button>
               <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onCreateDocument && (
@@ -695,7 +737,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       return (
         <>
           {/* Space 1: CỦA TÔI */}
-          <tr className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t border-b border-[var(--ui-border)]">
+          <tr
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              clearActiveDrag();
+              const p = getDragPayload(e, folders, filteredDocs);
+              if (!p) return;
+              if (p.type === 'folder') {
+                onMoveFolder?.(p.id, null, 'personal');
+                onToast?.('Đã đưa thư mục ra thư mục gốc Ghi chép của tôi');
+              } else if (p.type === 'document') {
+                onMoveDocument?.(p.id, null, 'personal');
+                onToast?.('Đã đưa tài liệu ra thư mục gốc Ghi chép của tôi');
+              }
+            }}
+            className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t border-b border-[var(--ui-border)] transition-colors hover:bg-[var(--ui-selected)]"
+          >
             <td className="py-2 px-2 text-center">
               <User className="w-3.5 h-3.5 text-[var(--ui-tertiary)] mx-auto" />
             </td>
@@ -706,7 +767,23 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {personalRoots.map((f) => renderFolderBranch(f, 0))}
           {personalUnfiled.length > 0 && (
             <>
-              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+              <tr
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  clearActiveDrag();
+                  const p = getDragPayload(e, folders, filteredDocs);
+                  if (!p) return;
+                  if (p.type === 'document') {
+                    onMoveDocument?.(p.id, null, 'personal');
+                    onToast?.('Đã đưa tài liệu ra thư mục gốc (chưa phân loại)');
+                  }
+                }}
+                className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40 hover:bg-[var(--ui-selected)] transition-colors"
+              >
                 <td></td>
                 <td colSpan={6} className="py-1.5 px-3">
                   <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
@@ -720,7 +797,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           )}
 
           {/* Space 2: CÔNG TY */}
-          <tr className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t-2 border-b border-[var(--ui-border)]">
+          <tr
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              clearActiveDrag();
+              const p = getDragPayload(e, folders, filteredDocs);
+              if (!p) return;
+              if (p.type === 'folder') {
+                onMoveFolder?.(p.id, null, 'company');
+                onToast?.('Đã đưa thư mục ra thư mục gốc Tài liệu công ty');
+              } else if (p.type === 'document') {
+                onMoveDocument?.(p.id, null, 'company');
+                onToast?.('Đã đưa tài liệu ra thư mục gốc Tài liệu công ty');
+              }
+            }}
+            className="bg-[var(--ui-hover)]/70 text-xs font-bold border-t-2 border-b border-[var(--ui-border)] transition-colors hover:bg-[var(--ui-selected)]"
+          >
             <td className="py-2 px-2 text-center">
               <Building2 className="w-3.5 h-3.5 text-[var(--ui-tertiary)] mx-auto" />
             </td>
@@ -755,7 +851,23 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         <>
           {personalUnfiled.length > 0 && (
             <>
-              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+              <tr
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  clearActiveDrag();
+                  const p = getDragPayload(e, folders, filteredDocs);
+                  if (!p) return;
+                  if (p.type === 'document') {
+                    onMoveDocument?.(p.id, null, 'personal');
+                    onToast?.('Đã đưa tài liệu ra thư mục gốc (chưa phân loại)');
+                  }
+                }}
+                className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40 hover:bg-[var(--ui-selected)] transition-colors"
+              >
                 <td></td>
                 <td colSpan={6} className="py-1.5 px-3">
                   <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
@@ -781,7 +893,23 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           {companyRoots.map((f) => renderFolderBranch(f, 0))}
           {companyUnfiled.length > 0 && (
             <>
-              <tr className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40">
+              <tr
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  clearActiveDrag();
+                  const p = getDragPayload(e, folders, filteredDocs);
+                  if (!p) return;
+                  if (p.type === 'document') {
+                    onMoveDocument?.(p.id, null, 'company');
+                    onToast?.('Đã đưa tài liệu ra thư mục gốc (chưa phân loại)');
+                  }
+                }}
+                className="bg-[var(--ui-hover)]/20 text-xs text-[var(--ui-tertiary)] border-y border-[var(--ui-border)]/40 hover:bg-[var(--ui-selected)] transition-colors"
+              >
                 <td></td>
                 <td colSpan={6} className="py-1.5 px-3">
                   <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--ui-tertiary)]">
@@ -1388,19 +1516,24 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         ) : (
           /* Grid View */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {filteredDocs.map((doc) => (
-              <div
-                key={doc.id}
-                draggable
-                onDragStart={(e) => {
-                  e.stopPropagation();
-                  e.dataTransfer.setData('text/plain', doc.id);
-                  e.dataTransfer.setData('application/x-doc-id', doc.id);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onClick={() => onOpenDocument(doc.id)}
-                className="p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)] hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing flex flex-col justify-between h-40 space-y-2 shadow-2xs"
-              >
+            {filteredDocs.map((doc) => {
+              const isBeingDragged = isDraggingDocument && draggedId === doc.id;
+              return (
+                <div
+                  key={doc.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.stopPropagation();
+                    setDragDocument(e, doc.id);
+                  }}
+                  onDragEnd={() => {
+                    clearActiveDrag();
+                  }}
+                  onClick={() => onOpenDocument(doc.id)}
+                  className={`p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)] hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing flex flex-col justify-between h-40 space-y-2 shadow-2xs select-none ${
+                    isBeingDragged ? 'opacity-40 scale-95 border-dashed border-[var(--ui-primary)]' : ''
+                  }`}
+                >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-xl">
