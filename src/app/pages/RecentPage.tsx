@@ -4,7 +4,7 @@ import { DocumentListPage } from './DocumentListPage';
 
 export function RecentPage({ documents, actions }: DocumentPageProps) {
   const recent = documents.filter(doc => !doc.isTrash)
-    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)).slice(0, 3);
   return <DocumentListPage title="Gần đây" description="Tài liệu được cập nhật gần nhất."
     emptyMessage="Chưa có tài liệu gần đây." documents={recent} onOpenDocument={actions.onOpenDocument} />;
 }

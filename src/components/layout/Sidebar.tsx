@@ -464,7 +464,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const trashDocs = documents.filter((d) => d.isTrash);
 
   const recentDocs = activeDocs
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 3);
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
 
 
@@ -1008,9 +1008,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {recentDocs.length}
                   </span>
                 )}
-                <SpaceCreateMenu title="Tạo ghi chú mới"
-                  onCreateDocument={() => { setRecentExpanded(true); createUnclassifiedDocument('personal'); }}
-                  onCreateFolder={() => onCreateFolder('personal', null)} />
               </div>
             </div>
 
