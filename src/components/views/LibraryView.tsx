@@ -1,3 +1,5 @@
+import { RenameDialog } from '../modals/RenameDialog';
+import { DocumentLinkShare } from '../modals/DocumentLinkShare';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   Search,
@@ -28,10 +30,12 @@ import {
   Folder as FolderIcon,
   ChevronRight,
   Clock,
+  RotateCcw,
 } from 'lucide-react';
 import { Document, Folder, SpaceType } from '../../types';
 import { documentUrl } from '../../app/router/routes';
 import { getFolderPath } from '../../utils/folders';
+import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import {
   canDropFolderInto,
   clearActiveDrag,
@@ -42,6 +46,9 @@ import {
 } from '../../utils/dnd';
 
 export interface LibraryViewProps {
+  trashMode?: boolean;
+  onRestore?: (docId: string) => void;
+  headerAction?: React.ReactNode;
   title?: string;
   description?: string;
   showTabs?: boolean;
@@ -71,6 +78,9 @@ export interface LibraryViewProps {
 }
 
 export const LibraryView: React.FC<LibraryViewProps> = ({
+  trashMode = false,
+  onRestore,
+  headerAction,
   title = 'Thư viện',
   description = 'Tất cả ghi chú và tài liệu bạn có quyền truy cập.',
   showTabs = true,
@@ -115,7 +125,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       onNavigatePage(pageRoute);
     }
   };
-  const [viewMode, setViewMode] = useState<'tree' | 'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<'tree' | 'list' | 'grid'>('tree');
+  const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Folder tree expansion state (all folders expanded by default)
@@ -162,9 +173,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const [activeRowDoc, setActiveRowDoc] = useState<Document | null>(null);
   const [rowMenuPos, setRowMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  // Inline rename
+  // Rename dialog state
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
-  const [renameTitle, setRenameTitle] = useState('');
 
   const newDocMenuRef = useRef<HTMLDivElement>(null);
   const typeMenuRef = useRef<HTMLDivElement>(null);
@@ -199,7 +209,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return () => window.document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const activeDocs = useMemo(() => documents.filter((d) => !d.isTrash), [documents]);
+  const activeDocs = useMemo(() => documents.filter((d) => trashMode ? d.isTrash : !d.isTrash), [documents, trashMode]);
 
   // List of authors
   const authorsList = useMemo(() => {
@@ -216,7 +226,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       .filter((doc) => {
         // 1. Tab filtering
         if (activeTab === 'mine') {
-          if (doc.space !== 'personal' && doc.author?.name !== 'Việt Cường') return false;
+          if (trashMode ? doc.space !== 'personal' : doc.space !== 'personal' && doc.author?.name !== 'Việt Cường') return false;
         } else if (activeTab === 'company') {
           if (doc.space !== 'company') return false;
         } else if (activeTab === 'shared') {
@@ -259,17 +269,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       })
       .sort((a, b) => {
         if (sortBy === 'updated_desc') {
-          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+          return Date.parse(trashMode ? b.deletedAt || b.updatedAt : b.updatedAt) - Date.parse(trashMode ? a.deletedAt || a.updatedAt : a.updatedAt);
         }
         if (sortBy === 'updated_asc') {
-          return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          return Date.parse(trashMode ? a.deletedAt || a.updatedAt : a.updatedAt) - Date.parse(trashMode ? b.deletedAt || b.updatedAt : b.updatedAt);
         }
         if (sortBy === 'title_asc') {
           return a.title.localeCompare(b.title, 'vi');
         }
         return 0;
       });
-  }, [activeDocs, activeTab, selectedType, selectedFolderId, selectedAuthor, searchQuery, sortBy]);
+  }, [activeDocs, activeTab, selectedType, selectedFolderId, selectedAuthor, searchQuery, sortBy, trashMode]);
 
   // Relative time formatter matching image_59ef5bd1.png: "14 phút trước", "1 giờ trước", "Hôm qua", "2 ngày trước"
   const getRelativeTime = (dateStr: string) => {
@@ -388,24 +398,32 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     setActiveRowDoc(doc);
   };
 
-  const handleSaveRename = (docId: string) => {
-    if (renameTitle.trim()) {
-      onRenameDocument?.(docId, renameTitle.trim());
-    }
-    setRenamingDocId(null);
-  };
+
 
   // Helper to check if folder has matching items when searching
   const folderHasMatch = (folder: Folder): boolean => {
-    if (!searchQuery.trim()) return true;
+    if (!trashMode && !searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
-    if (folder.name.toLowerCase().includes(q)) return true;
+    if (!trashMode && folder.name.toLowerCase().includes(q)) return true;
     if (filteredDocs.some((d) => d.folderId === folder.id)) return true;
     const children = folders.filter((f) => f.space === folder.space && f.parentId === folder.id);
     return children.some((c) => folderHasMatch(c));
   };
 
   // Reusable document table row for both List view and Tree view
+  const renderTrashActions = (doc: Document) => (
+    <div className="flex items-center justify-end gap-1" onClick={event => event.stopPropagation()}>
+      <button type="button" title="Khôi phục tài liệu" aria-label={`Khôi phục ${doc.title || 'tài liệu'}`}
+        onClick={() => onRestore?.(doc.id)} className="p-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-[var(--ui-text)]">
+        <RotateCcw className="w-3.5 h-3.5" />
+      </button>
+      <button type="button" title="Xóa vĩnh viễn" aria-label={`Xóa vĩnh viễn ${doc.title || 'tài liệu'}`}
+        onClick={() => onSoftDeleteDocument(doc.id)} className="p-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-[var(--ui-text)]">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+
   const renderDocumentTableRow = (doc: Document, depth: number = 0) => {
     const isChecked = selectedDocIds.has(doc.id);
     const isRenaming = renamingDocId === doc.id;
@@ -414,7 +432,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return (
       <tr
         key={doc.id}
-        draggable={!isRenaming}
+        draggable={!trashMode && !isRenaming}
         onDragStart={(e) => {
           e.stopPropagation();
           setDragDocument(e, doc.id);
@@ -423,7 +441,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           clearActiveDrag();
         }}
         onClick={() => {
-          if (!isRenaming) onOpenDocument(doc.id);
+          if (!trashMode && !isRenaming) onOpenDocument(doc.id);
         }}
         className={`hover:bg-[var(--ui-subtle)] cursor-grab active:cursor-grabbing transition-colors group border-b border-[#F2F2F7] select-none ${
           isBeingDragged ? 'opacity-40 bg-[var(--ui-hover)]' : ''
@@ -451,7 +469,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               </span>
             )}
             {/* Favorite Star Button */}
-            <button
+            {!trashMode && <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -465,39 +483,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   doc.isFavorite ? 'fill-[#1D1D1F] text-[var(--ui-text)]' : 'text-[#AEAEB2]'
                 }`}
               />
-            </button>
+            </button>}
 
             {/* Document Icon */}
             <span className="text-[var(--ui-text)] shrink-0">
-              {doc.type === 'meeting' ? (
-                <Calendar className="w-4 h-4 stroke-[1.75]" />
-              ) : doc.tags.includes('Mẫu') ? (
-                <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-              ) : (
-                <FileText className="w-4 h-4 stroke-[1.75]" />
-              )}
+              <FileText className="w-4 h-4 stroke-[1.75]" />
             </span>
 
-            {/* Title / Inline Rename */}
-            {isRenaming ? (
-              <input
-                type="text"
-                autoFocus
-                value={renameTitle}
-                onChange={(e) => setRenameTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveRename(doc.id);
-                  if (e.key === 'Escape') setRenamingDocId(null);
-                }}
-                onBlur={() => handleSaveRename(doc.id)}
-                onClick={(e) => e.stopPropagation()}
-                className="text-xs font-semibold bg-[var(--ui-surface)] border border-[var(--ui-primary)] rounded px-1.5 py-0.5 focus:outline-none"
-              />
-            ) : (
-              <span className="font-semibold text-[var(--ui-text)] group-hover:underline truncate">
+            {/* Document title */}
+            <span className="font-semibold text-[var(--ui-text)] group-hover:underline truncate">
                 {doc.title || 'Không có tiêu đề'}
               </span>
-            )}
           </div>
         </td>
 
@@ -512,19 +508,19 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
         {/* Cập nhật */}
         <td className="py-2.5 px-3 text-[var(--ui-tertiary)] whitespace-nowrap">
-          {getRelativeTime(doc.updatedAt)}
+          {getRelativeTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}
         </td>
 
         {/* More actions: ··· */}
         <td className="py-2.5 px-2 text-center">
-          <button
+          {trashMode ? renderTrashActions(doc) : <button
             type="button"
             onClick={(e) => handleOpenRowMenu(doc, e)}
             className="p-1 rounded-md text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
             title="Tùy chọn khác"
           >
             <MoreHorizontal className="w-3.5 h-3.5 stroke-[1.75]" />
-          </button>
+          </button>}
         </td>
       </tr>
     );
@@ -545,7 +541,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return (
       <React.Fragment key={folder.id}>
         <tr
-          draggable={true}
+          draggable={!trashMode}
           onDragStart={(e) => {
             e.stopPropagation();
             setDragFolder(e, folder.id);
@@ -731,8 +727,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     if (activeTab === 'all') {
       const personalRoots = folders.filter((f) => f.space === 'personal' && !f.parentId);
       const companyRoots = folders.filter((f) => f.space === 'company' && !f.parentId);
-      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && !d.folderId);
-      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && !d.folderId);
+      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && (!d.folderId || !folders.some(f => f.id === d.folderId)));
+      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && (!d.folderId || !folders.some(f => f.id === d.folderId)));
 
       return (
         <>
@@ -846,7 +842,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     // 2. Tab Mine: Only personal space
     if (activeTab === 'mine') {
       const personalRoots = folders.filter((f) => f.space === 'personal' && !f.parentId);
-      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && !d.folderId);
+      const personalUnfiled = filteredDocs.filter((d) => d.space === 'personal' && (!d.folderId || !folders.some(f => f.id === d.folderId)));
       return (
         <>
           {personalUnfiled.length > 0 && (
@@ -887,7 +883,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     // 3. Tab Company: Only company space
     if (activeTab === 'company') {
       const companyRoots = folders.filter((f) => f.space === 'company' && !f.parentId);
-      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && !d.folderId);
+      const companyUnfiled = filteredDocs.filter((d) => d.space === 'company' && (!d.folderId || !folders.some(f => f.id === d.folderId)));
       return (
         <>
           {companyRoots.map((f) => renderFolderBranch(f, 0))}
@@ -938,7 +934,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden select-none">
+    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden select-none"
+      onDragStartCapture={event => { if (trashMode) { event.preventDefault(); event.stopPropagation(); } }}
+      onDragOverCapture={event => { if (trashMode) event.stopPropagation(); }}
+      onDropCapture={event => { if (trashMode) { event.preventDefault(); event.stopPropagation(); } }}>
       {/* Fixed Common Header Section matching image_b4c254f2.png & image_36885ad9.png */}
       <div className="shrink-0 bg-[var(--ui-surface)] border-b border-[var(--ui-border)] z-20">
         <div className="max-w-6xl w-full mx-auto px-6 md:px-10 pt-6 pb-3.5 space-y-4">
@@ -952,7 +951,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             </div>
 
           {/* Split Button: [+ Ghi chú mới | ▾] */}
-          <div className="relative shrink-0" ref={newDocMenuRef}>
+          {trashMode ? headerAction : <div className="relative shrink-0" ref={newDocMenuRef}>
             <div className="inline-flex rounded-xl shadow-xs overflow-hidden bg-[var(--ui-primary)]">
               <button
                 type="button"
@@ -1022,7 +1021,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Horizontal Navigation Tabs matching image_59ef5bd1.png & image_36885ad9.png */}
@@ -1120,7 +1119,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm trong thư viện..."
+                placeholder={trashMode ? 'Tìm trong thùng rác...' : 'Tìm trong thư viện...'}
                 className="pl-8 pr-3 py-1.5 w-52 bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-xl text-xs text-[var(--ui-text)] placeholder:text-[var(--ui-tertiary)] focus:outline-none focus:border-[var(--ui-primary)] transition-colors"
               />
             </div>
@@ -1310,7 +1309,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 <ArrowUpDown className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-tertiary)]" />
                 <span>
                   {sortBy === 'updated_desc'
-                    ? 'Mới cập nhật'
+                    ? (trashMode ? 'Mới xóa' : 'Mới cập nhật')
                     : sortBy === 'updated_asc'
                     ? 'Cũ nhất trước'
                     : 'Tên (A-Z)'}
@@ -1321,7 +1320,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               {showSortMenu && (
                 <div className="absolute right-0 top-9 z-40 w-44 bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-xl py-1 text-xs text-[var(--ui-text)] animate-in zoom-in-95 duration-100">
                   {[
-                    { id: 'updated_desc', label: 'Mới cập nhật' },
+                    { id: 'updated_desc', label: trashMode ? 'Mới xóa' : 'Mới cập nhật' },
                     { id: 'updated_asc', label: 'Cũ nhất trước' },
                     { id: 'title_asc', label: 'Tên (A → Z)' },
                   ].map((s) => (
@@ -1367,7 +1366,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-2xs font-semibold'
                     : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
                 }`}
-                title="Dạng danh sách (Mặc định)"
+                title="Dạng danh sách"
                 aria-label="Dạng danh sách"
               >
                 <ListIcon className="w-3.5 h-3.5 stroke-[2]" />
@@ -1433,12 +1432,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  selectedDocIds.forEach((id) => onSoftDeleteDocument(id));
+                  selectedDocIds.forEach((id) => trashMode ? onRestore?.(id) : onSoftDeleteDocument(id));
                   setSelectedDocIds(new Set());
                 }}
                 className="px-2.5 py-1 rounded-lg bg-[var(--ui-surface)]/20 hover:bg-[var(--ui-surface)]/30 text-white font-medium transition-colors"
               >
-                Chuyển vào thùng rác
+                {trashMode ? 'Khôi phục đã chọn' : 'Chuyển vào thùng rác'}
               </button>
               <button
                 type="button"
@@ -1454,8 +1453,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         {/* Main Content Area */}
         {filteredDocs.length === 0 ? (
           <div className="p-12 text-center border border-[var(--ui-border)] rounded-2xl bg-[var(--ui-surface)] space-y-2">
-            <p className="text-xs font-semibold text-[var(--ui-text)]">Không tìm thấy tài liệu phù hợp</p>
-            <p className="text-xs text-[var(--ui-tertiary)]">Hãy thử chuyển sang tab khác hoặc xóa bộ lọc.</p>
+            <p className="text-xs font-semibold text-[var(--ui-text)]">{trashMode && !activeDocs.length ? 'Thùng rác đang trống' : 'Không tìm thấy tài liệu phù hợp'}</p>
+            <p className="text-xs text-[var(--ui-tertiary)]">{trashMode && !activeDocs.length ? 'Các tài liệu đã xóa sẽ xuất hiện ở đây.' : 'Hãy thử chuyển sang tab khác hoặc xóa bộ lọc.'}</p>
           </div>
         ) : viewMode === 'tree' ? (
           /* Tree View - Dạng cây thư mục (Mặc định) */
@@ -1476,7 +1475,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Loại</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-48">Vị trí</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Người tạo</th>
-                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Cập nhật</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
                   <th className="py-2.5 px-2 w-10 text-center">···</th>
                 </tr>
               </thead>
@@ -1504,7 +1503,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Loại</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-48">Vị trí</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Người tạo</th>
-                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Cập nhật</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
                   <th className="py-2.5 px-2 w-10 text-center">···</th>
                 </tr>
               </thead>
@@ -1521,7 +1520,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               return (
                 <div
                   key={doc.id}
-                  draggable
+                  draggable={!trashMode}
                   onDragStart={(e) => {
                     e.stopPropagation();
                     setDragDocument(e, doc.id);
@@ -1529,17 +1528,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   onDragEnd={() => {
                     clearActiveDrag();
                   }}
-                  onClick={() => onOpenDocument(doc.id)}
+                  onClick={() => { if (!trashMode) onOpenDocument(doc.id); }}
                   className={`p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)] hover:-translate-y-0.5 transition-all cursor-grab active:cursor-grabbing flex flex-col justify-between h-40 space-y-2 shadow-2xs select-none ${
                     isBeingDragged ? 'opacity-40 scale-95 border-dashed border-[var(--ui-primary)]' : ''
                   }`}
                 >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xl">
-                      {doc.type === 'meeting' ? '📅' : doc.tags.includes('Mẫu') ? '⊞' : '📄'}
+                    <span className="text-[var(--ui-text)]">
+                      <FileText className="w-5 h-5 stroke-[1.75]" />
                     </span>
-                    {getTypeBadge(doc)}
+                    {trashMode ? renderTrashActions(doc) : getTypeBadge(doc)}
                   </div>
                   <h3 className="text-xs font-bold text-[var(--ui-text)] mt-2 line-clamp-1 group-hover:underline">
                     {doc.title || 'Không có tiêu đề'}
@@ -1550,7 +1549,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </div>
                 <div className="pt-2 border-t border-[#F2F2F7] flex items-center justify-between text-[11px] text-[var(--ui-tertiary)]">
                   <span>{getAuthorDisplay(doc)}</span>
-                  <span>{getRelativeTime(doc.updatedAt)}</span>
+                  <span>{getRelativeTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}</span>
                 </div>
               </div>
               );
@@ -1567,98 +1566,32 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     </div>
 
       {/* Row More Actions Popover Menu */}
-      {activeRowDoc && (
-        <div
-          ref={rowMenuRef}
-          className="fixed z-50 w-56 bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-2xl py-1 text-xs text-[var(--ui-text)] animate-in fade-in zoom-in-95 duration-100"
-          style={{ top: `${rowMenuPos.top}px`, left: `${rowMenuPos.left}px` }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 1. Thêm vào mục Yêu thích */}
-          <button
-            type="button"
-            onClick={() => {
-              onToggleFavorite(activeRowDoc.id);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Star
-              className={`w-3.5 h-3.5 stroke-[1.75] ${
-                activeRowDoc.isFavorite ? 'fill-[#1D1D1F] text-[var(--ui-text)]' : 'text-[var(--ui-text)]'
-              }`}
-            />
-            <span>{activeRowDoc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào Yêu thích'}</span>
-          </button>
-
-          {/* 2. Đổi tên */}
-          <button
-            type="button"
-            onClick={() => {
-              setRenamingDocId(activeRowDoc.id);
-              setRenameTitle(activeRowDoc.title);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Edit2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Đổi tên</span>
-          </button>
-
-          {/* 3. Di chuyển đến */}
-          <button
-            type="button"
-            onClick={() => {
-              onMoveDocumentRequest?.(activeRowDoc);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <ArrowRight className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Di chuyển đến</span>
-          </button>
-
-          {/* 4. Xóa vào thùng rác */}
-          <button
-            type="button"
-            onClick={() => {
-              onSoftDeleteDocument(activeRowDoc.id);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer text-[var(--ui-text)]"
-          >
-            <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
-            <span>Chuyển vào Thùng rác</span>
-          </button>
-
-          {/* 5. Sao chép liên kết */}
-          <button
-            type="button"
-            onClick={() => {
-              navigator.clipboard?.writeText(documentUrl(window.location.origin, activeRowDoc.id));
-              onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Sao chép liên kết</span>
-          </button>
-
-          {/* 6. Sao chép / Nhân bản */}
-          <button
-            type="button"
-            onClick={() => {
-              onDuplicateDocument?.(activeRowDoc.id);
-              setActiveRowDoc(null);
-            }}
-            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-          >
-            <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-            <span>Sao chép</span>
-          </button>
-        </div>
-      )}
+      {renamingDocId && <RenameDialog key={renamingDocId} kind="document"
+        initialName={documents.find(doc => doc.id === renamingDocId)?.title || ''}
+        onSave={name => onRenameDocument?.(renamingDocId, name)} onClose={() => setRenamingDocId(null)} />}
+      {shareDocument && <DocumentLinkShare document={shareDocument} onClose={() => setShareDocument(null)} />}
+      <DocumentActionMenu
+        ref={rowMenuRef}
+        isOpen={!!activeRowDoc}
+        isFavorite={activeRowDoc?.isFavorite}
+        position={rowMenuPos}
+        onShare={() => { if (activeRowDoc) setShareDocument(activeRowDoc); }}
+        onClose={() => setActiveRowDoc(null)}
+        onToggleFavorite={() => {
+          if (activeRowDoc) onToggleFavorite(activeRowDoc.id);
+        }}
+        onRename={() => {
+          if (activeRowDoc) {
+            setRenamingDocId(activeRowDoc.id);
+          }
+        }}
+        onMove={() => {
+          if (activeRowDoc) onMoveDocumentRequest?.(activeRowDoc);
+        }}
+        onDelete={() => {
+          if (activeRowDoc) onSoftDeleteDocument(activeRowDoc.id);
+        }}
+      />
     </div>
   );
 };

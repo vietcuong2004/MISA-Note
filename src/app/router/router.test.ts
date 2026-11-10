@@ -7,7 +7,10 @@ import { documentUrl, pathForView, viewForLocation } from './routes';
 const pages: [ViewState, string][] = [
   [{ type: 'private' }, '/private'], [{ type: 'company' }, '/company'],
   [{ type: 'templates' }, '/templates'], [{ type: 'library' }, '/library'],
-  [{ type: 'favorite' }, '/favorites'], [{ type: 'recent' }, '/unclassified'],
+  [{ type: 'favorite' }, '/favorites'], [{ type: 'recent' }, '/recent'],
+  [{ type: 'unclassified' }, '/unclassified'],
+  [{ type: 'unclassified', space: 'personal' }, '/private/unclassified'],
+  [{ type: 'unclassified', space: 'company' }, '/company/unclassified'],
   [{ type: 'trash' }, '/trash'], [{ type: 'meeting_notes' }, '/meetings'],
   [{ type: 'shared' }, '/shared'],
   [{ type: 'document', documentId: 'doc_01' }, '/documents/doc_01'],
@@ -74,7 +77,7 @@ test('click navigation, Back, Forward and duplicate clicks keep URL and page syn
 
 test('home, old shared links and aliases use replaceState instead of extra history', () => {
   for (const [old, path] of [['/', '/private'], ['/Notes/', '/private'], ['/templates/', '/templates'],
-    ['/#doc=doc_old', '/documents/doc_old'], ['/recent', '/unclassified']]) {
+    ['/#doc=doc_old', '/documents/doc_old'], ['/recent/', '/recent']]) {
     const tab = new TestBrowser(old); const router = tab.router(); router.canonicalize();
     assert.equal(router.getSnapshot(), path); assert.equal(tab.entries.length, 1);
   }

@@ -267,7 +267,7 @@ export const Overview: React.FC<OverviewProps> = ({
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xl">{doc.icon || '📝'}</span>
+                        <FileText className="w-5 h-5 stroke-[1.75] text-[var(--ui-text)]" />
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[var(--ui-hover)] text-[var(--ui-muted)] border border-[var(--ui-border)]">
                             {doc.space === 'personal' ? 'Cá nhân' : 'Công ty'}

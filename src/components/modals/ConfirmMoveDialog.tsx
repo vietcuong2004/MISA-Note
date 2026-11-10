@@ -1,5 +1,5 @@
 import React from 'react';
-import { Folder, ArrowRight, X, AlertCircle } from 'lucide-react';
+import { Folder, ArrowRight, X, AlertCircle, FileText } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType } from '../../types';
 
 interface ConfirmMoveDialogProps {
@@ -58,7 +58,7 @@ export const ConfirmMoveDialog: React.FC<ConfirmMoveDialogProps> = ({
 
           {/* Document Preview Card: file chỉ để tên file */}
           <div className="p-3.5 rounded-2xl bg-[var(--ui-subtle)] border border-[var(--ui-border)] flex items-center gap-3">
-            <span className="text-xl shrink-0">{doc.icon || '📄'}</span>
+            <FileText className="w-5 h-5 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold text-[var(--ui-text)] truncate">{doc.title}</div>
             </div>

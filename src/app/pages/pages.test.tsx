@@ -30,6 +30,18 @@ const workspace: Omit<AppPagesProps, 'view'> = {
 };
 const render = (path: string) => renderToStaticMarkup(<AppPages {...workspace} view={viewForLocation(path)} />);
 
+test('unclassified folders filter root notes by space and recent includes filed notes', () => {
+  const personal = render('/private/unclassified');
+  const company = render('/company/unclassified');
+  assert(personal.includes('PERSONAL_ROOT_NOTE'));
+  assert(!personal.includes('PERSONAL_FOLDER_NOTE') && !personal.includes('COMPANY_ROOT_NOTE'));
+  assert(company.includes('COMPANY_ROOT_NOTE') && company.includes('COMPANY_MEETING_NOTE'));
+  assert(!company.includes('PERSONAL_ROOT_NOTE') && !company.includes('TRASHED_NOTE'));
+  const recent = render('/recent');
+  assert(recent.includes('Gần đây') && recent.includes('PERSONAL_FOLDER_NOTE') && recent.includes('COMPANY_ROOT_NOTE'));
+  assert(!recent.includes('TRASHED_NOTE'));
+});
+
 test('private and company URLs render only their own notes, excluding trash', () => {
   const personal = render('/private'); const company = render('/company');
   assert(personal.includes('PERSONAL_FOLDER_NOTE') && personal.includes('PERSONAL_ROOT_NOTE'));

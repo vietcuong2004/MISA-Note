@@ -8,6 +8,7 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { FavoritesPage } from './pages/FavoritesPage';
 import { UnclassifiedPage } from './pages/UnclassifiedPage';
+import { RecentPage } from './pages/RecentPage';
 import { MeetingsPage } from './pages/MeetingsPage';
 import { SharedPage } from './pages/SharedPage';
 import { FolderPage } from './pages/FolderPage';
@@ -30,12 +31,13 @@ export function AppPages({ view, onNavigate, onUseTemplate, editor, trash, ...wo
     case 'templates': return <TemplatesPage onUseTemplate={onUseTemplate} />;
     case 'library': return <LibraryPage {...workspace} />;
     case 'favorite': return <FavoritesPage {...workspace} />;
-    case 'recent': return <UnclassifiedPage {...workspace} />;
+    case 'recent': return <RecentPage {...workspace} />;
+    case 'unclassified': return <UnclassifiedPage {...workspace} space={view.space} />;
     case 'meeting_notes': return <MeetingsPage {...workspace} />;
     case 'shared': return <SharedPage {...workspace} />;
     case 'folder': return <FolderPage key={view.folderId} {...workspace} folderId={view.folderId} onNavigate={onNavigate} />;
     case 'document': return <DocumentPage {...workspace} documentId={view.documentId} editor={editor} onGoHome={() => onNavigate({ type: 'private' })} />;
-    case 'trash': return <TrashPage {...trash} documents={workspace.documents} />;
+    case 'trash': return <TrashPage {...trash} folders={workspace.folders} documents={workspace.documents} />;
     case 'not_found': return <NotFoundPage onGoHome={() => onNavigate({ type: 'private' })} />;
   }
 }

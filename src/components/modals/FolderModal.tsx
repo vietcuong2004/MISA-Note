@@ -1,3 +1,4 @@
+import { RenameDialog } from './RenameDialog';
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Folder, SpaceType } from '../../types';
@@ -52,18 +53,23 @@ export const FolderModal: React.FC<FolderModalProps> = ({
 
   if (!isOpen) return null;
 
+  if (folderToEdit) return <RenameDialog key={folderToEdit.id} kind="folder" initialName={folderToEdit.name}
+    onClose={onClose} onSave={name => {
+      onSaveFolder({ ...folderToEdit, name, updatedAt: new Date().toISOString() });
+      onToast('Đã đổi tên thư mục');
+    }} />;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
     const folder: Folder = {
-      ...folderToEdit,
-      id: folderToEdit?.id || `fld_${crypto.randomUUID()}`,
-      parentId: folderToEdit?.parentId || parentFolder?.id || null,
+      id: `fld_${crypto.randomUUID()}`,
+      parentId: parentFolder?.id || null,
       name: name.trim(),
       space,
       icon,
-      createdAt: folderToEdit?.createdAt || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 

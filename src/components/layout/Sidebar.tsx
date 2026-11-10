@@ -1,3 +1,5 @@
+import { RenameDialog } from '../modals/RenameDialog';
+import { DocumentLinkShare } from '../modals/DocumentLinkShare';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   SquarePen,
@@ -15,16 +17,10 @@ import {
   Users,
   FileText,
   Upload,
-  MessageSquare,
   ChevronsLeft,
   PanelLeftOpen,
   Edit2,
   BookOpen,
-  Copy,
-  Link2,
-  Repeat,
-  ExternalLink,
-  PanelRight,
   ArrowRight,
   X,
   LayoutGrid,
@@ -33,7 +29,9 @@ import { Document, Folder as FolderType, SpaceType, UserRole, ViewState } from '
 import { CURRENT_USER, TEMPLATES } from '../../data/mockData';
 import { ConfirmMoveDialog } from '../modals/ConfirmMoveDialog';
 import { MoveFolderModal } from '../modals/MoveFolderModal';
+import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import { FolderTree } from './FolderTree';
+import { SpaceCreateMenu } from './SpaceCreateMenu';
 import { getFolderAncestors, getFolderPath } from '../../utils/folders';
 import {
   canDropFolderInto,
@@ -42,7 +40,6 @@ import {
   setDragDocument,
   useActiveDrag,
 } from '../../utils/dnd';
-import { documentUrl } from '../../app/router/routes';
 
 interface SidebarProps {
   documents: Document[];
@@ -186,11 +183,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigatedSpace = viewState.type === 'document'
     ? documents.find(doc => doc.id === viewState.documentId)?.space
     : viewState.type === 'folder' ? folders.find(folder => folder.id === viewState.folderId)?.space
+    : viewState.type === 'unclassified' ? viewState.space
     : viewState.type === 'private' ? 'personal' : viewState.type === 'company' ? 'company' : undefined;
   useEffect(() => {
     if (navigatedSpace) setSpaceTab(navigatedSpace);
   }, [locationKey, navigatedSpace]);
+  const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [recentExpanded, setRecentExpanded] = useState(true);
+  const [unclassifiedExpanded, setUnclassifiedExpanded] = useState({ personal: true, company: true });
   const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
@@ -208,6 +208,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [dragOverRootSpace, setDragOverRootSpace] = useState<SpaceType | null>(null);
   const isDraggingAny = isGlobalDragging || !!draggingDocId || !!draggingFolderId;
+  const [dragOverUnclassified, setDragOverUnclassified] = useState<SpaceType | null>(null);
+  useEffect(() => {
+    if (!isDraggingAny) setDragOverUnclassified(null);
+  }, [isDraggingAny]);
 
   // Folder Move Modal state
   const [moveFolderModal, setMoveFolderModal] = useState<{
@@ -247,9 +251,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     position: { top: 0, left: 0 },
   });
 
-  // Inline rename state
+  // Rename dialog state
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
-  const [renameTitle, setRenameTitle] = useState<string>('');
 
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
     fld_work: true,
@@ -454,13 +457,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const trashDocs = documents.filter((d) => d.isTrash);
 
   const recentDocs = activeDocs
-    .filter((doc) => doc.space === 'personal' && !doc.folderId)
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
 
 
   const personalRootDocs = activeDocs
-    .filter((d) => d.space === 'personal' && !d.folderId && d.id !== 'doc_meeting_notes')
+    .filter((d) => d.space === 'personal' && !d.folderId)
     .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
   const companyRootDocs = activeDocs
     .filter((d) => d.space === 'company' && !d.folderId)
@@ -498,12 +500,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     setDocMenuState({ isOpen: false, doc: null, position: { top: 0, left: 0 } });
   };
 
-  const handleSaveRename = (docId: string) => {
-    if (renameTitle.trim()) {
-      onRenameDocument?.(docId, renameTitle.trim());
-    }
-    setRenamingDocId(null);
-  };
+
 
   // Helper to render individual document row with 2 hover action icons (+ and ···) and drag-and-drop
   const renderDocumentItem = (doc: Document, defaultFolderId?: string | null) => {
@@ -540,30 +537,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         } ${isDragging ? 'opacity-30 scale-95 border border-dashed border-[var(--ui-primary)] bg-[var(--ui-hover)]' : ''}`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {doc.icon === '💬' || doc.tags?.includes('Đoạn chat') ? (
-            <MessageSquare className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[var(--ui-active-note-text)]' : 'text-[var(--ui-text)]'}`} />
-          ) : doc.type === 'meeting' ? (
-            <Users className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[var(--ui-active-note-text)]' : 'text-[var(--ui-text)]'}`} />
-          ) : (
-            <FileText className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[var(--ui-active-note-text)]' : 'text-[var(--ui-text)]'}`} />
-          )}
-          {isRenaming ? (
-            <input
-              type="text"
-              autoFocus
-              value={renameTitle}
-              onChange={(e) => setRenameTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveRename(doc.id);
-                if (e.key === 'Escape') setRenamingDocId(null);
-              }}
-              onBlur={() => handleSaveRename(doc.id)}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full text-xs bg-[var(--ui-surface)] border border-[var(--ui-primary)] rounded px-1.5 py-0.5 focus:outline-none"
-            />
-          ) : (
-            <span className="truncate text-xs">{doc.title || 'Không có tiêu đề'}</span>
-          )}
+          <FileText className={`w-3.5 h-3.5 stroke-[1.75] shrink-0 ${isActive ? 'text-[var(--ui-active-note-text)]' : 'text-[var(--ui-text)]'}`} />
+          <span className="truncate text-xs">{doc.title || 'Không có tiêu đề'}</span>
           {doc.isFavorite && (
             <Star className="w-2.5 h-2.5 fill-[#1D1D1F] text-[var(--ui-text)] shrink-0" />
           )}
@@ -573,17 +548,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isRenaming && (
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 shrink-0 ml-1">
             {/* 1. Plus button: Thêm tài liệu mới */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateDocument(doc.space, defaultFolderId ?? doc.folderId);
-              }}
-              className="p-1 rounded-md hover:bg-[var(--ui-hover-strong)] text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition-colors cursor-pointer"
-              title="Thêm tài liệu"
-            >
-              <Plus className="w-3 h-3 stroke-[2]" />
-            </button>
+            <SpaceCreateMenu title="Thêm tài liệu"
+              onCreateDocument={() => onCreateDocument(doc.space, defaultFolderId ?? doc.folderId)}
+              onCreateFolder={() => onCreateFolder(doc.space, defaultFolderId ?? doc.folderId)} />
 
             {/* 2. MoreHorizontal button with dark tooltip: "Xóa, sao chép và nhiều thao tác khác..." */}
             <div className="relative">
@@ -593,7 +560,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onMouseEnter={() => setHoveredMoreDocId(doc.id)}
                 onMouseLeave={() => setHoveredMoreDocId(null)}
                 className="p-1 rounded-md hover:bg-[var(--ui-hover-strong)] text-[var(--ui-muted)] hover:text-[var(--ui-text)] transition-colors cursor-pointer"
-                title=""
+                title="Tùy chọn tài liệu"
+                aria-label={`Tùy chọn ${doc.title || 'tài liệu'}`}
               >
                 <MoreHorizontal className="w-3 h-3 stroke-[1.75]" />
               </button>
@@ -613,6 +581,65 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
+  const createUnclassifiedDocument = (space: SpaceType) => {
+    setUnclassifiedExpanded(previous => ({ ...previous, [space]: true }));
+    if (space === 'personal') setPersonalExpanded(true); else setCompanyExpanded(true);
+    setSpaceTab(space);
+    onCreateDocument(space, null);
+  };
+
+  // Root documents appear in a permanent system folder, without migrating saved notes.
+  const renderUnclassifiedFolder = (space: SpaceType) => {
+    const notes = space === 'personal' ? personalRootDocs : companyRootDocs;
+    const open = unclassifiedExpanded[space];
+    const selected = viewState.type === 'unclassified' && viewState.space === space;
+    const draggingOver = dragOverUnclassified === space;
+    return <div data-unclassified-space={space} className="space-y-0.5"
+        onDragOver={event => {
+          event.preventDefault(); event.stopPropagation();
+          const accepts = getDragPayload(event, folders, documents)?.type === 'document';
+          event.dataTransfer.dropEffect = accepts ? 'move' : 'none';
+          setDragOverUnclassified(accepts ? space : null);
+        }}
+        onDragLeave={event => {
+          event.stopPropagation();
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverUnclassified(null);
+        }}
+        onDrop={event => {
+          setDragOverUnclassified(null);
+          // This system folder contains notes only; folder moves still use the space root.
+          if (getDragPayload(event, folders, documents)?.type === 'folder') {
+            event.preventDefault(); event.stopPropagation(); return;
+          }
+          handleDropOnRoot(event, space);
+          setUnclassifiedExpanded(previous => ({ ...previous, [space]: true }));
+        }}>
+      <div data-drop-active={draggingOver}
+        className={`group flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-colors ${draggingOver
+          ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] text-[var(--ui-primary)] font-bold shadow-xs'
+          : `text-[var(--ui-text)] ${selected ? 'bg-[var(--ui-selected)]' : 'hover:bg-[var(--ui-selected)]'}`}`}>
+        <button type="button" aria-label={`Thu gọn hoặc mở Chưa phân loại ${space === 'personal' ? 'của tôi' : 'công ty'}`}
+          aria-expanded={open} onClick={() => setUnclassifiedExpanded(previous => ({ ...previous, [space]: !open }))}
+          className="p-0.5 text-[var(--ui-tertiary)]">
+          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        </button>
+        <FolderIcon className="w-3.5 h-3.5 shrink-0" />
+        <button type="button" aria-current={selected ? 'page' : undefined}
+          onClick={() => onNavigate({ type: 'unclassified', space })}
+          className="flex-1 text-left text-xs font-medium truncate">Chưa phân loại</button>
+        <span className="text-[10px] text-[var(--ui-tertiary)]">{notes.length}</span>
+        {draggingOver && <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 rounded font-medium shrink-0">Thả vào đây</span>}
+        <SpaceCreateMenu title={`Tạo mới trong Chưa phân loại ${space === 'personal' ? 'của tôi' : 'công ty'}`}
+          onCreateDocument={() => createUnclassifiedDocument(space)}
+          onCreateFolder={() => onCreateFolder(space, null)} />
+      </div>
+      {open && <div className="pl-3 ml-3.5 border-l border-[var(--ui-border)] space-y-0.5">
+        {notes.map(doc => renderDocumentItem(doc, null))}
+        {!notes.length && <p className="px-2 py-1 text-[10px] italic text-[var(--ui-tertiary)]">Chưa có tài liệu</p>}
+      </div>}
+    </div>;
+  };
+
   const renderFolderTree = (space: SpaceType) => (
     <FolderTree
       folders={folders}
@@ -627,6 +654,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onToggle={(id) => setExpandedFolders((previous) => ({ ...previous, [id]: !previous[id] }))}
       onNavigate={onNavigate}
       onCreateFolder={onCreateFolder}
+      onCreateDocument={onCreateDocument}
       onEditFolder={onEditFolder}
       onMoveFolder={(f) => setMoveFolderModal({ isOpen: true, folder: f })}
       onDeleteFolder={onDeleteFolder}
@@ -674,7 +702,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={() => {
               setRecentExpanded(true);
-              onCreateDocument('personal', null);
+              createUnclassifiedDocument('personal');
             }}
             className="w-10 h-10 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center ios-interactive shadow-xs"
             title="Tạo mới"
@@ -707,7 +735,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
                 : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
             }`}
-            title="Chưa phân loại"
+            title="Gần đây"
           >
             <Clock className="w-4 h-4 stroke-[1.75]" />
           </button>
@@ -809,7 +837,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 onClick={() => {
                   setRecentExpanded(true);
-                  onCreateDocument('personal', null);
+                  createUnclassifiedDocument('personal');
                 }}
                 onMouseEnter={() => setShowCreateTooltip(true)}
                 onMouseLeave={() => setShowCreateTooltip(false)}
@@ -956,7 +984,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => { setRecentExpanded(true); onNavigate({ type: 'recent' }); }}
             >
               <div className="flex items-center gap-2 min-w-0">
-                <button type="button" aria-label="Thu gọn hoặc mở ghi chú chưa phân loại" aria-expanded={recentExpanded}
+                <button type="button" aria-label="Thu gọn hoặc mở tài liệu gần đây" aria-expanded={recentExpanded}
                   onClick={event => { event.stopPropagation(); setRecentExpanded(!recentExpanded); }} className="text-[var(--ui-tertiary)]">
                   {recentExpanded ? (
                     <ChevronDown className="w-3.5 h-3.5 stroke-[2]" />
@@ -965,7 +993,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </button>
                 <Clock className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
-                <span className="text-xs font-medium truncate">Chưa phân loại</span>
+                <span className="text-xs font-medium truncate">Gần đây</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {recentDocs.length > 0 && (
@@ -973,18 +1001,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {recentDocs.length}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRecentExpanded(true);
-                    onCreateDocument('personal', null);
-                  }}
-                  className="p-1 rounded hover:bg-[var(--ui-hover-strong)] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  title="Tạo ghi chú mới"
-                >
-                  <Plus className="w-3 h-3 stroke-[2]" />
-                </button>
+                <SpaceCreateMenu title="Tạo ghi chú mới"
+                  onCreateDocument={() => { setRecentExpanded(true); createUnclassifiedDocument('personal'); }}
+                  onCreateFolder={() => onCreateFolder('personal', null)} />
               </div>
             </div>
 
@@ -1132,13 +1151,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button type="button" onClick={() => setPersonalExpanded(!personalExpanded)} aria-label="Thu gọn hoặc mở ghi chú của tôi" aria-expanded={personalExpanded} className="p-1 rounded-md hover:bg-[var(--ui-border)]">
                 {personalExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
-              <button
-                onClick={() => onCreateDocument('personal', null)}
-                className="p-1 rounded-md hover:bg-[var(--ui-border)] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-pointer"
-                title="Tạo ghi chú mới"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2]" />
-              </button>
+              <SpaceCreateMenu title="Tạo ghi chú mới"
+                onCreateDocument={() => createUnclassifiedDocument('personal')}
+                onCreateFolder={() => {
+                  setSpaceTab('personal');
+                  setPersonalExpanded(true);
+                  onCreateFolder('personal', null);
+                }}
+              />
             </div>
           </div>
 
@@ -1171,7 +1191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {personalExpanded && (
             <div className="space-y-0.5 mt-1">
               {/* Unfiled Personal Documents: Ghi chú chưa phân loại at top, above folders (e.g. above "Công việc") */}
-              {personalRootDocs.map((doc) => renderDocumentItem(doc, null))}
+              {renderUnclassifiedFolder('personal')}
 
               {renderFolderTree('personal')}
             </div>
@@ -1218,17 +1238,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button type="button" onClick={() => setCompanyExpanded(!companyExpanded)} aria-label="Thu gọn hoặc mở tài liệu công ty" aria-expanded={companyExpanded} className="p-1 rounded-md hover:bg-[var(--ui-border)]">
                 {companyExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
-              <button
-                onClick={() => {
-                  setCompanyExpanded(true);
+              <SpaceCreateMenu title="Tạo tài liệu công ty mới"
+                onCreateDocument={() => createUnclassifiedDocument('company')}
+                onCreateFolder={() => {
                   setSpaceTab('company');
-                  onCreateDocument('company', null);
+                  setCompanyExpanded(true);
+                  onCreateFolder('company', null);
                 }}
-                className="p-1 rounded-md hover:bg-[var(--ui-border)] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-pointer"
-                title="Tạo tài liệu công ty mới"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2]" />
-              </button>
+              />
             </div>
           </div>
 
@@ -1261,7 +1278,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {companyExpanded && (
             <div className="space-y-0.5 mt-1">
               {/* Unfiled Company Documents at the top */}
-              {companyRootDocs.map((doc) => renderDocumentItem(doc, null))}
+              {renderUnclassifiedFolder('company')}
 
               {renderFolderTree('company')}
             </div>
@@ -1333,157 +1350,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Floating Document Context Menu matching screenshot image_e2aa3a85.png */}
-      {docMenuState.isOpen && docMenuState.doc && (
-        <div
-          ref={docMenuRef}
-          className="fixed z-50 w-64 bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-2xl py-1 text-xs text-[var(--ui-text)] animate-in fade-in zoom-in-95 duration-100 divide-y divide-[#F2F2F7]"
-          style={{
-            top: `${docMenuState.position.top}px`,
-            left: `${docMenuState.position.left}px`,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Section 1: Trang Operations */}
-          <div className="py-1">
-            <div className="px-3 pt-1 pb-1 text-[11px] font-semibold text-[var(--ui-tertiary)]">
-              Trang
-            </div>
-
-            {/* 1. Thêm vào mục Yêu thích */}
-            <button
-              type="button"
-              onClick={() => {
-                onToggleFavorite?.(docMenuState.doc!.id);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <Star
-                className={`w-3.5 h-3.5 stroke-[1.75] ${
-                  docMenuState.doc.isFavorite
-                    ? 'fill-[#1D1D1F] text-[var(--ui-text)]'
-                    : 'text-[var(--ui-text)]'
-                }`}
-              />
-              <span>
-                {docMenuState.doc.isFavorite
-                  ? 'Xóa khỏi mục Yêu thích'
-                  : 'Thêm vào mục Yêu thích'}
-              </span>
-            </button>
-
-            {/* 2. Đổi tên (Ctrl+Shift+R) */}
-            <button
-              type="button"
-              onClick={() => {
-                setRenamingDocId(docMenuState.doc!.id);
-                setRenameTitle(docMenuState.doc!.title);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <Edit2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Đổi tên</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+R</span>
-            </button>
-
-            {/* 3. Di chuyển đến (Ctrl+Shift+P) */}
-            <button
-              type="button"
-              onClick={() => {
-                onMoveDocumentRequest?.(docMenuState.doc!);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <ArrowRight className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Di chuyển đến</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+P</span>
-            </button>
-
-            {/* 4. Chuyển vào Thùng rác */}
-            <button
-              type="button"
-              onClick={() => {
-                onSoftDeleteDocument?.(docMenuState.doc!.id);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-              <span>Chuyển vào Thùng rác</span>
-            </button>
-
-            {/* 5. Sao chép liên kết */}
-            <button
-              type="button"
-              onClick={() => {
-                navigator.clipboard?.writeText(documentUrl(window.location.origin, docMenuState.doc!.id));
-                onToast?.('Đã sao chép liên kết vào bộ nhớ tạm');
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <Link2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-              <span>Sao chép liên kết</span>
-            </button>
-
-            {/* 6. Sao chép (Ctrl+D) */}
-            <button
-              type="button"
-              onClick={() => {
-                onDuplicateDocument?.(docMenuState.doc!.id);
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <Copy className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Sao chép</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+D</span>
-            </button>
-          </div>
-
-          {/* Section 2: Mở trong tab mới & Mở ở chế độ xem nhanh */}
-          <div className="py-1">
-            <button
-              type="button"
-              onClick={() => {
-                window.open(documentUrl(window.location.origin, docMenuState.doc!.id), '_blank', 'noopener,noreferrer');
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <ExternalLink className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Mở trong tab mới</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+↵</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                onNavigate({ type: 'document', documentId: docMenuState.doc!.id });
-                closeDocMenu();
-              }}
-              className="w-full px-3 py-1.5 text-left flex items-center justify-between hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-2.5">
-                <PanelRight className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
-                <span>Mở ở chế độ xem nhanh</span>
-              </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Alt+Click</span>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Floating Document Context Menu */}
+      {renamingDocId && <RenameDialog key={renamingDocId} kind="document"
+        initialName={documents.find(doc => doc.id === renamingDocId)?.title || ''}
+        onSave={name => onRenameDocument?.(renamingDocId, name)} onClose={() => setRenamingDocId(null)} />}
+      {shareDocument && <DocumentLinkShare document={shareDocument} onClose={() => setShareDocument(null)} />}
+      <DocumentActionMenu
+        ref={docMenuRef}
+        isOpen={docMenuState.isOpen && !!docMenuState.doc}
+        isFavorite={docMenuState.doc?.isFavorite}
+        position={docMenuState.position}
+        onShare={() => { if (docMenuState.doc) setShareDocument(docMenuState.doc); }}
+        onClose={closeDocMenu}
+        onToggleFavorite={() => {
+          if (docMenuState.doc) {
+            onToggleFavorite?.(docMenuState.doc.id);
+          }
+        }}
+        onRename={() => {
+          if (docMenuState.doc) {
+            setRenamingDocId(docMenuState.doc.id);
+          }
+        }}
+        onMove={() => {
+          if (docMenuState.doc) {
+            onMoveDocumentRequest?.(docMenuState.doc);
+          }
+        }}
+        onDelete={() => {
+          if (docMenuState.doc) {
+            onSoftDeleteDocument?.(docMenuState.doc.id);
+          }
+        }}
+      />
 
       {/* Confirmation Dialog on Drag and Drop */}
       <ConfirmMoveDialog

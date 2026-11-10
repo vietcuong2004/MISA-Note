@@ -1,19 +1,16 @@
+import { RenameDialog } from '../modals/RenameDialog';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   UserPlus,
   MoreHorizontal,
   FolderOpen,
   Download,
-  Trash2,
   Sparkles,
   Check,
   Clock,
   Lock,
   Globe,
   Star,
-  Pencil,
-  ArrowRight,
-  Link2,
   X,
   Plus,
 } from 'lucide-react';
@@ -24,6 +21,7 @@ import { EditTextDialog } from './EditTextDialog';
 import { ShareModal } from '../modals/ShareModal';
 import { MoveModal } from '../modals/MoveModal';
 import { ExportModal } from '../modals/ExportModal';
+import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import { documentUrl } from '../../app/router/routes';
 import { getFolderPath } from '../../utils/folders';
 
@@ -51,6 +49,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onToast,
   onNavigate,
 }) => {
+  const [renameOpen, setRenameOpen] = useState(false);
   const [doc, setDoc] = useState<Document>(document);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
 
@@ -81,7 +80,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const pendingSaveRef = useRef<Document | null>(null);
   const saveCallbackRef = useRef(onUpdateDocument);
   saveCallbackRef.current = onUpdateDocument;
-  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -101,16 +100,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       window.removeEventListener('beforeunload', flushPendingSave);
       flushPendingSave();
     };
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    window.document.addEventListener('mousedown', handleClickOutside);
-    return () => window.document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Debounced auto-save function
@@ -678,7 +667,7 @@ function getTextareaSelectionCoords(
         </div>
 
         {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
-        <div className="flex items-center gap-2 shrink-0" ref={moreMenuRef}>
+        <div className="flex items-center gap-2 shrink-0">
           {/* Favorite Toggle Button */}
           <button
             type="button"
@@ -715,73 +704,28 @@ function getTextareaSelectionCoords(
           {/* More options button (•••) */}
           <div className="relative">
             <button
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              ref={moreButtonRef}
+              onClick={() => setShowMoreMenu((prev) => !prev)}
               className="w-8 h-8 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
               title="Tùy chọn khác"
             >
               <MoreHorizontal className="w-4 h-4 stroke-[1.75]" />
             </button>
 
-            {/* Dropdown Menu matching screenshot */}
-            {showMoreMenu && (
-              <div className="absolute right-0 top-9 z-40 w-48 bg-[var(--ui-surface)] rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-1.5 text-xs animate-in zoom-in-95 duration-100 space-y-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    titleInputRef.current?.focus();
-                  }}
-                  className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <Pencil className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-                  <span>Đổi tên</span>
-                </button>
-
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMoveOpen(true);
-                      setShowMoreMenu(false);
-                    }}
-                    className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <ArrowRight className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-                    <span>Di chuyển</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(documentUrl(window.location.origin, doc.id));
-                    onToast('Đã sao chép liên kết vào bộ nhớ tạm');
-                    setShowMoreMenu(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
-                >
-                  <Link2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-                  <span>Sao chép liên kết</span>
-                </button>
-
-                {!isReadOnly && (
-                  <>
-                    <div className="border-t border-[#F2F2F7] my-1" />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSoftDeleteDocument(doc.id);
-                        setShowMoreMenu(false);
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-[var(--ui-text)] hover:bg-[var(--ui-hover)] flex items-center gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-                      <span>Chuyển vào thùng rác</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            <DocumentActionMenu
+              isOpen={showMoreMenu}
+              isFavorite={doc.isFavorite}
+              triggerRef={moreButtonRef}
+              onClose={() => setShowMoreMenu(false)}
+              onToggleFavorite={() => {
+                onToggleFavorite(doc.id);
+                setDoc((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
+              }}
+              onShare={() => setShareOpen(true)}
+              onRename={!isReadOnly ? () => setRenameOpen(true) : undefined}
+              onMove={!isReadOnly ? () => setMoveOpen(true) : undefined}
+              onDelete={!isReadOnly ? () => onSoftDeleteDocument(doc.id) : undefined}
+            />
           </div>
         </div>
       </div>
@@ -925,6 +869,8 @@ function getTextareaSelectionCoords(
       )}
 
       {/* Modals */}
+      {renameOpen && !isReadOnly && <RenameDialog kind="document" initialName={doc.title}
+        onClose={() => setRenameOpen(false)} onSave={name => updateDocField('title', name)} />}
       <ShareModal
         document={doc}
         isOpen={shareOpen}

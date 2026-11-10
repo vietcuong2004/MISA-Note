@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, GripVertical, Star } from 'lucide-react';
+import { Clock, FileText, GripVertical, Star } from 'lucide-react';
 import { Document } from '../../types';
 import { clearActiveDrag, setDragDocument, useActiveDrag } from '../../utils/dnd';
 
@@ -8,12 +8,14 @@ export function DocumentListPage({
   description,
   documents,
   favorite = false,
+  emptyMessage,
   onOpenDocument,
 }: {
   title: string;
   description: string;
   documents: Document[];
   favorite?: boolean;
+  emptyMessage?: string;
   onOpenDocument: (id: string) => void;
 }) {
   const Icon = favorite ? Star : Clock;
@@ -51,9 +53,9 @@ export function DocumentListPage({
         <div className="bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] divide-y divide-[var(--ui-border)] overflow-hidden ios-card-shadow">
           {!documents.length && (
             <p className="p-8 text-center text-xs text-[var(--ui-tertiary)]">
-              {favorite
+              {emptyMessage ?? (favorite
                 ? 'Chưa có tài liệu nào được gắn sao yêu thích.'
-                : 'Chưa có ghi chú chưa phân loại.'}
+                : 'Chưa có ghi chú chưa phân loại.')}
             </p>
           )}
           {documents.map((doc) => {
@@ -82,7 +84,7 @@ export function DocumentListPage({
                       className="w-3.5 h-3.5 text-[var(--ui-tertiary)] opacity-0 group-hover:opacity-70 transition-opacity"
                     />
                   </span>
-                  <span className="text-base shrink-0">{doc.icon || '📄'}</span>
+                  <FileText className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
                   <span className="font-semibold truncate text-[var(--ui-text)] group-hover:text-[var(--ui-primary)] transition-colors">
                     {doc.title || 'Không có tiêu đề'}
                   </span>

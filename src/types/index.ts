@@ -152,6 +152,7 @@ export type ViewState =
   | { type: 'not_found'; path: string }
   | { type: 'document'; documentId: string }
   | { type: 'recent' }
+  | { type: 'unclassified'; space?: SpaceType }
   | { type: 'favorite' }
   | { type: 'meeting_notes' }
   | { type: 'library' }

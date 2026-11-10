@@ -220,7 +220,7 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="text-base shrink-0">{doc.icon || '📄'}</span>
+                    <FileText className={`w-4 h-4 stroke-[1.75] shrink-0 ${isSelected ? 'text-white' : 'text-[var(--ui-text)]'}`} />
                     <div className="min-w-0">
                       <div className={`text-xs font-semibold truncate ${isSelected ? 'text-white' : 'text-[var(--ui-text)]'}`}>
                         {doc.title || 'Không có tiêu đề'}

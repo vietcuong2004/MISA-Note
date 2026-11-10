@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Lock, Globe } from 'lucide-react';
+import { X, Lock, Globe } from 'lucide-react';
 import { Document, UserRole } from '../../types';
 import { TEAM_MEMBERS } from '../../data/mockData';
-import { documentUrl } from '../../app/router/routes';
+import { DocumentLinkField } from './DocumentLinkShare';
 
 interface ShareModalProps {
   document: Document;
@@ -19,19 +19,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   onUpdatePermission,
   onToast,
 }) => {
-  const [copied, setCopied] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>(document.permission);
   const [isPrivate, setIsPrivate] = useState<boolean>(document.isPrivate);
 
   if (!isOpen) return null;
-
-  const handleCopyLink = () => {
-    const url = documentUrl(window.location.origin, document.id);
-    navigator.clipboard?.writeText(url);
-    setCopied(true);
-    onToast('Đã sao chép liên kết tài liệu vào bộ nhớ tạm');
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handleSave = () => {
     onUpdatePermission(currentRole, isPrivate);
@@ -175,17 +166,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[var(--ui-subtle)] border-t border-[var(--ui-border)]">
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[var(--ui-text)] hover:bg-[var(--ui-border)] rounded-xl transition-colors ios-interactive"
-          >
-            {copied ? <Check className="w-3.5 h-3.5 stroke-[2]" /> : <Copy className="w-3.5 h-3.5 stroke-[1.75]" />}
-            <span>{copied ? 'Đã chép link' : 'Sao chép liên kết'}</span>
-          </button>
+        <div className="px-6 pb-5">
+          <DocumentLinkField key={document.id} documentId={document.id} />
+        </div>
 
+        {/* Footer */}
+        <div className="flex items-center justify-end px-6 py-4 bg-[var(--ui-subtle)] border-t border-[var(--ui-border)]">
           <div className="flex items-center gap-2">
             <button
               type="button"

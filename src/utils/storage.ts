@@ -17,7 +17,15 @@ export const getStoredDocuments = (): Document[] => {
     }
     const docs: Document[] = JSON.parse(raw);
     return docs
-      .filter((d) => d.id !== 'doc_quick_notes' && d.id !== 'doc_team_meeting_template' && d.title !== 'Ghi chú nhanh' && d.title !== 'Mẫu họp nhóm')
+      .filter(
+        (d) =>
+          d.id !== 'doc_quick_notes' &&
+          d.id !== 'doc_team_meeting_template' &&
+          d.id !== 'doc_sprint_recap' &&
+          d.title !== 'Ghi chú nhanh' &&
+          d.title !== 'Mẫu họp nhóm' &&
+          d.title !== 'Tổng kết sprint'
+      )
       .map((doc) => ({
         ...doc,
         blocks: doc.blocks?.filter(

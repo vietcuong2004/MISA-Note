@@ -43,6 +43,184 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('unclassified folders highlight document drops, clear feedback and reject folders', async () => {
+  const { setActiveDrag, clearActiveDrag } = await import('../utils/dnd');
+  const drag = (type: string, target: Element, relatedTarget?: Element) => {
+    const event = new window.Event(type, { bubbles: true, cancelable: true });
+    Object.assign(event, { dataTransfer: { getData: () => '', dropEffect: 'none' }, relatedTarget });
+    target.dispatchEvent(event);
+  };
+  try {
+    for (const space of ['personal', 'company'] as const) {
+      await mount(space === 'personal' ? '/private' : '/company');
+      const doc = getStoredDocuments().find(item => !item.isTrash && item.folderId)!;
+      const target = document.querySelector(`[data-unclassified-space="${space}"]`)!;
+      await act(async () => {
+        setActiveDrag({ type: 'document', id: doc.id });
+        drag('dragover', target.firstElementChild!);
+      });
+      assert(target.querySelector('[data-drop-active="true"]'));
+      assert(target.textContent?.includes('Thả vào đây'));
+      await act(async () => drag('dragleave', target.firstElementChild!, target.querySelector('button')!));
+      assert(target.querySelector('[data-drop-active="true"]'), 'Moving between children must keep the highlight');
+      await act(async () => drag('dragleave', target));
+      assert(!target.querySelector('[data-drop-active="true"]'));
+      await act(async () => drag('dragover', target));
+      await act(async () => drag('drop', target));
+      const moved = getStoredDocuments().find(item => item.id === doc.id)!;
+      assert.equal(moved.folderId, null);
+      assert.equal(moved.space, space);
+      assert(!target.textContent?.includes('Thả vào đây'));
+      await act(async () => {
+        setActiveDrag({ type: 'folder', id: 'fld_work' });
+        drag('dragover', target);
+      });
+      assert(!target.querySelector('[data-drop-active="true"]'));
+      await act(async () => drag('drop', target));
+      assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.folderId, null);
+      await act(async () => {
+        setActiveDrag({ type: 'document', id: doc.id });
+        drag('dragover', target);
+      });
+      await act(async () => clearActiveDrag());
+      assert(!target.querySelector('[data-drop-active="true"]'));
+    }
+  } finally { await act(async () => clearActiveDrag()); }
+});
+
+test('note rename uses the folder-style dialog and only saves on confirmation', async () => {
+  await mount('/private');
+  const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
+  const openRename = async () => {
+    const trigger = Array.from(document.querySelectorAll('aside button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}`);
+    await click(trigger);
+    await click(Array.from(document.querySelectorAll('aside button')).find(item => Array.from(item.querySelectorAll('span')).some(span => span.textContent === 'Đổi tên')));
+    return document.querySelector('[role="dialog"][aria-label="Đặt lại tên ghi chú"]')!;
+  };
+  let dialog = await openRename();
+  assert(dialog);
+  let input = dialog.querySelector('input')!;
+  assert.equal(input.value, doc.title);
+  assert.equal(document.activeElement, input);
+  const fill = async (value: string) => {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  await fill('Tên chưa lưu');
+  await click(button('Huỷ', dialog));
+  assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.title, doc.title);
+  dialog = await openRename(); input = dialog.querySelector('input')!;
+  await fill('   ');
+  assert.equal(button('Lưu', dialog)?.disabled, true);
+  await fill('  Ghi chú đã đổi tên  ');
+  await click(button('Lưu', dialog));
+  assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.title, 'Ghi chú đã đổi tên');
+  assert.equal(document.querySelector('[aria-label="Đặt lại tên ghi chú"]'), null);
+  await mount('/library');
+  const main = document.querySelector('main')!;
+  await click(main.querySelector('table button[title="Tùy chọn khác"]'));
+  await click(Array.from(main.querySelectorAll('[aria-label="Thao tác tài liệu"] button')).find(item => Array.from(item.querySelectorAll('span')).some(span => span.textContent === 'Đổi tên')));
+  dialog = document.querySelector('[aria-label="Đặt lại tên ghi chú"]')!;
+  assert(dialog);
+  await act(async () => { dialog.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(document.querySelector('[aria-label="Đặt lại tên ghi chú"]'), null);
+  await mount(`/documents/${doc.id}`);
+  const editor = document.querySelector('main')!;
+  await click(editor.querySelector('button[title="Tùy chọn khác"]'));
+  await click(Array.from(editor.querySelectorAll('[aria-label="Thao tác tài liệu"] button')).find(item => Array.from(item.querySelectorAll('span')).some(span => span.textContent === 'Đổi tên')));
+  dialog = document.querySelector('[aria-label="Đặt lại tên ghi chú"]')!;
+  assert(dialog);
+  input = dialog.querySelector('input')!;
+  await fill('Đổi tên từ trình soạn thảo');
+  await act(async () => { input.closest('form')!.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })); });
+  await mount('/private'); // Unmount flushes the editor's pending save.
+  assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.title, 'Đổi tên từ trình soạn thảo');
+});
+
+test('share menu copies the current document URL and reports clipboard failures honestly', async () => {
+  await mount('/private');
+  const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
+  let copied = '';
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText: async (value: string) => { copied = value; },
+  } });
+  const aside = document.querySelector('aside')!;
+  const trigger = Array.from(aside.querySelectorAll('button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}`)!;
+  await click(trigger);
+  await click(button('Chia sẻ', aside));
+  let dialog = document.querySelector('[role="dialog"][aria-label="Chia sẻ tài liệu"]')!;
+  assert(dialog);
+  const expected = `http://localhost:3000/documents/${encodeURIComponent(doc.id)}`;
+  assert.equal(dialog.querySelector('input')?.value, expected);
+  await click(button('Sao chép liên kết', dialog));
+  assert.equal(copied, expected);
+  assert(button('Đã sao chép', dialog));
+  await click(dialog.querySelector('button[aria-label="Đóng chia sẻ"]'));
+  await mount('/library');
+  const main = document.querySelector('main')!;
+  await click(main.querySelector('table button[title="Tùy chọn khác"]'));
+  await click(button('Chia sẻ', main));
+  dialog = document.querySelector('[aria-label="Chia sẻ tài liệu"]')!;
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+    writeText: async () => { throw new Error('Permission denied'); },
+  } });
+  await click(button('Sao chép liên kết', dialog));
+  assert(dialog.textContent?.includes('Nhấn Ctrl+C'));
+  assert(!button('Đã sao chép', dialog));
+  const input = dialog.querySelector('input')!;
+  assert.equal(input.selectionEnd, input.value.length);
+  await act(async () => { dialog.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+  assert.equal(document.querySelector('[aria-label="Chia sẻ tài liệu"]'), null);
+  await mount(new URL(copied).pathname);
+  assert.equal(document.querySelector('main input[placeholder="Tiêu đề trang..."]')?.getAttribute('value'), doc.title);
+  Reflect.deleteProperty(navigator, 'clipboard');
+});
+
+test('trash uses library layout and keeps restore, delete confirmation and empty-trash actions', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments()[0];
+  saveStoredDocuments([
+    { ...base, id: 'trash-personal', title: 'TRASH PERSONAL', space: 'personal', folderId: 'fld_work', isTrash: true, deletedAt: '2026-11-10T01:00:00Z' },
+    { ...base, id: 'trash-company', title: 'TRASH COMPANY', space: 'company', folderId: null, isTrash: true, deletedAt: '2026-11-10T02:00:00Z' },
+    { ...base, id: 'live-note', title: 'LIVE NOTE', isTrash: false },
+  ]);
+  await mount('/trash');
+  let main = document.querySelector('main')!;
+  assert.equal(heading(), 'Thùng rác');
+  assert(main.querySelector('input[placeholder="Tìm trong thùng rác..."]'));
+  assert(main.querySelector('table'));
+  assert(main.textContent?.includes('TRASH PERSONAL') && main.textContent?.includes('TRASH COMPANY'));
+  assert(!main.textContent?.includes('LIVE NOTE'));
+  assert(!button('Ghi chú mới', main));
+  await click(button('Công ty', main));
+  assert.equal(window.location.pathname, '/trash');
+  assert(!main.textContent?.includes('TRASH PERSONAL'));
+  await click(button('Tất cả', main));
+  await click(main.querySelector('button[aria-label="Dạng lưới"]'));
+  await click(main.querySelector('button[aria-label="Xóa vĩnh viễn TRASH COMPANY"]'));
+  assert(getStoredDocuments().some(doc => doc.id === 'trash-company'));
+  await click(button('Hủy bỏ', main));
+  assert(getStoredDocuments().some(doc => doc.id === 'trash-company'));
+  await click(main.querySelector('button[aria-label="Xóa vĩnh viễn TRASH COMPANY"]'));
+  await click(button('Xác nhận xóa', main));
+  assert(!getStoredDocuments().some(doc => doc.id === 'trash-company'));
+  await click(main.querySelector('button[aria-label="Dạng danh sách"]'));
+  await click(main.querySelector('button[aria-label="Khôi phục TRASH PERSONAL"]'));
+  assert.equal(getStoredDocuments().find(doc => doc.id === 'trash-personal')?.isTrash, false);
+  assert(main.textContent?.includes('Thùng rác đang trống'));
+  assert(!main.textContent?.includes('TRASH PERSONAL'));
+
+  saveStoredDocuments([{ ...base, id: 'trash-again', title: 'TRASH AGAIN', isTrash: true }]);
+  await mount('/trash');
+  main = document.querySelector('main')!;
+  await click(button('Dọn sạch thùng rác', main));
+  assert(getStoredDocuments().some(doc => doc.id === 'trash-again'));
+  await click(button('Xác nhận dọn sạch', main));
+  assert.equal(getStoredDocuments().length, 0);
+});
+
 async function goHistory(direction: 'back' | 'forward') {
   await act(async () => {
     const changed = new Promise<void>(resolve => window.addEventListener('popstate', () => resolve(), { once: true }));
@@ -88,7 +266,7 @@ test('all library navigation tabs, sidebar lists and folder names have working r
   await click(document.getElementById('space-tab-company'));
   await click(button('TÀI LIỆU CÔNG TY'));
   assert.equal(window.location.pathname, '/company');
-  for (const [label, path] of [['Chưa phân loại', '/unclassified'], ['Yêu thích', '/favorites']]) {
+  for (const [label, path] of [['Gần đây', '/recent'], ['Yêu thích', '/favorites']]) {
     await click(Array.from(document.querySelectorAll('aside span')).find(element => element.textContent === label));
     assert.equal(window.location.pathname, path); assert.equal(heading(), label);
   }
@@ -246,6 +424,7 @@ test('folder plus creates nested folders, rename keeps ancestry, and confirmed d
   await mount('/private');
   const initialNoteCount = getStoredDocuments().length;
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
+  await click(button('Tạo thư mục', document.querySelector('aside')!));
   assert.equal(document.querySelector('[role="dialog"]'), null);
   assert(getStoredFolders().some(folder => folder.name === 'Thư mục mới' && folder.parentId === 'fld_work'));
   await nameNewFolder('Sprint A');
@@ -254,6 +433,7 @@ test('folder plus creates nested folders, rename keeps ancestry, and confirmed d
   assert.equal(getStoredDocuments().length, initialNoteCount);
   assert(document.querySelector(`[data-folder-id="fld_work"] [data-folder-id="${child.id}"]`));
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Sprint A"]'));
+  await click(button('Tạo thư mục', document.querySelector('aside')!));
   await nameNewFolder('Tasks');
   const grandchild = getStoredFolders().find(folder => folder.name === 'Tasks')!;
   assert.equal(grandchild.parentId, child.id);
@@ -306,12 +486,14 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   const { getStoredFolders } = await import('../utils/storage');
   await mount('/private');
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
+  await click(button('Tạo thư mục', document.querySelector('aside')!));
   const firstInput = document.querySelector('input[aria-label="Tên thư mục mới"]') as HTMLInputElement;
   assert.equal(firstInput, document.activeElement);
   assert.equal(firstInput.value, 'Thư mục mới');
   await act(async () => { firstInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert(getStoredFolders().some(folder => folder.parentId === 'fld_work' && folder.name === 'Thư mục mới'));
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
+  await click(button('Tạo thư mục', document.querySelector('aside')!));
   const secondInput = document.querySelector('input[aria-label="Tên thư mục mới"]') as HTMLInputElement;
   assert.equal(secondInput.value, 'Thư mục mới 2');
   await act(async () => { secondInput.blur(); });
@@ -322,7 +504,7 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   assert(button('Thư mục mới 2', document.querySelector('aside')!));
 });
 
-test('clicking tab Của tôi highlights it and plus button creates note above folder Công việc', async () => {
+test('clicking tab Của tôi highlights it and plus creates a note inside Chưa phân loại', async () => {
   await mount('/company');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(document.getElementById('space-tab-personal'));
@@ -332,13 +514,52 @@ test('clicking tab Của tôi highlights it and plus button creates note above f
   const personalPanel = document.getElementById('space-panel-personal')!;
   const createNoteButton = personalPanel.querySelector('button[title="Tạo ghi chú mới"]')!;
   await click(createNoteButton);
+  await click(button('Tạo tài liệu', personalPanel));
 
   const workFolder = personalPanel.querySelector('[data-folder-id="fld_work"]')!;
   assert(workFolder, 'Expected folder fld_work to exist');
   const noteTextElement = Array.from(personalPanel.querySelectorAll('span')).find(el => el.textContent === 'Ghi chú mới');
   assert(noteTextElement, 'Expected new note to be rendered in personal panel');
   const noteItem = noteTextElement.closest('.group')!;
+  assert(personalPanel.querySelector('[data-unclassified-space="personal"]')!.contains(noteItem));
   assert(workFolder.compareDocumentPosition(noteItem) & Node.DOCUMENT_POSITION_PRECEDING, 'Expected new note to appear above folder Công việc');
+});
+
+test('both spaces have a permanent unclassified folder and heading plus creates inside it', async () => {
+  for (const space of ['personal', 'company'] as const) {
+    await mount(space === 'personal' ? '/private' : '/company');
+    const panel = document.querySelector(`[data-space-panel="${space}"]`)!;
+    const systemFolder = panel.querySelector(`[data-unclassified-space="${space}"]`)!;
+    assert(systemFolder, 'Expected default unclassified folder');
+    await click(button('Chưa phân loại', systemFolder));
+    assert.equal(window.location.pathname, `/${space === 'personal' ? 'private' : 'company'}/unclassified`);
+    assert.equal(heading(), 'Chưa phân loại');
+    const before = new Set(getStoredDocuments().map(doc => doc.id));
+    await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
+    assert.equal(getStoredDocuments().filter(doc => !before.has(doc.id)).length, 0, 'Opening the menu must not create a document');
+    assert(button('Tạo thư mục', panel));
+    await click(button('Tạo tài liệu', panel));
+    const created = getStoredDocuments().find(doc => !before.has(doc.id))!;
+    assert(created);
+    assert.equal(created.space, space);
+    assert.equal(created.folderId, null);
+    assert(systemFolder.textContent?.includes(created.title));
+    await click(button('Chưa phân loại', systemFolder));
+    assert(document.querySelector('main')?.textContent?.includes(created.title));
+    const { getStoredFolders } = await import('../utils/storage');
+    const previousFolders = new Set(getStoredFolders().map(folder => folder.id));
+    await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
+    await click(button('Tạo thư mục', panel));
+    const newFolder = getStoredFolders().find(folder => !previousFolders.has(folder.id))!;
+    assert(newFolder);
+    assert.equal(newFolder.space, space);
+    assert.equal(newFolder.parentId ?? null, null);
+  }
+  const recentRow = Array.from(document.querySelectorAll('aside span')).find(el => el.textContent === 'Gần đây')!;
+  assert(recentRow);
+  await click(recentRow);
+  assert.equal(window.location.pathname, '/recent');
+  assert.equal(heading(), 'Gần đây');
 });
 
 test('selecting text in block editor renders EditTextDialog with side-by-side submenu and closing on unselect', async () => {

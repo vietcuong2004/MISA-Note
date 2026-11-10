@@ -1,3 +1,4 @@
+import { SpaceCreateMenu } from './SpaceCreateMenu';
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Edit2, Folder as FolderIcon, FolderOpen, FolderInput, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { Document, Folder, SpaceType, ViewState } from '../../types';
@@ -18,6 +19,7 @@ interface Props {
   dragOverFolderId: string | null;
   onToggle: (id: string) => void;
   onNavigate: (view: ViewState) => void;
+  onCreateDocument?: (space: SpaceType, folderId?: string | null) => void;
   onCreateFolder: (space: SpaceType, parentId?: string | null) => void;
   newFolderId: string | null;
   onFinishNewFolder: () => void;
@@ -295,18 +297,9 @@ export function FolderTree(props: Props) {
                 )}
               </div>
               <div className="flex items-center gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100">
-                <button
-                  type="button"
-                  title="Tạo thư mục con"
-                  aria-label={`Tạo thư mục con trong ${folder.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    props.onCreateFolder(folder.space, folder.id);
-                  }}
-                  className="p-1 rounded hover:bg-[var(--ui-hover-strong)] text-[var(--ui-muted)] cursor-pointer"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
+                <SpaceCreateMenu title={`Tạo thư mục con trong ${folder.name}`}
+                  onCreateDocument={() => props.onCreateDocument?.(folder.space, folder.id)}
+                  onCreateFolder={() => props.onCreateFolder(folder.space, folder.id)} />
                 <button
                   type="button"
                   title="Đổi tên thư mục"
