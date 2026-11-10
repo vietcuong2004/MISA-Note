@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { ListBlock } from './ListBlock';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   GripVertical,
   Plus,
@@ -30,6 +31,9 @@ interface BlockItemProps {
   userRole: UserRole;
   isDragging?: boolean;
   isDragOver?: boolean;
+  autoFocus?: boolean;
+  openMenuInitially?: boolean;
+  afterList?: boolean;
   onUpdate: (blockId: string, content: string, properties?: any) => void;
   onDelete: (blockId: string) => void;
   onDuplicate: (blockId: string) => void;
@@ -50,6 +54,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   userRole,
   isDragging = false,
   isDragOver = false,
+  autoFocus = false,
+  openMenuInitially = false,
+  afterList = false,
   onUpdate,
   onDelete,
   onDuplicate,
@@ -67,6 +74,17 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   const [copiedCode, setCopiedCode] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (openMenuInitially && !isReadOnly) setShowMenu(true);
+  }, [openMenuInitially, isReadOnly]);
+
+  useLayoutEffect(() => {
+    if (!autoFocus || isReadOnly) return;
+    textRef.current?.focus();
+    textRef.current?.setSelectionRange(0, 0);
+    textRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [autoFocus, isReadOnly]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -95,17 +113,18 @@ export const BlockItem: React.FC<BlockItemProps> = ({
     const val = e.target.value;
     onUpdate(block.id, val, block.properties);
 
-    if (val.startsWith('/') && textRef.current) {
+    if ((val.startsWith('/') || val.startsWith('@')) && textRef.current) {
       const rect = textRef.current.getBoundingClientRect();
-      onTriggerSlash(block.id, val.slice(1), rect);
+      onTriggerSlash(block.id, val.startsWith('@') ? val : val.slice(1), rect);
     } else {
       onTriggerSlash(block.id, '', null);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
-      if (['paragraph', 'bullet', 'numbered', 'checklist'].includes(block.type)) {
+      if (['paragraph', 'h1', 'h2', 'h3', 'h4', 'bullet', 'numbered', 'checklist'].includes(block.type)) {
         e.preventDefault();
         onAddBelow(index);
       }
@@ -171,74 +190,10 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         );
 
       case 'bullet':
-        return (
-          <div className="flex items-start gap-2.5 w-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--ui-primary)] mt-2.5 shrink-0" />
-            <textarea
-              ref={textRef}
-              rows={1}
-              disabled={isReadOnly}
-              value={block.content}
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Nội dung gạch đầu dòng..."
-              className="w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
-            />
-          </div>
-        );
-
       case 'numbered':
-        return (
-          <div className="flex items-start gap-2 w-full">
-            <span className="text-sm font-semibold text-[var(--ui-tertiary)] min-w-5 shrink-0 pt-0.5 font-mono tabular-nums">
-              {index + 1}.
-            </span>
-            <textarea
-              ref={textRef}
-              rows={1}
-              disabled={isReadOnly}
-              value={block.content}
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Nội dung danh sách thứ tự..."
-              className="w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
-            />
-          </div>
-        );
-
-      // Apple Reminders Style Checklist with subtle monochrome circular checkbox
       case 'checklist':
-        const checked = !!block.properties?.checked;
-        return (
-          <div className="flex items-start gap-3 w-full">
-            <button
-              type="button"
-              disabled={isReadOnly}
-              onClick={() =>
-                onUpdate(block.id, block.content, { ...block.properties, checked: !checked })
-              }
-              className={`mt-0.5 w-[18px] h-[18px] rounded-md border flex items-center justify-center transition-all ios-interactive ${
-                checked
-                  ? 'theme-primary bg-[var(--ui-primary)] border-[var(--ui-primary)] text-white shadow-2xs'
-                  : 'border-[#C7C7CC] hover:border-[var(--ui-primary)] bg-[var(--ui-surface)]'
-              }`}
-            >
-              {checked && <Check className="w-3 h-3 stroke-[3]" />}
-            </button>
-            <textarea
-              ref={textRef}
-              rows={1}
-              disabled={isReadOnly}
-              value={block.content}
-              onChange={handleTextChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Việc cần làm..."
-              className={`w-full text-sm bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed transition-all ${
-                checked ? 'line-through text-[var(--ui-tertiary)]' : 'text-[var(--ui-text)]'
-              }`}
-            />
-          </div>
-        );
+        return <ListBlock block={block} readOnly={isReadOnly} autoFocus={autoFocus}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
 
       case 'toggle':
         const isOpen = !!block.properties?.open;
@@ -885,9 +840,9 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             placeholder={
               block.content === '/'
                 ? 'Nhập để tìm kiếm'
-                : 'Gõ nội dung hoặc gõ / để mở tiện ích...'
+                : afterList ? 'Nhấn / để chèn các khối' : 'Gõ nội dung hoặc gõ / để mở tiện ích...'
             }
-            className={`w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[var(--ui-tertiary)] leading-relaxed ${
+            className={`w-full text-sm text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[var(--ui-tertiary)] leading-6 ${afterList ? 'placeholder:opacity-0 focus:placeholder:opacity-100' : ''} ${
               block.content.startsWith('/') ? 'font-mono' : ''
             }`}
           />
@@ -916,21 +871,21 @@ export const BlockItem: React.FC<BlockItemProps> = ({
           onDropBlock?.(sourceIndex, index);
         }
       }}
-      className={`group relative flex items-start gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl transition-all ${
+      className={`group relative flex items-start gap-0.5 py-1.5 -ml-14 pl-1 pr-2 rounded-xl transition-all ${
         isDragging ? 'opacity-30 bg-[var(--ui-hover)] border border-dashed border-[var(--ui-primary)]' : 'hover:bg-[var(--ui-hover)]/40'
       } ${isDragOver ? 'border-t-2 border-[var(--ui-primary)] -mt-0.5' : ''}`}
     >
-      {!isReadOnly && (
-        <div className="absolute left-1 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {isReadOnly ? <div aria-hidden="true" className="w-[50px] shrink-0" /> : (
+        <div className="flex h-6 w-[50px] shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <button
             type="button"
             onClick={() => onAddBelow(index)}
-            className="p-1 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
             title="Thêm khối bên dưới"
           >
             <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
           </button>
-          <div className="relative" ref={menuRef}>
+          <div className="relative flex h-6 w-6 shrink-0 items-center justify-center" ref={menuRef}>
             <button
               type="button"
               draggable={!isReadOnly}
@@ -944,7 +899,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 onDragEndBlock?.();
               }}
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-grab active:cursor-grabbing"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-grab active:cursor-grabbing"
               title="Kéo để di chuyển hoặc bấm để mở tùy chọn"
             >
               <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
@@ -1003,7 +958,11 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         </div>
       )}
 
-      <div className="flex-1 min-w-0">{renderBlockContent()}</div>
+      <div className="flex-1 min-w-0 min-h-6 [&_textarea]:block" style={{
+        color: block.properties?.textColor,
+        backgroundColor: block.properties?.backgroundColor,
+        ...(block.properties?.textColor ? { '--ui-text': block.properties.textColor } : {}),
+      } as React.CSSProperties}>{renderBlockContent()}</div>
     </div>
   );
 };

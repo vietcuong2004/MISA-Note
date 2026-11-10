@@ -1,5 +1,6 @@
 import React from 'react';
 import { Block, BlockProperties } from '../../types';
+import { MentionBlock } from './MentionBlock';
 
 interface Props {
   block: Block;
@@ -15,6 +16,10 @@ export const UtilityBlock: React.FC<Props> = ({ block, readOnly, onChange }) => 
   const updateProps = (patch: Partial<BlockProperties>) => onChange(block.content, { ...props, ...patch });
   const url = props.url || '';
   const safeUrl = /^https?:\/\//i.test(url) ? url : '';
+
+  if (props.mention || ['Nhắc đến một người', 'Nhắc đến một nhóm'].includes(props.utilityKind || '')) {
+    return <MentionBlock block={block} readOnly={readOnly} onChange={onChange} />;
+  }
 
   if (props.utilityKind === 'columns') {
     return <div className="grid gap-3 w-full" style={{ gridTemplateColumns: `repeat(${props.columns || 2}, minmax(0, 1fr))` }}>

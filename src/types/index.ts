@@ -65,6 +65,18 @@ export interface BlockTableData {
 }
 
 export interface BlockProperties {
+  listItems?: { id: string; content: string; checked?: boolean }[];
+  textColor?: string;
+  backgroundColor?: string;
+  mention?: {
+    kind: 'person' | 'group';
+    groupName?: string;
+    emails: string[];
+    permission: 'full' | 'edit' | 'comment' | 'view';
+    permissions?: Record<string, 'full' | 'edit' | 'comment' | 'view'>;
+    scope: 'workspace' | 'page';
+    message: string;
+  };
   commandTitle?: string;
   utilityKind?: string;
   provider?: string;

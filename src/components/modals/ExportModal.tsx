@@ -28,6 +28,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     md += `*Thời gian cập nhật: ${new Date(document.updatedAt).toLocaleString('vi-VN')}*\n\n---\n\n`;
 
     document.blocks.forEach((block) => {
+      if (['bullet', 'numbered', 'checklist'].includes(block.type) && block.properties?.listItems?.length) {
+        md += block.properties.listItems.map((item, index) => {
+          const prefix = block.type === 'bullet' ? '- ' : block.type === 'numbered' ? `${index + 1}. ` : `- [${item.checked ? 'x' : ' '}] `;
+          return prefix + item.content.replace(/\n/g, `\n${' '.repeat(prefix.length)}`);
+        }).join('\n') + '\n\n';
+        return;
+      }
       switch (block.type) {
         case 'h1':
           md += `# ${block.content}\n\n`;

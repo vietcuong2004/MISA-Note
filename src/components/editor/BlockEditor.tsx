@@ -1,4 +1,6 @@
+import { EmptyBlockRow } from './EmptyBlockRow';
 import { RenameDialog } from '../modals/RenameDialog';
+import { employeeName } from './EmployeePicker';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   UserPlus,
@@ -205,7 +207,9 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     onToast('Đã di chuyển vị trí đề mục');
   };
 
-  const handleAddBlockBelow = (index: number) => {
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [menuBlockId, setMenuBlockId] = useState<string | null>(null);
+  const handleAddBlockBelow = (index: number, openMenu = false) => {
     const newBlock: Block = {
       id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       type: 'paragraph',
@@ -213,9 +217,21 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     };
     const updatedBlocks = [...doc.blocks];
     updatedBlocks.splice(index + 1, 0, newBlock);
+    setFocusedBlockId(newBlock.id);
+    if (openMenu) setMenuBlockId(newBlock.id);
     const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
     setDoc(updatedDoc);
     triggerAutoSave(updatedDoc);
+  };
+
+  const handleExitList = (index: number, openMenu = false) => {
+    const next = doc.blocks[index + 1];
+    if (next?.type === 'paragraph') {
+      const element = Array.from(window.document.querySelectorAll<HTMLElement>('[data-block-id]'))
+        .find(node => node.dataset.blockId === next.id);
+      element?.querySelector<HTMLTextAreaElement>('textarea')?.focus();
+      if (openMenu) setMenuBlockId(next.id);
+    } else handleAddBlockBelow(index, openMenu);
   };
 
   // Slash trigger
@@ -235,13 +251,28 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     });
   };
 
+  const handleSlashColor = (color: string, isBackground: boolean) => {
+    if (!slashState.blockId) return;
+    const updated = { ...doc, updatedAt: new Date().toISOString(), blocks: doc.blocks.map(block =>
+      block.id === slashState.blockId ? {
+        ...block,
+        content: block.content.replace(/^\/[^\n]*/, ''),
+        properties: { ...block.properties, [isBackground ? 'backgroundColor' : 'textColor']: color || undefined },
+      } : block) };
+    setDoc(updated);
+    triggerAutoSave(updated);
+    setSlashState({ isOpen: false, blockId: null, query: '' });
+  };
+
   const handleSelectSlashItem = (type: BlockType, extraProps?: BlockProperties) => {
     if (!slashState.blockId) return;
 
     const updatedBlocks = doc.blocks.map((b) => {
       if (b.id === slashState.blockId) {
         let props: any = {};
-        if (type === 'checklist') props = { checked: false };
+        if (['bullet', 'numbered', 'checklist'].includes(type)) props = {
+          listItems: [{ id: `list_${crypto.randomUUID()}`, content: '', checked: false }],
+        };
         if (type === 'toggle') props = { open: true, caption: '' };
         if (type === 'callout') props = { calloutType: 'info' };
         if (type === 'meeting_info') {
@@ -310,7 +341,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         return {
           ...b,
           type,
-          content: '',
+          content: extraProps?.mention ? `@${extraProps.mention.groupName || extraProps.mention.emails.map(employeeName).join(', ')}` : '',
           properties: { ...props, ...extraProps },
         };
       }
@@ -318,6 +349,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     });
 
     const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
+    setFocusedBlockId(slashState.blockId);
     setDoc(updatedDoc);
     triggerAutoSave(updatedDoc);
     setSlashState({ isOpen: false, blockId: null, query: '' });
@@ -759,12 +791,16 @@ function getTextareaSelectionCoords(
           {/* Blocks container */}
           <div id="document-editor-container" className="space-y-2 relative min-h-[300px] pt-2">
             {doc.blocks.map((block, idx) => (
+              <React.Fragment key={block.id}>
               <BlockItem
                 key={block.id}
                 block={block}
                 index={idx}
                 totalBlocks={doc.blocks.length}
                 userRole={currentRole}
+                autoFocus={focusedBlockId === block.id}
+                openMenuInitially={menuBlockId === block.id}
+                afterList={idx > 0 && ['bullet', 'numbered', 'checklist'].includes(doc.blocks[idx - 1].type)}
                 isDragging={draggingBlockIndex === idx}
                 isDragOver={dragOverBlockIndex === idx && draggingBlockIndex !== idx}
                 onUpdate={handleUpdateBlock}
@@ -782,6 +818,9 @@ function getTextareaSelectionCoords(
                   setDragOverBlockIndex(null);
                 }}
               />
+              {!isReadOnly && ['bullet', 'numbered', 'checklist'].includes(block.type) && doc.blocks[idx + 1]?.type !== 'paragraph' &&
+                <EmptyBlockRow listId={block.id} onCreate={openMenu => handleExitList(idx, openMenu)} />}
+              </React.Fragment>
             ))}
 
             {/* Slash Command Dropdown */}
@@ -790,14 +829,16 @@ function getTextareaSelectionCoords(
                 query={slashState.query}
                 position={slashState.position}
                 onSelect={handleSelectSlashItem}
+                onApplyColor={handleSlashColor}
+                mentions={doc.blocks.flatMap(block => block.properties?.mention ? [block.properties.mention] : [])}
                 onClose={() => setSlashState({ isOpen: false, blockId: null, query: '' })}
               />
             )}
 
             {!isReadOnly &&
               (doc.blocks.length === 0 ||
-                doc.blocks[doc.blocks.length - 1].type !== 'paragraph' ||
-                doc.blocks[doc.blocks.length - 1].content !== '') && (
+                (!['bullet', 'numbered', 'checklist'].includes(doc.blocks[doc.blocks.length - 1].type) &&
+                  (doc.blocks[doc.blocks.length - 1].type !== 'paragraph' || doc.blocks[doc.blocks.length - 1].content !== ''))) && (
                 <div
                   onClick={() => handleAddBlockBelow(doc.blocks.length - 1)}
                   className="group relative flex items-center gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl text-sm text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-text transition-colors hover:bg-[var(--ui-hover)]/30"

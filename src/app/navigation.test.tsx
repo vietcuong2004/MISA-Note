@@ -43,6 +43,365 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('slash suggestions show the five most recently used unique items and survive reopening', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'recent-slash', blocks: [{ id: 'recent-input', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/recent-slash');
+  const open = async () => {
+    const input = document.querySelector('[data-block-id="recent-input"] textarea') as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, input.value === '/' ? '/ ' : '/');
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  const suggested = () => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Được đề xuất"] [role="option"]')).map(item => item.title);
+  await open();
+  assert.deepEqual(suggested(), []);
+  await click(document.querySelector('button[title="Ghi chép cuộc họp với AI"]'));
+  assert.deepEqual(suggested(), []);
+  for (const title of ['Văn bản', 'Đề mục 1', 'Đề mục 2', 'Đề mục 3', 'Đề mục 4', 'Chữ màu đỏ']) {
+    if (!document.querySelector('[aria-label="Chèn tiện ích nhanh"]')) await open();
+    await click(document.querySelector(`button[title="${title}"]`));
+  }
+  await open();
+  assert.deepEqual(suggested(), ['Chữ màu đỏ', 'Đề mục 4', 'Đề mục 3', 'Đề mục 2', 'Đề mục 1']);
+  const options = Array.from(document.querySelectorAll('[role="option"]'));
+  assert.equal(new Set(options.map(option => option.id)).size, options.length);
+  await click(document.querySelector('[aria-label="Được đề xuất"] button[title="Đề mục 2"]'));
+  await mount('/private');
+  await mount('/documents/recent-slash');
+  await open();
+  assert.deepEqual(suggested(), ['Đề mục 2', 'Chữ màu đỏ', 'Đề mục 4', 'Đề mục 3', 'Đề mục 1']);
+});
+
+test('list Enter creates nested items and clicking below exits into a normal paragraph', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'nested-lists', blocks: [
+    { id: 'bullet-list', type: 'paragraph', content: '' },
+    { id: 'numbered-list', type: 'numbered', content: '' },
+    { id: 'check-list', type: 'checklist', content: '' },
+  ] }]);
+  await mount('/documents/nested-lists');
+  const fill = async (input: HTMLTextAreaElement, value: string) => {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+      input.setSelectionRange(value.length, value.length);
+    });
+  };
+  await fill(document.querySelector('[data-block-id="bullet-list"] textarea')!, '/');
+  await click(document.querySelector('button[title="Danh sách gạch đầu dòng"]'));
+  let rootCount = 3;
+  for (const id of ['bullet-list', 'numbered-list', 'check-list']) {
+    const list = document.querySelector(`[data-block-id="${id}"]`)!;
+    const first = list.querySelector('textarea')!;
+    await fill(first, 'Mục 1');
+    if (id === 'check-list') await click(list.querySelector('[role="checkbox"]'));
+    await act(async () => {
+      first.focus();
+      first.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    });
+    assert.equal(document.querySelectorAll('[data-block-id]').length, rootCount);
+    const inputs = list.querySelectorAll('textarea');
+    assert.equal(inputs.length, 2);
+    assert.equal(document.activeElement, inputs[1]);
+    await fill(inputs[1], 'Mục 2');
+    if (id === 'bullet-list') {
+      await act(async () => {
+        inputs[1].setSelectionRange(2, 2);
+        inputs[1].dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      });
+      assert.equal(list.querySelectorAll('textarea').length, 3);
+      await act(async () => { document.activeElement!.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })); });
+      assert.equal(list.querySelectorAll('textarea').length, 2);
+      assert.equal(list.querySelectorAll('textarea')[1].value, 'Mục 2');
+    }
+    if (id === 'numbered-list') {
+      assert.equal(list.querySelectorAll('li > span')[0].textContent, '1.');
+      assert.equal(list.querySelectorAll('li > span')[1].textContent, '2.');
+    }
+    if (id === 'check-list') {
+      assert.equal(list.querySelectorAll('[role="checkbox"]')[0].getAttribute('aria-checked'), 'true');
+      assert.equal(list.querySelectorAll('[role="checkbox"]')[1].getAttribute('aria-checked'), 'false');
+    }
+    const exit = document.querySelector(`[data-list-exit-for="${id}"]`)!;
+    assert(exit);
+    assert.equal(exit.textContent, '');
+    assert.equal(document.querySelector('[data-block-id]')?.textContent?.includes('Gõ nội dung bên dưới danh sách'), false);
+    await click(exit.querySelector(id === 'numbered-list' ? '[aria-label="Tùy chọn khối sau danh sách"]'
+      : id === 'check-list' ? '[aria-label="Thêm khối sau danh sách"]' : '[aria-label="Gõ văn bản bên dưới danh sách"]'));
+    rootCount++;
+    const outside = list.nextElementSibling!.querySelector('textarea')!;
+    assert.equal(document.activeElement, outside);
+    assert.equal(outside.placeholder, 'Nhấn / để chèn các khối');
+    if (id === 'numbered-list') {
+      assert(outside.closest('[data-block-id]')?.textContent?.includes('Nhân bản khối'));
+      await act(async () => { outside.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true })); });
+    }
+    await fill(outside, 'Văn bản ngoài danh sách');
+    // Once created, the real paragraph replaces the blank insertion row.
+    assert.equal(document.querySelector(`[data-list-exit-for="${id}"]`), null);
+    await act(async () => outside.focus());
+    assert.equal(document.querySelectorAll('[data-block-id]').length, rootCount);
+    assert.equal(document.activeElement, outside);
+  }
+  await mount('/private');
+  const saved = getStoredDocuments().find(doc => doc.id === 'nested-lists')!;
+  const lists = saved.blocks.filter(block => ['bullet', 'numbered', 'checklist'].includes(block.type));
+  assert.equal(lists.length, 3);
+  for (const list of lists) assert.deepEqual(list.properties?.listItems?.map(item => item.content), ['Mục 1', 'Mục 2']);
+  assert.equal(saved.blocks.filter(block => block.type === 'paragraph').length, 3);
+  await mount('/documents/nested-lists');
+  assert.equal(document.querySelectorAll('[data-list-item]').length, 6);
+});
+
+test('slash filters while typing and arrow keys select without moving the editor cursor', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'slash-keyboard', blocks: [{ id: 'slash-input', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/slash-keyboard');
+  const input = document.querySelector('[data-block-id="slash-input"] textarea') as HTMLTextAreaElement;
+  const type = async (value: string) => {
+    await act(async () => {
+      input.focus();
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  const key = async (value: string) => {
+    await act(async () => { input.dispatchEvent(new window.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true })); });
+  };
+  const selected = () => document.querySelector<HTMLButtonElement>('[aria-label="Tiện ích nhanh"] [aria-selected="true"]');
+  await type('/h');
+  assert.equal(selected()?.title, 'Hình ảnh');
+  const first = selected()!.id;
+  await key('ArrowDown');
+  assert.notEqual(selected()?.id, first);
+  assert.equal(document.activeElement, input);
+  await key('ArrowUp');
+  assert.equal(selected()?.id, first);
+  await type('/de muc');
+  assert.equal(document.querySelectorAll('[aria-label="Tiện ích nhanh"] [role="option"]').length, 4);
+  assert.equal(selected()?.title, 'Đề mục 1');
+  await key('ArrowDown');
+  assert.equal(selected()?.title, 'Đề mục 2');
+  await key('Enter');
+  assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
+  assert.equal(document.querySelectorAll('[data-block-id]').length, 1);
+  await type('/khongtimthayxyz');
+  assert(document.querySelector('[aria-label="Tiện ích nhanh"]')?.textContent?.includes('Không tìm thấy'));
+  await key('ArrowDown');
+  await key('Enter');
+  assert.equal(document.querySelectorAll('[data-block-id]').length, 1);
+  await key('Escape');
+  assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
+  await mount('/private');
+  assert.equal(getStoredDocuments().find(doc => doc.id === 'slash-keyboard')?.blocks[0].type, 'h2');
+});
+
+test('Enter after every heading level creates and focuses a paragraph below it', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  const levels = ['h1', 'h2', 'h3', 'h4'] as const;
+  saveStoredDocuments([{ ...base, id: 'heading-enter', blocks: levels.map(type => ({ id: type, type, content: `Đề mục ${type}` })) }]);
+  await mount('/documents/heading-enter');
+  for (const level of levels) {
+    const input = document.querySelector(`[data-block-id="${level}"] textarea`) as HTMLTextAreaElement;
+    await act(async () => {
+      input.focus();
+      input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    });
+    const next = input.closest('[data-block-id]')!.nextElementSibling!;
+    const paragraph = next.querySelector('textarea')!;
+    assert.equal(document.activeElement, paragraph);
+    assert.equal(paragraph.value, '');
+    assert.equal(input.value, `Đề mục ${level}`);
+  }
+  await mount('/private');
+  const blocks = getStoredDocuments().find(doc => doc.id === 'heading-enter')!.blocks;
+  assert.deepEqual(blocks.map(block => block.type), ['h1', 'paragraph', 'h2', 'paragraph', 'h3', 'paragraph', 'h4', 'paragraph']);
+});
+
+test('Enter moves the cursor to the new block and allows immediate continued typing', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'enter-focus', blocks: [{ id: 'first-line', type: 'paragraph', content: 'Dòng đầu tiên' }] }]);
+  await mount('/documents/enter-focus');
+  const first = document.querySelector('[data-block-id="first-line"] textarea') as HTMLTextAreaElement;
+  const enter = async (input: HTMLTextAreaElement, options: KeyboardEventInit = {}) => {
+    await act(async () => {
+      input.focus();
+      input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...options }));
+    });
+  };
+  await enter(first);
+  let inputs = Array.from(document.querySelectorAll<HTMLTextAreaElement>('[data-block-id] textarea'));
+  assert.equal(inputs.length, 2);
+  assert.equal(document.activeElement, inputs[1]);
+  assert.equal(inputs[1].selectionStart, 0);
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(inputs[1], 'Gõ tiếp ngay');
+    inputs[1].dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(document.activeElement, inputs[1]);
+  await enter(inputs[1]);
+  inputs = Array.from(document.querySelectorAll<HTMLTextAreaElement>('[data-block-id] textarea'));
+  assert.equal(inputs.length, 3);
+  assert.equal(document.activeElement, inputs[2]);
+  await enter(inputs[2], { shiftKey: true });
+  await enter(inputs[2], { isComposing: true });
+  assert.equal(document.querySelectorAll('[data-block-id] textarea').length, 3);
+  await mount('/private');
+  assert.equal(getStoredDocuments().find(doc => doc.id === 'enter-focus')?.blocks[1].content, 'Gõ tiếp ngay');
+});
+
+test('slash colors apply independently, preserve block type and reset to defaults', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'colors-test', blocks: [
+    { id: 'color-block', type: 'h2', content: '', properties: { headingLevel: 2 } },
+  ] }]);
+  await mount('/documents/colors-test');
+  const type = async (value: string) => {
+    const input = document.querySelector('[data-block-id="color-block"] textarea') as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  await type('/');
+  const groups = Array.from(document.querySelectorAll('[aria-label="Tiện ích nhanh"] [role="group"]'));
+  assert.deepEqual(groups.slice(-2).map(group => group.getAttribute('aria-label')), ['Màu chữ', 'Màu nền']);
+  await click(document.querySelector('button[title="Chữ màu đỏ"]'));
+  await type('/nen xanh lam');
+  await click(document.querySelector('button[title="Nền xanh lam"]'));
+  await type('Nội dung được giữ');
+  const content = document.querySelector('[data-block-id="color-block"] textarea')!.parentElement!;
+  assert.equal(content.style.color, 'rgb(212, 76, 71)');
+  assert.equal(content.style.backgroundColor, 'rgb(231, 243, 248)');
+  await mount('/private');
+  let block = getStoredDocuments().find(doc => doc.id === 'colors-test')!.blocks[0];
+  assert.equal(block.type, 'h2');
+  assert.equal(block.content, 'Nội dung được giữ');
+  assert.equal(block.properties?.headingLevel, 2);
+  assert.equal(block.properties?.textColor, '#D44C47');
+  assert.equal(block.properties?.backgroundColor, '#E7F3F8');
+  await mount('/documents/colors-test');
+  await type('/chu mac dinh');
+  await click(document.querySelector('button[title="Chữ mặc định"]'));
+  await mount('/private');
+  block = getStoredDocuments().find(doc => doc.id === 'colors-test')!.blocks[0];
+  assert.equal(block.type, 'h2');
+  assert.equal(block.properties?.textColor, undefined);
+  assert.equal(block.properties?.backgroundColor, '#E7F3F8');
+});
+
+test('AI meeting command is visible but cannot be selected with mouse or keyboard', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'disabled-slash', blocks: [{ id: 'disabled-block', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/disabled-slash');
+  const textarea = document.querySelector('[data-block-id="disabled-block"] textarea') as HTMLTextAreaElement;
+  const type = async (value: string) => {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(textarea, value);
+      textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  await type('/AI');
+  const ai = document.querySelector('button[title="Ghi chép cuộc họp với AI"]') as HTMLButtonElement;
+  assert(ai.disabled);
+  assert(ai.textContent?.includes('Đang phát triển'));
+  await click(ai);
+  await act(async () => { textarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
+  assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
+  await type('/');
+  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Văn bản');
+  await act(async () => { textarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); });
+  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Nền đỏ');
+  await mount('/private');
+  assert.equal(getStoredDocuments().find(doc => doc.id === 'disabled-slash')?.blocks[0].type, 'paragraph');
+});
+
+test('invitation mock adds employees, saves individual permissions and reuses simple mentions', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'mentions-test', blocks: [
+    { id: 'mention-person', type: 'paragraph', content: '' },
+    { id: 'mention-group', type: 'paragraph', content: '' },
+    { id: 'mention-reuse', type: 'paragraph', content: '' },
+  ] }]);
+  await mount('/documents/mentions-test');
+  const fill = async (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    await act(async () => {
+      const prototype = input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  await fill(document.querySelector('[data-block-id="mention-person"] textarea')!, '@');
+  await click(document.querySelector('button[title="Nhắc đến 1 người"]'));
+  let dialog = document.querySelector('[aria-label="Mời và phân quyền"]')!;
+  assert(dialog);
+  assert(!dialog.textContent?.includes('Các mức quyền'));
+  assert.equal(dialog.querySelector('[aria-label="Danh sách nhân viên"]'), null);
+  await click(dialog.querySelector('[aria-label="Danh bạ"]'));
+  assert(dialog.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
+  await click(dialog.querySelector('[aria-label="Đóng danh sách nhân viên"]'));
+  await click(button('Gửi lời mời (0)', dialog));
+  assert(dialog.querySelector('[role="alert"]'));
+  const add = async (query: string) => {
+    await fill(dialog.querySelector<HTMLInputElement>('input[aria-label="Tìm nhân viên"]')!, query);
+    await click(dialog.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
+    await click(button('Thêm', dialog));
+  };
+  await add('thu ha');
+  await add('cuong.viet');
+  assert.equal(dialog.querySelectorAll('[data-invite-email]').length, 2);
+  await click(dialog.querySelector('[aria-label="Xóa Việt Cường khỏi danh sách mời"]'));
+  assert.equal(dialog.querySelectorAll('[data-invite-email]').length, 1);
+  await add('cuong.viet');
+  const role = async (name: string, value: string) => {
+    const select = dialog.querySelector<HTMLSelectElement>(`select[aria-label="Quyền của ${name}"]`)!;
+    await act(async () => { select.value = value; select.dispatchEvent(new window.Event('change', { bubbles: true })); });
+  };
+  await role('Trần Thị Thu Hà', 'comment');
+  await role('Việt Cường', 'view');
+  await fill(dialog.querySelector('textarea')!, 'Bạn kiểm tra giúp mình nhé');
+  await click(button('Gửi lời mời (2)', dialog));
+  const person = document.querySelector('[data-block-id="mention-person"]')!;
+  assert(person.textContent?.includes('@Trần Thị Thu Hà'));
+  assert(!person.textContent?.includes('Có thể bình luận'));
+  assert(!person.textContent?.includes('Bạn kiểm tra giúp mình nhé'));
+  await fill(document.querySelector('[data-block-id="mention-group"] textarea')!, '/nhom');
+  await click(document.querySelector('button[title="Nhắc đến 1 nhóm"]'));
+  dialog = document.querySelector('[aria-label="Mời và phân quyền nhóm"]')!;
+  await fill(dialog.querySelector('[aria-label="Tên nhóm"]')!, 'Nhóm sản phẩm');
+  await add('nam.le');
+  await click(button('Gửi lời mời (1)', dialog));
+  await mount('/private');
+  const saved = getStoredDocuments().find(doc => doc.id === 'mentions-test')!;
+  assert.deepEqual(saved.blocks[0].properties?.mention?.permissions, {
+    'ha.tran@congty.vn': 'comment', 'cuong.viet@congty.vn': 'view',
+  });
+  assert.equal(saved.blocks[0].properties?.mention?.scope, 'page');
+  assert.equal(saved.blocks[1].properties?.mention?.groupName, 'Nhóm sản phẩm');
+  await mount('/documents/mentions-test');
+  await click(Array.from(document.querySelectorAll('[data-block-id="mention-person"] button')).find(item => item.textContent?.includes('@Việt Cường')));
+  dialog = document.querySelector('[aria-label="Mời và phân quyền"]')!;
+  assert.equal(dialog.querySelector<HTMLSelectElement>('[aria-label="Quyền của Việt Cường"]')?.value, 'view');
+  await role('Việt Cường', 'full');
+  await click(button('Hủy', dialog));
+  await fill(document.querySelector('[data-block-id="mention-reuse"] textarea')!, '@cuong.viet');
+  await click(document.querySelector('button[title="Việt Cường"]'));
+  await mount('/private');
+  const reused = getStoredDocuments().find(doc => doc.id === 'mentions-test')!.blocks[2];
+  assert.equal(reused.content, '@Việt Cường');
+  assert.equal(reused.properties?.mention?.permission, 'view');
+});
+
 test('unclassified folders highlight document drops, clear feedback and reject folders', async () => {
   const { setActiveDrag, clearActiveDrag } = await import('../utils/dnd');
   const drag = (type: string, target: Element, relatedTarget?: Element) => {
