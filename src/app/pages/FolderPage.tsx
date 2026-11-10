@@ -1,245 +1,170 @@
+import { FolderActions } from '../../components/layout/FolderActions';
 import React, { useState } from 'react';
-import { LibraryView } from '../../components/views/LibraryView';
+import { Folder as FolderIcon, FolderOpen, Plus, Home, ChevronRight, ChevronDown, LayoutGrid, List, FolderTree, MoreHorizontal, FileText } from 'lucide-react';
 import { DocumentPageProps } from './pageTypes';
 import { NotFoundPage } from './NotFoundPage';
-import { Folder as FolderIcon, Plus, Edit2, FolderInput, Trash2, ArrowLeft } from 'lucide-react';
-import { ViewState } from '../../types';
-import { getFolderPath } from '../../utils/folders';
-import {
-  canDropFolderInto,
-  clearActiveDrag,
-  getDragPayload,
-  setDragFolder,
-} from '../../utils/dnd';
+import { Folder, Document, ViewState } from '../../types';
+import { getFolderAncestors } from '../../utils/folders';
+import { canDropFolderInto, clearActiveDrag, getDragPayload, setDragFolder, setDragDocument } from '../../utils/dnd';
+import { DocumentActionMenu } from '../../components/modals/DocumentActionMenu';
+import { DocumentLinkShare } from '../../components/modals/DocumentLinkShare';
+import { RenameDialog } from '../../components/modals/RenameDialog';
 
-export function FolderPage({
-  folderId,
-  documents,
-  folders,
-  actions,
-  onNavigate,
-}: DocumentPageProps & { folderId: string; onNavigate: (view: ViewState) => void }) {
-  const folder = folders.find((f) => f.id === folderId);
-  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+type Mode = 'structure' | 'grid' | 'list';
+type Sort = 'sidebar' | 'name-asc' | 'name-desc' | 'updated';
 
+export function FolderPage({ folderId, documents, folders, actions, onNavigate }:
+  DocumentPageProps & { folderId: string; onNavigate: (view: ViewState) => void }) {
+  const [mode, setMode] = useState<Mode>('structure');
+  const [sort, setSort] = useState<Sort>('sidebar');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [dragOver, setDragOver] = useState<string | null>(null);
+  const [documentMenu, setDocumentMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [shareId, setShareId] = useState<string | null>(null);
+  const folder = folders.find(item => item.id === folderId);
   if (!folder) return <NotFoundPage title="Không tìm thấy thư mục" />;
-  const children = folders.filter((child) => child.parentId === folderId && child.space === folder.space);
+  const activeDocs = documents.filter(doc => !doc.isTrash && doc.space === folder.space);
+  const ancestors = getFolderAncestors(folder.id, folders);
+  const sortItems = <T extends { updatedAt: string }>(items: T[], name: (item: T) => string): T[] => [...items].sort((a, b) =>
+    sort === 'sidebar' ? 0 : sort === 'updated' ? Date.parse(b.updatedAt) - Date.parse(a.updatedAt) : name(a).localeCompare(name(b), 'vi', { numeric: true }) * (sort === 'name-desc' ? -1 : 1));
+  const childFolders = (parentId: string) => sortItems(folders.filter(item => item.parentId === parentId && item.space === folder.space), item => item.name);
+  const folderDocs = (parentId: string) => {
+    const notes = activeDocs.filter(doc => doc.folderId === parentId);
+    return sort === 'sidebar' ? notes.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)) : sortItems(notes, doc => doc.title);
+  };
+  const children = childFolders(folder.id);
+  const notes = folderDocs(folder.id);
+  const menuDocument = documents.find(doc => doc.id === documentMenu?.id && !doc.isTrash);
+  const shareDocument = documents.find(doc => doc.id === shareId && !doc.isTrash);
+  const date = (value: string) => new Date(value).toLocaleDateString('vi-VN');
+  const count = (item: Folder) => childFolders(item.id).length + folderDocs(item.id).length;
 
-  const handleDropOnTarget = (
-    e: React.DragEvent,
-    targetParentId: string | null,
-    targetSpace = folder.space,
-    locationLabel = 'vị trí mới'
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverTarget(null);
-    const payload = getDragPayload(e, folders, documents);
+  const drop = (event: React.DragEvent, parentId: string | null) => {
+    event.preventDefault(); event.stopPropagation(); setDragOver(null);
+    const payload = getDragPayload(event, folders, documents);
     clearActiveDrag();
     if (!payload) return;
-
     if (payload.type === 'folder') {
-      if (!canDropFolderInto(payload.id, targetParentId, folders)) {
-        actions.onToast?.('Không thể di chuyển thư mục vào chính nó hoặc thư mục con của nó', 'error');
-        return;
+      if (!canDropFolderInto(payload.id, parentId, folders)) {
+        actions.onToast?.('Không thể di chuyển thư mục vào chính nó hoặc thư mục con của nó', 'error'); return;
       }
-      actions.onMoveFolder?.(payload.id, targetParentId, targetSpace);
-      actions.onToast?.(`Đã di chuyển thư mục vào ${locationLabel}`);
-    } else if (payload.type === 'document') {
-      actions.onMoveDocument?.(payload.id, targetParentId, targetSpace);
-      actions.onToast?.(`Đã di chuyển tài liệu vào ${locationLabel}`);
-    }
+      actions.onMoveFolder?.(payload.id, parentId, folder.space);
+    } else actions.onMoveDocument?.(payload.id, parentId, folder.space);
   };
+  const dropProps = (id: string | null) => ({
+    onDragOver: (event: React.DragEvent) => {
+      event.preventDefault(); event.stopPropagation();
+      const payload = getDragPayload(event, folders, documents);
+      const blocked = payload?.type === 'folder' && !canDropFolderInto(payload.id, id, folders);
+      event.dataTransfer.dropEffect = blocked ? 'none' : 'move';
+      setDragOver(blocked ? null : id || 'root');
+    },
+    onDragLeave: (event: React.DragEvent) => {
+      event.stopPropagation();
+      if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOver(null);
+    },
+    onDrop: (event: React.DragEvent) => drop(event, id),
+  });
+  const folderMenu = (item: Folder) => <FolderActions folder={item} onCreateDocument={actions.onCreateDocument}
+    onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder} onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />;
+  const dragFolder = (item: Folder) => ({
+    draggable: true,
+    onDragStart: (event: React.DragEvent) => { event.stopPropagation(); setDragFolder(event, item.id); },
+    onDragEnd: () => { clearActiveDrag(); setDragOver(null); },
+  });
+  const documentRow = (doc: Document, depth = 0) => <div key={doc.id} data-folder-document={doc.id}
+    draggable onDragStart={event => { event.stopPropagation(); setDragDocument(event, doc.id); }} onDragEnd={clearActiveDrag}
+    className="flex items-center gap-1.5 border-b border-[var(--ui-border)]/50 px-4 py-2 hover:bg-[var(--ui-selected)]" style={{ paddingLeft: `${16 + depth * 26}px` }}>
+    <span aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
+    <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
+    <button type="button" onClick={() => actions.onOpenDocument(doc.id)} className="min-w-0 flex-1 truncate text-left text-xs">{doc.title || 'Không có tiêu đề'}</button>
+    <span className="hidden text-xs text-[var(--ui-tertiary)] sm:block">Cập nhật {date(doc.updatedAt)}</span>
+    <button type="button" aria-label={`Tùy chọn tài liệu ${doc.title}`} onClick={event => {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setDocumentMenu({ id: doc.id, top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 260)), left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)) });
+    }} className="rounded-lg p-1.5 text-[var(--ui-tertiary)] hover:bg-[var(--ui-hover)]"><MoreHorizontal className="h-4 w-4" /></button>
+  </div>;
+  const tree = (parentId: string, depth = 0, seen = new Set<string>()): React.ReactNode => <>
+    {childFolders(parentId).filter(item => !seen.has(item.id)).map(item => <React.Fragment key={item.id}>
+      <div data-folder-entry={item.id} {...dragFolder(item)} {...dropProps(item.id)}
+        className={`group flex items-center gap-1.5 border-b border-[var(--ui-border)]/50 px-4 py-2 ${dragOver === item.id ? 'bg-[var(--ui-selected)] ring-2 ring-inset ring-[var(--ui-primary)]' : 'hover:bg-[var(--ui-selected)]'}`}
+        style={{ paddingLeft: `${16 + depth * 26}px` }}>
+        <button type="button" aria-label={`${collapsed.has(item.id) ? 'Mở rộng' : 'Thu gọn'} ${item.name}`} aria-expanded={!collapsed.has(item.id)}
+          onClick={() => setCollapsed(previous => { const next = new Set(previous); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })}
+          className="rounded p-0.5 text-[var(--ui-tertiary)] hover:bg-[var(--ui-border)]">{collapsed.has(item.id) ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}</button>
+        {collapsed.has(item.id)
+          ? <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
+          : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />}
+        <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className="min-w-0 flex-1 truncate text-left text-xs font-medium">{item.name}</button>
+        <span className="text-xs text-[var(--ui-muted)]">{count(item)} mục</span>
+        <span className="hidden text-xs text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
+        {folderMenu(item)}
+      </div>
+      {!collapsed.has(item.id) && tree(item.id, depth + 1, new Set([...seen, parentId, item.id]))}
+    </React.Fragment>)}
+    {folderDocs(parentId).map(doc => documentRow(doc, depth))}
+  </>;
 
-  return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-      <section
-        aria-label="Thao tác thư mục và thư mục con"
-        className="px-6 md:px-10 pt-5 flex flex-wrap items-center justify-between gap-2 max-w-6xl w-full mx-auto"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {folder.parentId ? (
-            <button
-              type="button"
-              onClick={() => onNavigate({ type: 'folder', folderId: folder.parentId! })}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = 'move';
-                if (dragOverTarget !== 'parent') setDragOverTarget('parent');
-              }}
-              onDragLeave={(e) => {
-                e.stopPropagation();
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  if (dragOverTarget === 'parent') setDragOverTarget(null);
-                }
-              }}
-              onDrop={(e) =>
-                handleDropOnTarget(
-                  e,
-                  folder.parentId || null,
-                  folder.space,
-                  `thư mục cha "${getFolderPath(folder.parentId, folders)}"`
-                )
-              }
-              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                dragOverTarget === 'parent'
-                  ? 'border-[var(--ui-primary)] bg-[var(--ui-selected)] text-[var(--ui-primary)] font-bold scale-105 shadow-xs'
-                  : 'text-[var(--ui-muted)] border-transparent hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]'
-              }`}
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{getFolderPath(folder.parentId, folders)}</span>
-              {dragOverTarget === 'parent' && (
-                <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 py-0.2 rounded font-medium ml-1">
-                  Thả ra cấp cha
-                </span>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onNavigate({ type: folder.space === 'personal' ? 'private' : 'company' })}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = 'move';
-                if (dragOverTarget !== 'root') setDragOverTarget('root');
-              }}
-              onDragLeave={(e) => {
-                e.stopPropagation();
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  if (dragOverTarget === 'root') setDragOverTarget(null);
-                }
-              }}
-              onDrop={(e) =>
-                handleDropOnTarget(
-                  e,
-                  null,
-                  folder.space,
-                  `thư mục gốc (${folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'})`
-                )
-              }
-              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                dragOverTarget === 'root'
-                  ? 'border-[var(--ui-primary)] bg-[var(--ui-selected)] text-[var(--ui-primary)] font-bold scale-105 shadow-xs'
-                  : 'text-[var(--ui-muted)] border-transparent hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]'
-              }`}
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}</span>
-              {dragOverTarget === 'root' && (
-                <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 py-0.2 rounded font-medium ml-1">
-                  Thả ra thư mục gốc
-                </span>
-              )}
-            </button>
-          )}
-
-          {children.map((child) => {
-            const isChildOver = dragOverTarget === child.id;
-
-            return (
-              <button
-                key={child.id}
-                type="button"
-                draggable
-                onDragStart={(e) => {
-                  e.stopPropagation();
-                  setDragFolder(e, child.id);
-                }}
-                onDragEnd={() => {
-                  clearActiveDrag();
-                }}
-                onClick={() => onNavigate({ type: 'folder', folderId: child.id })}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = 'move';
-                  if (dragOverTarget !== child.id) setDragOverTarget(child.id);
-                }}
-                onDragLeave={(e) => {
-                  e.stopPropagation();
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    if (dragOverTarget === child.id) setDragOverTarget(null);
-                  }
-                }}
-                onDrop={(e) => handleDropOnTarget(e, child.id, child.space, `thư mục "${child.name}"`)}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs rounded-xl border transition-all cursor-grab active:cursor-grabbing ${
-                  isChildOver
-                    ? 'border-[var(--ui-primary)] bg-[var(--ui-selected)] text-[var(--ui-primary)] font-bold scale-105 shadow-xs ring-2 ring-[var(--ui-primary)]'
-                    : 'border-[var(--ui-border)] hover:bg-[var(--ui-hover)]'
-                }`}
-              >
-                <FolderIcon className={`w-3.5 h-3.5 ${isChildOver ? 'text-[var(--ui-primary)]' : ''}`} />
-                <span>{child.name}</span>
-                {isChildOver && (
-                  <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 py-0.2 rounded font-medium">
-                    Thả vào đây
-                  </span>
-                )}
+  return <div className="flex-1 min-h-0 overflow-y-auto bg-[var(--ui-surface)] text-[var(--ui-text)]">
+    <section aria-label="Thao tác thư mục và thư mục con" className="border-b border-[var(--ui-border)]">
+      <nav aria-label="Đường dẫn thư mục" className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-4 text-sm md:px-10">
+        <button type="button" {...dropProps(null)} onClick={() => onNavigate({ type: folder.space === 'personal' ? 'private' : 'company' })}
+          className={`flex items-center gap-2 rounded-lg p-1 text-[var(--ui-accent)] ${dragOver === 'root' ? 'ring-2 ring-[var(--ui-primary)]' : ''}`}>
+          <Home className="h-4 w-4" />{folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
+        </button>
+        {ancestors.map(item => <React.Fragment key={item.id}><ChevronRight className="h-3.5 w-3.5 text-[var(--ui-tertiary)]" />
+          <button type="button" {...dropProps(item.id)} onClick={() => onNavigate({ type: 'folder', folderId: item.id })}
+            aria-current={item.id === folder.id ? 'page' : undefined}
+            className={`rounded-lg p-1 ${item.id === folder.id ? 'font-semibold' : 'text-[var(--ui-accent)]'} ${dragOver === item.id ? 'ring-2 ring-[var(--ui-primary)]' : ''}`}>{item.name}</button>
+        </React.Fragment>)}
+      </nav>
+    </section>
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-6 md:px-10">
+      <header className="flex flex-wrap items-start justify-between gap-5">
+        <div className="flex min-w-0 items-center gap-4"><FolderIcon className="h-14 w-14 shrink-0 text-[var(--ui-text)]" strokeWidth={1.2} />
+          <div className="min-w-0"><h1 className="break-words text-3xl font-bold tracking-tight">{folder.name}</h1>
+            <p className="mt-1 text-sm text-[var(--ui-muted)]">Các thư mục và tài liệu bên trong</p></div></div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div role="group" aria-label="Cách hiển thị thư mục" className="inline-flex rounded-lg border border-[var(--ui-border)] p-0.5">
+            {([{ id: 'structure', label: 'Structure', Icon: FolderTree }, { id: 'grid', label: 'Lưới', Icon: LayoutGrid }, { id: 'list', label: 'Danh sách', Icon: List }] as const).map(({ id, label, Icon }) =>
+              <button key={id} type="button" aria-label={`Dạng ${label}`} title={label} aria-pressed={mode === id} onClick={() => { setMode(id); }}
+                className={`rounded-md p-2 ${mode === id ? 'bg-[var(--ui-selected)] text-[var(--ui-accent)]' : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'}`}><Icon className="h-4 w-4" /></button>)}
+          </div>
+          <select aria-label="Sắp xếp thư mục" value={sort} onChange={event => setSort(event.target.value as Sort)} className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 text-xs">
+            <option value="sidebar">Mặc định</option><option value="name-asc">Tên (A → Z)</option><option value="name-desc">Tên (Z → A)</option><option value="updated">Mới cập nhật</option>
+          </select>
+          <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
+            onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder}
+            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />
+        </div>
+      </header>
+      <section aria-label="Nội dung thư mục" data-folder-mode={mode} {...dropProps(folder.id)} className="min-h-36">
+        {mode === 'structure' ? <div className="rounded-xl border border-[var(--ui-border)]">{tree(folder.id)}</div> : <>
+          <div className={mode === 'grid' ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'space-y-2'}>
+            {children.map(item => <article key={item.id} data-folder-entry={item.id} {...dragFolder(item)} {...dropProps(item.id)}
+              className={`group relative rounded-xl border border-[var(--ui-border)] ${dragOver === item.id ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)]' : 'hover:bg-[var(--ui-hover)]'} ${mode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3'}`}>
+              <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className={`flex min-w-0 flex-1 text-left ${mode === 'grid' ? 'w-full flex-col items-start gap-3' : 'items-center gap-3'}`}>
+                <FolderIcon className={`${mode === 'grid' ? 'h-14 w-14' : 'h-8 w-8'} shrink-0 text-[var(--ui-text)]`} strokeWidth={1.2} />
+                <span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.name}</span><span className="mt-1 block text-xs text-[var(--ui-muted)]">{count(item)} mục · Cập nhật {date(item.updatedAt)}</span></span>
               </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => actions.onCreateFolder?.(folder.space, folder.id)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs hover:bg-[var(--ui-hover)] border border-dashed border-[var(--ui-border)] transition-colors cursor-pointer text-[var(--ui-muted)] hover:text-[var(--ui-text)]"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thư mục con</span>
-          </button>
-        </div>
-
-        {/* Folder management action buttons */}
-        <div className="flex items-center gap-1.5">
-          {actions.onEditFolder && (
-            <button
-              type="button"
-              onClick={() => actions.onEditFolder?.(folder)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] border border-[var(--ui-border)] transition-colors cursor-pointer"
-              title="Đổi tên thư mục"
-            >
-              <Edit2 className="w-3 h-3 stroke-[1.75]" />
-              <span>Đổi tên</span>
-            </button>
-          )}
-          {actions.onMoveFolderRequest && (
-            <button
-              type="button"
-              onClick={() => actions.onMoveFolderRequest?.(folder)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] border border-[var(--ui-border)] transition-colors cursor-pointer"
-              title="Di chuyển thư mục"
-            >
-              <FolderInput className="w-3 h-3 stroke-[1.75]" />
-              <span>Di chuyển</span>
-            </button>
-          )}
-          {actions.onDeleteFolder && (
-            <button
-              type="button"
-              onClick={() => actions.onDeleteFolder?.(folder.id)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-red-600 hover:bg-red-50 border border-red-200 transition-colors cursor-pointer"
-              title="Xóa thư mục"
-            >
-              <Trash2 className="w-3 h-3 stroke-[1.75]" />
-              <span>Xóa</span>
-            </button>
-          )}
-        </div>
+              <div className={mode === 'grid' ? 'absolute right-2 top-2' : ''}>{folderMenu(item)}</div>
+            </article>)}
+          </div>
+          {notes.length > 0 && <div className="mt-5 rounded-xl border border-[var(--ui-border)]">{notes.map(doc => documentRow(doc))}</div>}
+        </>}
+        {!children.length && !notes.length && <p className="py-12 text-center text-sm text-[var(--ui-tertiary)]">Thư mục trống. Tạo tài liệu hoặc thư mục con để bắt đầu.</p>}
       </section>
-
-      <LibraryView
-        {...actions}
-        title={folder.name}
-        description={`${folder.space === 'personal' ? 'Ghi chú của tôi' : 'Tài liệu công ty'} / ${getFolderPath(folder.id, folders)}`}
-        documents={documents.filter((doc) => doc.folderId === folderId)}
-        folders={folders.filter((candidate) => candidate.space === folder.space)}
-        showTabs={false}
-        defaultSpace={folder.space}
-        defaultFolderId={folderId}
-      />
     </div>
-  );
+    <DocumentActionMenu isOpen={!!menuDocument} isFavorite={menuDocument?.isFavorite}
+      position={documentMenu || undefined} onClose={() => setDocumentMenu(null)}
+      onToggleFavorite={() => { if (menuDocument) actions.onToggleFavorite(menuDocument.id); }}
+      onRename={() => { if (menuDocument) setRenameId(menuDocument.id); }}
+      onShare={() => { if (menuDocument) setShareId(menuDocument.id); }}
+      onMove={() => { if (menuDocument) actions.onMoveDocumentRequest?.(menuDocument); }}
+      onDelete={() => { if (menuDocument) actions.onSoftDeleteDocument(menuDocument.id); }} />
+    {renameId && <RenameDialog kind="document" initialName={documents.find(doc => doc.id === renameId)?.title || ''}
+      onClose={() => setRenameId(null)} onSave={name => actions.onRenameDocument?.(renameId, name)} />}
+    {shareDocument && <DocumentLinkShare document={shareDocument} onClose={() => setShareId(null)} />}
+  </div>;
 }

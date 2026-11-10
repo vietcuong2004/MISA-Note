@@ -1,6 +1,6 @@
-import { SpaceCreateMenu } from './SpaceCreateMenu';
+import { FolderActions } from './FolderActions';
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Folder as FolderIcon, FolderOpen, FolderInput, GripVertical, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder as FolderIcon, FolderOpen, GripVertical } from 'lucide-react';
 import { Document, Folder, SpaceType, ViewState } from '../../types';
 import {
   canDropFolderInto,
@@ -157,6 +157,7 @@ export function FolderTree(props: Props) {
       .filter((folder) => (parentId(folder) || null) === parent && !ancestors.has(folder.id))
       .map((folder) => {
         const open = !!props.expanded[folder.id];
+        const selected = props.view.type === 'folder' && props.view.folderId === folder.id;
         const notes = props.documents.filter(
           (document) => document.folderId === folder.id && !document.isTrash
         );
@@ -185,6 +186,7 @@ export function FolderTree(props: Props) {
           <div key={folder.id} data-folder-id={folder.id} className="space-y-0.5">
             {/* Folder Header Row */}
             <div
+              data-selected={selected}
               onClick={() => props.onToggle(folder.id)}
               draggable={props.newFolderId !== folder.id}
               onDragStart={handleFolderDragStart}
@@ -213,7 +215,9 @@ export function FolderTree(props: Props) {
               onDrop={(event) => {
                 handleFolderDrop(event, folder);
               }}
-              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl text-[var(--ui-text)] transition-colors select-none ${
+              className={`group flex items-center justify-between gap-1 px-2.5 py-1.5 rounded-xl transition-colors select-none ${selected
+                ? 'bg-[var(--ui-active-note)] text-[var(--ui-active-note-text)] font-semibold shadow-2xs'
+                : 'text-[var(--ui-text)]'} ${
                 isDropBlocked ? 'cursor-not-allowed opacity-60' : 'cursor-grab active:cursor-grabbing'
               } ${
                 isDraggingThis
@@ -222,7 +226,7 @@ export function FolderTree(props: Props) {
               } ${
                 draggingOver
                   ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] text-[var(--ui-primary)] font-bold scale-[1.01] shadow-xs'
-                  : 'hover:bg-[var(--ui-selected)]'
+                  : selected ? '' : 'hover:bg-[var(--ui-selected)]'
               }`}
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -296,47 +300,8 @@ export function FolderTree(props: Props) {
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-0.5 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100">
-                <SpaceCreateMenu title={`Tạo thư mục con trong ${folder.name}`}
-                  onCreateDocument={() => props.onCreateDocument?.(folder.space, folder.id)}
-                  onCreateFolder={() => props.onCreateFolder(folder.space, folder.id)} />
-                <button
-                  type="button"
-                  title="Đổi tên thư mục"
-                  aria-label={`Đổi tên thư mục ${folder.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    props.onEditFolder(folder);
-                  }}
-                  className="p-1 rounded hover:bg-[var(--ui-hover-strong)] text-[var(--ui-muted)] cursor-pointer"
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  title="Di chuyển thư mục"
-                  aria-label={`Di chuyển thư mục ${folder.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    props.onMoveFolder?.(folder);
-                  }}
-                  className="p-1 rounded hover:bg-[var(--ui-hover-strong)] text-[var(--ui-muted)] cursor-pointer"
-                >
-                  <FolderInput className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  title="Xóa thư mục"
-                  aria-label={`Xóa thư mục ${folder.name}`}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    props.onDeleteFolder(folder.id);
-                  }}
-                  className="p-1 rounded hover:bg-red-50 hover:text-red-600 text-[var(--ui-muted)] cursor-pointer"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
+              <FolderActions folder={folder} onCreateDocument={props.onCreateDocument} onCreateFolder={props.onCreateFolder}
+                onRename={props.onEditFolder} onMove={props.onMoveFolder} onDelete={props.onDeleteFolder} />
             </div>
 
             {/* Folder Open Contents Area */}

@@ -25,7 +25,7 @@ import { MoveModal } from '../modals/MoveModal';
 import { ExportModal } from '../modals/ExportModal';
 import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import { documentUrl } from '../../app/router/routes';
-import { getFolderPath } from '../../utils/folders';
+import { getFolderAncestors } from '../../utils/folders';
 
 interface BlockEditorProps {
   document: Document;
@@ -127,6 +127,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const currentFolder = folders.find((f) => f.id === doc.folderId);
+  const folderAncestors = currentFolder ? getFolderAncestors(currentFolder.id, folders) : [];
 
   // Block management
   const handleUpdateBlock = (blockId: string, content: string, properties?: any) => {
@@ -689,12 +690,14 @@ function getTextareaSelectionCoords(
             {doc.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
           </button>
           <span className="text-[#C7C7CC]">/</span>
-          {currentFolder && (
-            <>
-              <button type="button" onClick={() => onNavigate?.({ type: 'folder', folderId: currentFolder.id })} className="truncate hover:underline">{getFolderPath(currentFolder.id, folders)}</button>
+          {folderAncestors.map((ancestor) => (
+            <React.Fragment key={ancestor.id}>
+              <button type="button" onClick={() => onNavigate?.({ type: 'folder', folderId: ancestor.id })} className="truncate hover:underline">
+                {ancestor.name}
+              </button>
               <span className="text-[#C7C7CC]">/</span>
-            </>
-          )}
+            </React.Fragment>
+          ))}
           <span className="truncate text-[var(--ui-text)] font-semibold">{doc.title}</span>
         </div>
 

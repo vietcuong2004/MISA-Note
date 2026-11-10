@@ -1,3 +1,4 @@
+import { FolderActions } from '../layout/FolderActions';
 import { RenameDialog } from '../modals/RenameDialog';
 import { DocumentLinkShare } from '../modals/DocumentLinkShare';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
@@ -630,63 +631,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   </span>
                 )}
               </button>
-              <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                {onCreateDocument && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCreateDocument(folder.space, folder.id);
-                    }}
-                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
-                    title={`Tạo ghi chú trong ${folder.name}`}
-                  >
-                    <Plus className="w-3 h-3 stroke-[2]" />
-                    <span>Ghi chú</span>
-                  </button>
-                )}
-                {onEditFolder && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEditFolder(folder);
-                    }}
-                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
-                    title={`Đổi tên thư mục ${folder.name}`}
-                  >
-                    <Edit2 className="w-3 h-3 stroke-[1.75]" />
-                    <span>Đổi tên</span>
-                  </button>
-                )}
-                {onMoveFolderRequest && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMoveFolderRequest(folder);
-                    }}
-                    className="text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-2 py-0.5 rounded-lg flex items-center gap-1 transition-colors cursor-pointer font-medium"
-                    title={`Di chuyển thư mục ${folder.name}`}
-                  >
-                    <FolderInput className="w-3 h-3 stroke-[1.75]" />
-                    <span>Di chuyển</span>
-                  </button>
-                )}
-                {onDeleteFolder && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteFolder(folder.id);
-                    }}
-                    className="text-[11px] text-red-500 hover:text-red-700 hover:bg-red-50 px-1.5 py-0.5 rounded-lg flex items-center transition-colors cursor-pointer"
-                    title={`Xóa thư mục ${folder.name}`}
-                  >
-                    <Trash2 className="w-3 h-3 stroke-[1.75]" />
-                  </button>
-                )}
-              </div>
+              {!trashMode && <FolderActions folder={folder} onCreateDocument={onCreateDocument} onCreateFolder={onCreateFolder}
+                onRename={onEditFolder} onMove={onMoveFolderRequest} onDelete={onDeleteFolder} />}
             </div>
           </td>
           <td className="py-2 px-2 text-center"></td>
