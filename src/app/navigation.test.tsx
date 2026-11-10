@@ -43,6 +43,92 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('arrow keys move between paragraphs, headings and list items while preserving multiline navigation', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'arrow-lines', blocks: [
+    { id: 'arrow-first', type: 'paragraph', content: 'First line' },
+    { id: 'arrow-list', type: 'bullet', content: 'Item one\nItem two', properties: { listItems: [
+      { id: 'arrow-item-one', content: 'Item one' }, { id: 'arrow-item-two', content: 'Item two' },
+    ] } },
+    { id: 'arrow-heading', type: 'h2', content: 'Heading' },
+    { id: 'arrow-multiline', type: 'paragraph', content: 'First\nSecond' },
+  ] }]);
+  await mount('/documents/arrow-lines');
+  const first = document.querySelector('[data-block-id="arrow-first"] textarea') as HTMLTextAreaElement;
+  const list = document.querySelectorAll<HTMLTextAreaElement>('[data-block-id="arrow-list"] textarea');
+  const headingInput = document.querySelector('[data-block-id="arrow-heading"] textarea') as HTMLTextAreaElement;
+  const multiline = document.querySelector('[data-block-id="arrow-multiline"] textarea') as HTMLTextAreaElement;
+  const arrow = async (input: HTMLTextAreaElement, key: string, offset: number) => {
+    await act(async () => {
+      input.focus(); input.setSelectionRange(offset, offset);
+      input.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    });
+  };
+  await arrow(first, 'ArrowDown', 3);
+  assert.equal(document.activeElement, list[0]);
+  assert.equal(list[0].selectionStart, 3);
+  await arrow(list[0], 'ArrowUp', 3);
+  assert.equal(document.activeElement, first);
+  await arrow(list[0], 'ArrowDown', 2);
+  assert.equal(document.activeElement, list[1]);
+  assert.equal(list[1].selectionStart, 2);
+  await arrow(list[1], 'ArrowDown', 2);
+  const outside = document.querySelector('[data-block-id="arrow-list"]')!.nextElementSibling!.querySelector('textarea')!;
+  assert.equal(document.activeElement, outside);
+  await arrow(outside, 'ArrowUp', 0);
+  assert.equal(document.activeElement, list[1]);
+  await arrow(outside, 'ArrowDown', 0);
+  assert.equal(document.activeElement, headingInput);
+  await arrow(headingInput, 'ArrowDown', 1);
+  assert.equal(document.activeElement, multiline);
+  await arrow(multiline, 'ArrowDown', 1);
+  assert.equal(document.activeElement, multiline);
+  await arrow(multiline, 'ArrowUp', 8);
+  assert.equal(document.activeElement, multiline);
+  await arrow(multiline, 'ArrowUp', 1);
+  assert.equal(document.activeElement, headingInput);
+  assert.equal(headingInput.selectionStart, 1);
+});
+
+test('Tab and Shift+Tab change list indentation within four levels and Enter keeps the level', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  const types = ['bullet', 'numbered', 'checklist'] as const;
+  saveStoredDocuments([{ ...base, id: 'list-levels', blocks: types.map(type => ({ id: `level-${type}`, type, content: 'Mục đầu' })) }]);
+  await mount('/documents/list-levels');
+  const key = async (input: HTMLTextAreaElement, value: string, shiftKey = false) => {
+    await act(async () => {
+      input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+      input.dispatchEvent(new window.KeyboardEvent('keydown', { key: value, shiftKey, bubbles: true, cancelable: true }));
+    });
+  };
+  for (const type of types) {
+    const block = document.querySelector(`[data-block-id="level-${type}"]`)!;
+    const first = block.querySelector('textarea')!;
+    for (const expected of [2, 3, 4, 4]) {
+      await key(first, 'Tab');
+      assert.equal(block.querySelector('li')?.getAttribute('data-level'), String(expected));
+      assert.equal(document.activeElement, first);
+    }
+    await key(first, 'Tab', true);
+    assert.equal(block.querySelector('li')?.getAttribute('data-level'), '3');
+    await key(first, 'Enter');
+    const second = block.querySelectorAll('textarea')[1];
+    assert.equal(block.querySelectorAll('li')[1].getAttribute('data-level'), '3');
+    assert.equal(document.activeElement, second);
+    for (const expected of [2, 1, 1]) {
+      await key(second, 'Tab', true);
+      assert.equal(block.querySelectorAll('li')[1].getAttribute('data-level'), String(expected));
+    }
+  }
+  await mount('/private');
+  const blocks = getStoredDocuments().find(doc => doc.id === 'list-levels')!.blocks;
+  for (const block of blocks) assert.deepEqual(block.properties?.listItems?.map(item => item.level), [3, 1]);
+  await mount('/documents/list-levels');
+  assert.equal(document.querySelector<HTMLLIElement>('[data-block-id="level-bullet"] li')?.style.marginLeft, '48px');
+});
+
 test('folder explorer defaults to structure and supports cards, rows, sorting, navigation and moves', async () => {
   const { getStoredFolders, saveStoredFolders, saveStoredDocuments } = await import('../utils/storage');
   const template = getStoredFolders()[0];
@@ -349,6 +435,11 @@ test('slash colors apply independently, preserve block type and reset to default
   await type('/');
   const groups = Array.from(document.querySelectorAll('[aria-label="Tiện ích nhanh"] [role="group"]'));
   assert.deepEqual(groups.slice(-2).map(group => group.getAttribute('aria-label')), ['Màu chữ', 'Màu nền']);
+  const yellowSwatch = document.querySelector<HTMLSpanElement>('button[title="Nền vàng"] span[aria-hidden="true"]')!;
+  assert.equal(yellowSwatch.style.backgroundColor, 'rgb(252, 225, 129)');
+  assert.equal(yellowSwatch.style.borderColor, 'rgb(203, 145, 47)');
+  const defaultSwatch = document.querySelector<HTMLSpanElement>('button[title="Nền mặc định"] span[aria-hidden="true"]')!;
+  assert.equal(defaultSwatch.style.backgroundColor, 'transparent');
   await click(document.querySelector('button[title="Chữ màu đỏ"]'));
   await type('/nen xanh lam');
   await click(document.querySelector('button[title="Nền xanh lam"]'));
@@ -998,6 +1089,12 @@ test('both spaces have a permanent unclassified folder and heading plus creates 
     assert(newFolder);
     assert.equal(newFolder.space, space);
     assert.equal(newFolder.parentId ?? null, null);
+    await nameNewFolder(`Thư mục đầu ${space}`);
+    const folderNodes = Array.from(panel.querySelectorAll('[data-folder-id]')).filter(el => el.parentElement === systemFolder.parentElement);
+    assert.equal(folderNodes[0]?.getAttribute('data-folder-id'), newFolder.id);
+    assert.equal(systemFolder.nextElementSibling, folderNodes[0]);
+    assert.equal(panel.querySelector('[data-folder-id] .lucide-grip-vertical'), null);
+    assert.equal(folderNodes[1]?.firstElementChild?.getAttribute('draggable'), 'true');
   }
   const recentRow = Array.from(document.querySelectorAll('aside span')).find(el => el.textContent === 'Gần đây')!;
   assert(recentRow);
@@ -1115,5 +1212,101 @@ test('folder and document drag and drop updates hierarchy and persists to storag
 
   docs = getStoredDocuments();
   assert.equal(docs.find(d => d.id === testDoc.id)?.folderId, 'fld_work', 'Expected the document to be moved into fld_work');
+});
+
+test('scrolling to bottom of block editor automatically adds bottom whitespace and clicking it focuses a new line', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const docs = getStoredDocuments().filter(doc => !doc.isTrash);
+  const firstDoc = {
+    ...docs[0],
+    id: 'scroll-whitespace-doc',
+    blocks: [{ id: 'blk-last-text', type: 'paragraph' as const, content: 'Dòng cuối cùng' }],
+  };
+  const secondDoc = { ...docs[1], id: 'scroll-whitespace-doc-2' };
+  saveStoredDocuments([firstDoc, secondDoc]);
+  await mount('/documents/scroll-whitespace-doc');
+
+  const spacer = document.querySelector<HTMLDivElement>('[data-editor-bottom-spacer]')!;
+  const scrollContainer = spacer.parentElement!.parentElement as HTMLDivElement;
+  assert.equal(spacer.style.minHeight, '120px');
+
+  Object.defineProperty(scrollContainer, 'clientHeight', { configurable: true, value: 600 });
+  Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 1200 });
+  Object.defineProperty(scrollContainer, 'scrollTop', { configurable: true, writable: true, value: 580 });
+
+  await act(async () => {
+    scrollContainer.dispatchEvent(new window.Event('scroll', { bubbles: true }));
+  });
+  assert.equal(spacer.style.minHeight, '330px');
+
+  Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 1410 });
+  scrollContainer.scrollTop = 800;
+  await act(async () => {
+    scrollContainer.dispatchEvent(new window.Event('scroll', { bubbles: true }));
+  });
+  assert.equal(spacer.style.minHeight, '540px');
+
+  const initialBlocks = document.querySelectorAll('[data-block-id]').length;
+  await click(spacer);
+  assert.equal(document.querySelectorAll('[data-block-id]').length, initialBlocks + 1);
+  assert.equal(document.activeElement, document.querySelectorAll('[data-block-id] textarea')[initialBlocks]);
+
+  await mount('/documents/scroll-whitespace-doc-2');
+  assert.equal(document.querySelector<HTMLDivElement>('[data-editor-bottom-spacer]')!.style.minHeight, '120px');
+});
+
+test('creating a new document focuses its title and pressing Enter saves immediately and moves to content', async () => {
+  const existing = getStoredDocuments().find(doc => !doc.isTrash)!;
+  await mount(`/documents/${existing.id}`);
+  assert.notEqual(document.activeElement, document.querySelector('input[placeholder="Tiêu đề trang..."]'));
+
+  await click(document.querySelector('aside button[title="Tạo mới"]'));
+  const titleInput = document.querySelector<HTMLInputElement>('input[placeholder="Tiêu đề trang..."]')!;
+  assert.equal(document.activeElement, titleInput);
+  assert.equal(titleInput.selectionStart, 0);
+  assert.equal(titleInput.selectionEnd, 'Ghi chú mới'.length);
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(titleInput, 'Kế hoạch quý 4');
+    titleInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await act(async () => {
+    titleInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  });
+
+  const newDocId = decodeURIComponent(window.location.pathname.split('/').pop()!);
+  assert.equal(getStoredDocuments().find(doc => doc.id === newDocId)?.title, 'Kế hoạch quý 4');
+  assert(document.querySelector('aside')?.textContent?.includes('Kế hoạch quý 4'));
+  assert.equal(document.activeElement, document.querySelector('#document-editor-container textarea'));
+});
+
+test('callout block renders lightbulb icon and prominent border', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'callout-test', blocks: [
+    { id: 'callout-legacy', type: 'callout', content: 'Đây là khung chú thích mẫu', properties: { calloutType: 'info' } },
+    { id: 'callout-input', type: 'paragraph', content: '' },
+  ] }]);
+  await mount('/documents/callout-test');
+
+  const legacyCallout = document.querySelector('[data-block-id="callout-legacy"] [data-callout-box]')!;
+  assert(legacyCallout);
+  assert(legacyCallout.className.includes('border-[var(--ui-border-strong)]'));
+  assert(legacyCallout.className.includes('border-[1.5px]'));
+  assert.equal(legacyCallout.querySelector('span[aria-hidden="true"]')?.textContent, '💡');
+  assert.equal(legacyCallout.querySelector('.lucide-sparkles'), null);
+
+  const input = document.querySelector<HTMLTextAreaElement>('[data-block-id="callout-input"] textarea')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '/');
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await click(document.querySelector('button[title="Khung chú thích"]'));
+
+  const newCallout = document.querySelector('[data-block-id="callout-input"] [data-callout-box]')!;
+  assert(newCallout);
+  assert.equal(newCallout.querySelector('span[aria-hidden="true"]')?.textContent, '💡');
+  await mount('/private');
+  assert.equal(getStoredDocuments().find(doc => doc.id === 'callout-test')?.blocks[1].properties?.calloutIcon, '💡');
 });
 

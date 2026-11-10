@@ -168,7 +168,7 @@ export const upsertFolder = (folder: Folder): Folder[] => {
     updatedList = [...folders];
     updatedList[index] = updatedFolder;
   } else {
-    updatedList = [...folders, updatedFolder];
+    updatedList = [updatedFolder, ...folders];
   }
 
   saveStoredFolders(updatedList);

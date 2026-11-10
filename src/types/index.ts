@@ -65,7 +65,7 @@ export interface BlockTableData {
 }
 
 export interface BlockProperties {
-  listItems?: { id: string; content: string; checked?: boolean }[];
+  listItems?: { id: string; content: string; checked?: boolean; level?: number }[];
   textColor?: string;
   backgroundColor?: string;
   mention?: {

@@ -1,6 +1,6 @@
 import { FolderActions } from './FolderActions';
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, Folder as FolderIcon, FolderOpen, GripVertical } from 'lucide-react';
+import { ChevronDown, ChevronRight, Folder as FolderIcon, FolderOpen } from 'lucide-react';
 import { Document, Folder, SpaceType, ViewState } from '../../types';
 import {
   canDropFolderInto,
@@ -243,10 +243,9 @@ export function FolderTree(props: Props) {
                   {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 </button>
                 <div
-                  className="flex items-center gap-1 cursor-grab active:cursor-grabbing shrink-0"
+                  className="flex items-center cursor-grab active:cursor-grabbing shrink-0"
                   title="Kéo thả để di chuyển thư mục"
                 >
-                  <GripVertical className="w-3 h-3 text-[var(--ui-tertiary)] opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity" />
                   {draggingOver || open ? (
                     <FolderOpen className={`w-3.5 h-3.5 shrink-0 ${draggingOver ? 'text-[var(--ui-primary)]' : ''}`} strokeWidth={1.75} />
                   ) : (

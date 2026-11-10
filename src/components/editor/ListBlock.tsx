@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Block, BlockProperties } from '../../types';
+import { listLevel, listNumbers } from '../../utils/listLevels';
 
 type Item = NonNullable<BlockProperties['listItems']>[number];
 
@@ -30,17 +31,19 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
   }, [focus, readOnly]);
 
   const Tag = block.type === 'numbered' ? 'ol' : 'ul';
+  const numbers = listNumbers(items);
   return <div data-list-kind={block.type} className="w-full">
     <Tag className="m-0 list-none p-0 space-y-1">
-      {items.map((item, index) => <li key={item.id} className="flex items-start gap-2" data-list-item={item.id}>
+      {items.map((item, index) => <li key={item.id} className="flex items-start gap-2" data-list-item={item.id}
+        data-level={listLevel(item)} style={{ marginLeft: `${(listLevel(item) - 1) * 24}px` }}>
         {block.type === 'checklist' ? <button type="button" role="checkbox" aria-checked={!!item.checked}
           aria-label={`Hoàn thành mục ${index + 1}`} disabled={readOnly}
           onClick={() => save(items.map(current => current.id === item.id ? { ...current, checked: !current.checked } : current))}
           className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border ${item.checked
             ? 'bg-[var(--ui-primary)] border-[var(--ui-primary)] text-white' : 'border-[var(--ui-border-strong)]'}`}>
           {item.checked && <Check className="h-3 w-3" />}
-        </button> : <span aria-hidden="true" className="inline-flex h-6 min-w-5 shrink-0 justify-center text-sm text-[var(--ui-text)]">
-          {block.type === 'numbered' ? `${index + 1}.` : '•'}
+        </button> : <span aria-hidden="true" className={`inline-flex h-6 min-w-5 shrink-0 items-center justify-center leading-6 text-[var(--ui-text)] ${block.type === 'numbered' ? 'text-sm' : 'text-base'}`}>
+          {block.type === 'numbered' ? `${numbers[index]}.` : ['–', '●', '○', '■'][listLevel(item) - 1]}
         </span>}
         <textarea ref={node => { if (node) inputs.current.set(item.id, node); else inputs.current.delete(item.id); }}
           rows={1} disabled={readOnly} aria-label={`Nội dung mục ${index + 1}`} value={item.content}
@@ -49,11 +52,15 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
           onChange={event => save(items.map(current => current.id === item.id ? { ...current, content: event.target.value } : current))}
           onKeyDown={event => {
             if (event.nativeEvent.isComposing) return;
-            if (event.key === 'Enter' && !event.shiftKey) {
+            if (event.key === 'Tab') {
+              event.preventDefault(); event.stopPropagation();
+              const level = Math.max(1, Math.min(4, listLevel(item) + (event.shiftKey ? -1 : 1)));
+              if (level !== listLevel(item)) save(items.map(current => current.id === item.id ? { ...current, level } : current));
+            } else if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault(); event.stopPropagation();
               const start = event.currentTarget.selectionStart;
               const end = event.currentTarget.selectionEnd;
-              const next = { id: `list_${crypto.randomUUID()}`, content: item.content.slice(end), checked: false };
+              const next = { id: `list_${crypto.randomUUID()}`, content: item.content.slice(end), checked: false, level: listLevel(item) };
               const updated = [...items];
               updated.splice(index, 1, { ...item, content: item.content.slice(0, start) }, next);
               save(updated); setFocus({ id: next.id, offset: 0 });

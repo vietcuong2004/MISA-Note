@@ -1,4 +1,5 @@
 import { EmptyBlockRow } from './EmptyBlockRow';
+import { navigateEditorArrow } from '../../utils/editorArrowNavigation';
 import { RenameDialog } from '../modals/RenameDialog';
 import { employeeName } from './EmployeePicker';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -38,6 +39,8 @@ interface BlockEditorProps {
   onToast: (msg: string, type?: 'success' | 'info' | 'error') => void;
   onRoleChange?: (newRole: UserRole) => void;
   onNavigate?: (view: ViewState) => void;
+  autoFocusTitle?: boolean;
+  onAutoFocusTitleHandled?: () => void;
 }
 
 export const BlockEditor: React.FC<BlockEditorProps> = ({
@@ -50,6 +53,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onMoveDocument,
   onToast,
   onNavigate,
+  autoFocusTitle = false,
+  onAutoFocusTitleHandled,
 }) => {
   const [renameOpen, setRenameOpen] = useState(false);
   const [doc, setDoc] = useState<Document>(document);
@@ -84,25 +89,58 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   saveCallbackRef.current = onUpdateDocument;
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const autoFocusTitleHandledRef = useRef(onAutoFocusTitleHandled);
+  autoFocusTitleHandledRef.current = onAutoFocusTitleHandled;
+  const [extraBottomSpace, setExtraBottomSpace] = useState(0);
 
   useEffect(() => {
-    setDoc(document);
+    if (!pendingSaveRef.current || pendingSaveRef.current.id !== document.id) {
+      setDoc(document);
+    }
   }, [document.id, document.folderId, document.space, document.title, document.updatedAt]);
+
+  useEffect(() => {
+    setExtraBottomSpace(0);
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  }, [document.id]);
+
+  const isReadOnly = currentRole === 'viewer';
+
+  useEffect(() => {
+    if (!autoFocusTitle || isReadOnly) return;
+    const input = titleInputRef.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+    autoFocusTitleHandledRef.current?.();
+  }, [autoFocusTitle, isReadOnly, document.id]);
+
+  const commitSaveNow = useCallback((updatedDoc: Document) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    pendingSaveRef.current = null;
+    saveCallbackRef.current(updatedDoc);
+    setSaveStatus('saved');
+  }, []);
+
+  const flushPendingSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    const pending = pendingSaveRef.current;
+    pendingSaveRef.current = null;
+    if (pending) {
+      saveCallbackRef.current(pending);
+      setSaveStatus('saved');
+    }
+  }, []);
 
   // Commit pending edits before navigating away or refreshing a document URL.
   useEffect(() => {
-    const flushPendingSave = () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      const pending = pendingSaveRef.current;
-      pendingSaveRef.current = null;
-      if (pending) saveCallbackRef.current(pending);
-    };
     window.addEventListener('beforeunload', flushPendingSave);
     return () => {
       window.removeEventListener('beforeunload', flushPendingSave);
       flushPendingSave();
     };
-  }, []);
+  }, [flushPendingSave]);
 
   // Debounced auto-save function
   const triggerAutoSave = useCallback(
@@ -235,6 +273,29 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     } else handleAddBlockBelow(index, openMenu);
   };
 
+  const maybeExpandBottomSpace = useCallback((container: HTMLDivElement) => {
+    if (container.scrollHeight <= container.clientHeight) return;
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distanceToBottom > 80) return;
+    const maxExtra = Math.max(400, Math.round(container.clientHeight * 0.7));
+    const step = Math.max(200, Math.round(container.clientHeight * 0.35));
+    setExtraBottomSpace((prev) => (prev >= maxExtra ? prev : Math.min(maxExtra, prev + step)));
+  }, []);
+
+  const handleClickBottomWhitespace = () => {
+    if (isReadOnly) return;
+    const lastBlock = doc.blocks[doc.blocks.length - 1];
+    if (lastBlock?.type === 'paragraph' && lastBlock.content === '') {
+      setFocusedBlockId(lastBlock.id);
+      const textarea = window.document.querySelector<HTMLTextAreaElement>(
+        `[data-block-id="${lastBlock.id}"] textarea`
+      );
+      textarea?.focus();
+      return;
+    }
+    handleAddBlockBelow(doc.blocks.length - 1);
+  };
+
   // Slash trigger
   const handleTriggerSlash = (blockId: string, query: string, rect: DOMRect | null) => {
     if (!rect) {
@@ -275,7 +336,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
           listItems: [{ id: `list_${crypto.randomUUID()}`, content: '', checked: false }],
         };
         if (type === 'toggle') props = { open: true, caption: '' };
-        if (type === 'callout') props = { calloutType: 'info' };
+        if (type === 'callout') props = { calloutType: 'info', calloutIcon: '💡' };
         if (type === 'meeting_info') {
           props = {
             meetingTime: '09:00 - 10:30',
@@ -678,8 +739,6 @@ function getTextareaSelectionCoords(
     }
   };
 
-  const isReadOnly = currentRole === 'viewer';
-
   return (
     <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden relative">
       {/* Top Header Bar matching screenshot: Breadcrumbs on left, [Chia sẻ] and [•••] on right */}
@@ -698,7 +757,7 @@ function getTextareaSelectionCoords(
               <span className="text-[#C7C7CC]">/</span>
             </React.Fragment>
           ))}
-          <span className="truncate text-[var(--ui-text)] font-semibold">{doc.title}</span>
+          <span className="truncate text-[var(--ui-text)] font-semibold">{doc.title || 'Không có tiêu đề'}</span>
         </div>
 
         {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
@@ -766,7 +825,14 @@ function getTextareaSelectionCoords(
       </div>
 
       {/* Editor Canvas exactly matching screenshot */}
-      <div className="flex-1 overflow-y-auto px-8 py-10 md:px-20 lg:px-32">
+      <div
+        ref={scrollContainerRef}
+        onScroll={(e) => maybeExpandBottomSpace(e.currentTarget)}
+        onWheel={(e) => {
+          if (e.deltaY > 0) maybeExpandBottomSpace(e.currentTarget);
+        }}
+        className="flex-1 overflow-y-auto px-8 pt-10 pb-8 md:px-20 lg:px-32"
+      >
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Document Title matching screenshot */}
           <div>
@@ -776,6 +842,43 @@ function getTextareaSelectionCoords(
               disabled={isReadOnly}
               value={doc.title}
               onChange={(e) => updateDocField('title', e.target.value)}
+              onBlur={() => flushPendingSave()}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.key !== 'Enter') return;
+                e.preventDefault();
+                const nextTitle = e.currentTarget.value.trim();
+                if (doc.blocks.length === 0) {
+                  const newBlock: Block = {
+                    id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                    type: 'paragraph',
+                    content: '',
+                  };
+                  const updated = {
+                    ...doc,
+                    title: nextTitle,
+                    blocks: [newBlock],
+                    updatedAt: new Date().toISOString(),
+                  };
+                  setDoc(updated);
+                  setFocusedBlockId(newBlock.id);
+                  commitSaveNow(updated);
+                  return;
+                }
+                const updated = { ...doc, title: nextTitle, updatedAt: new Date().toISOString() };
+                setDoc(updated);
+                commitSaveNow(updated);
+                const firstBlockId = doc.blocks[0]?.id;
+                const firstInput = firstBlockId
+                  ? window.document.querySelector<HTMLElement>(
+                      `[data-block-id="${firstBlockId}"] textarea, [data-block-id="${firstBlockId}"] input`
+                    )
+                  : null;
+                if (firstInput) {
+                  firstInput.focus();
+                } else {
+                  titleInputRef.current?.blur();
+                }
+              }}
               placeholder="Tiêu đề trang..."
               className="w-full text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
             />
@@ -792,7 +895,7 @@ function getTextareaSelectionCoords(
           </div>
 
           {/* Blocks container */}
-          <div id="document-editor-container" className="space-y-2 relative min-h-[300px] pt-2">
+          <div id="document-editor-container" onKeyDown={navigateEditorArrow} className="space-y-2 relative min-h-[300px] pt-2">
             {doc.blocks.map((block, idx) => (
               <React.Fragment key={block.id}>
               <BlockItem
@@ -857,6 +960,12 @@ function getTextareaSelectionCoords(
                 </div>
               )}
           </div>
+          <div
+            data-editor-bottom-spacer
+            onClick={handleClickBottomWhitespace}
+            style={{ minHeight: `${120 + extraBottomSpace}px` }}
+            className={`w-full ${isReadOnly ? '' : 'cursor-text'}`}
+          />
         </div>
       </div>
 

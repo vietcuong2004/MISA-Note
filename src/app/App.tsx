@@ -67,6 +67,7 @@ export default function App() {
   }>({ isOpen: false });
   const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null);
   const [newFolderId, setNewFolderId] = useState<string | null>(null);
+  const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
 
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -292,6 +293,7 @@ export default function App() {
 
     const newDocs = upsertDocument(newDoc);
     setDocuments(newDocs);
+    setNewDocumentId(newDocId);
     navigate({ type: 'document', documentId: newDocId });
     addToast('Đã tạo ghi chú mới');
   };
@@ -481,7 +483,9 @@ export default function App() {
           }}
           editor={{ folders, currentRole, onUpdateDocument: handleUpdateDocument, onNavigate: navigate,
             onSoftDeleteDocument: handleSoftDeleteDocument, onToggleFavorite: handleToggleFavorite,
-            onMoveDocument: handleMoveDocument, onToast: addToast, onRoleChange: setCurrentRole }}
+            onMoveDocument: handleMoveDocument, onToast: addToast, onRoleChange: setCurrentRole,
+            autoFocusTitle: viewState.type === 'document' && newDocumentId === viewState.documentId,
+            onAutoFocusTitleHandled: () => setNewDocumentId(null) }}
           trash={{ onRestore: handleRestoreDocument, onPermanentDelete: handlePermanentDelete, onEmptyTrash: handleEmptyTrash }}
         />
       </main>

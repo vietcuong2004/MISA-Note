@@ -155,8 +155,8 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
       {item.color ? <span aria-hidden="true" className="w-5 h-5 shrink-0 rounded-md border flex items-center justify-center text-xs"
         style={{
           color: item.color.target === 'textColor' ? item.color.value || 'var(--ui-text)' : undefined,
-          backgroundColor: item.color.target === 'backgroundColor' ? item.color.value || 'transparent' : undefined,
-          borderColor: item.color.value || 'var(--ui-border)',
+          backgroundColor: item.color.target === 'backgroundColor' ? item.color.swatch || item.color.value || 'transparent' : undefined,
+          borderColor: item.color.border || item.color.value || 'var(--ui-border)',
         }}>{item.color.target === 'textColor' ? 'A' : ''}</span>
         : <Icon className="w-5 h-5 shrink-0 text-[var(--ui-muted)]" strokeWidth={1.6} />}
       <span className="flex-1 min-w-0 leading-5">{item.title}

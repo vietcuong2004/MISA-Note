@@ -178,6 +178,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     if (!folder) return;
     setSpaceTab(folder.space);
     if (folder.space === 'personal') setPersonalExpanded(true); else setCompanyExpanded(true);
+    if (folder.parentId) {
+      const ancestorIds = getFolderAncestors(folder.parentId, folders).map(item => item.id);
+      if (ancestorIds.length) {
+        setExpandedFolders(previous => {
+          if (ancestorIds.every(id => previous[id])) return previous;
+          const next = { ...previous };
+          for (const id of ancestorIds) next[id] = true;
+          return next;
+        });
+      }
+    }
   }, [newFolderId, folders]);
   const locationKey = viewState.type === 'document' ? viewState.documentId : viewState.type === 'folder' ? viewState.folderId : null;
   const navigatedSpace = viewState.type === 'document'
@@ -958,7 +969,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onCreateFolder('personal');
+                  onCreateFolder(spaceTab);
                   setShowQuickActionMenu(false);
                 }}
                 className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"

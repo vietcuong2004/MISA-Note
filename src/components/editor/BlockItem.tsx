@@ -17,7 +17,6 @@ import {
   Users,
   Clock,
   CheckSquare,
-  Sparkles,
   PlusCircle,
 } from 'lucide-react';
 import { Block, BlockType, UserRole } from '../../types';
@@ -254,13 +253,19 @@ export const BlockItem: React.FC<BlockItemProps> = ({
           </div>
         );
 
-      // Clean neutral callout without candy background
+      // Clean neutral callout with prominent border and lightbulb icon
       case 'callout':
         return (
-          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-subtle)] flex items-start gap-3 my-1.5">
-            <div className="w-7 h-7 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xs flex items-center justify-center shrink-0 mt-0.5">
-              <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-            </div>
+          <div
+            data-callout-box
+            className="w-full p-4 rounded-2xl border-[1.5px] border-[var(--ui-border-strong)] bg-[var(--ui-subtle)] shadow-xs flex items-start gap-3 my-1.5"
+          >
+            <span
+              aria-hidden="true"
+              className="w-6 h-6 flex items-center justify-center shrink-0 text-base leading-none select-none mt-0.5"
+            >
+              {block.properties?.calloutIcon || '💡'}
+            </span>
             <div className="flex-1 min-w-0">
               <textarea
                 ref={textRef}

@@ -4,20 +4,20 @@ export interface SlashCommand {
   id: string; type: BlockType; title: string; category: string;
   subtitle?: string; shortcut?: string; badge?: string; properties?: BlockProperties;
   disabled?: boolean;
-  color?: { target: 'textColor' | 'backgroundColor'; value: string };
+  color?: { target: 'textColor' | 'backgroundColor'; value: string; swatch?: string; border?: string };
 }
 
 const colors = [
-  { id: 'default', name: 'mặc định', text: '', background: '' },
-  { id: 'gray', name: 'xám', text: '#787774', background: '#F1F1EF' },
-  { id: 'brown', name: 'nâu', text: '#9F6B53', background: '#F4EEEE' },
-  { id: 'orange', name: 'cam', text: '#D9730D', background: '#FBECDD' },
-  { id: 'yellow', name: 'vàng', text: '#CB912F', background: '#FBF3DB' },
-  { id: 'green', name: 'xanh lá', text: '#448361', background: '#EDF3EC' },
-  { id: 'blue', name: 'xanh lam', text: '#337EA9', background: '#E7F3F8' },
-  { id: 'purple', name: 'tím', text: '#9065B0', background: '#F4F0F7' },
-  { id: 'pink', name: 'hồng', text: '#C14C8A', background: '#F9EEF3' },
-  { id: 'red', name: 'đỏ', text: '#D44C47', background: '#FDEBEC' },
+  { id: 'default', name: 'mặc định', text: '', background: '', swatch: '', border: '' },
+  { id: 'gray', name: 'xám', text: '#787774', background: '#F1F1EF', swatch: '#D3D1CB', border: '#9B9A97' },
+  { id: 'brown', name: 'nâu', text: '#9F6B53', background: '#F4EEEE', swatch: '#DFBFA8', border: '#9F6B53' },
+  { id: 'orange', name: 'cam', text: '#D9730D', background: '#FBECDD', swatch: '#F9C48C', border: '#D9730D' },
+  { id: 'yellow', name: 'vàng', text: '#CB912F', background: '#FBF3DB', swatch: '#FCE181', border: '#CB912F' },
+  { id: 'green', name: 'xanh lá', text: '#448361', background: '#EDF3EC', swatch: '#B5DFC4', border: '#448361' },
+  { id: 'blue', name: 'xanh lam', text: '#337EA9', background: '#E7F3F8', swatch: '#B0DAF0', border: '#337EA9' },
+  { id: 'purple', name: 'tím', text: '#9065B0', background: '#F4F0F7', swatch: '#D6BFEB', border: '#9065B0' },
+  { id: 'pink', name: 'hồng', text: '#C14C8A', background: '#F9EEF3', swatch: '#F2BBD5', border: '#C14C8A' },
+  { id: 'red', name: 'đỏ', text: '#D44C47', background: '#FDEBEC', swatch: '#F7B4B1', border: '#D44C47' },
 ];
 
 export const SLASH_COMMANDS: SlashCommand[] = [
@@ -46,6 +46,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   })),
   ...colors.map((color): SlashCommand => ({
     id: `background-color-${color.id}`, type: 'paragraph', category: 'Màu nền',
-    title: `Nền ${color.name}`, color: { target: 'backgroundColor', value: color.background },
+    title: `Nền ${color.name}`,
+    color: { target: 'backgroundColor', value: color.background, swatch: color.swatch, border: color.border },
   })),
 ];

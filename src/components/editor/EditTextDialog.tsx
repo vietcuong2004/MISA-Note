@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Columns2,
   Columns3,
+  Lightbulb,
 } from 'lucide-react';
 import { BlockType } from '../../types';
 
@@ -77,7 +78,7 @@ const TURN_INTO_OPTIONS: TurnIntoOption[] = [
   { id: 'toggle', type: 'toggle', label: 'Danh sách có thể thu gọn', icon: <ChevronRight className="w-4 h-4 stroke-[1.75]" /> },
   { id: 'code', type: 'code', label: 'Mã', icon: <Code className="w-4 h-4 stroke-[1.75]" /> },
   { id: 'quote', type: 'quote', label: 'Trích dẫn', icon: <Quote className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'callout', type: 'callout', label: 'Khung chú thích', icon: <MessageSquare className="w-4 h-4 stroke-[1.75]" /> },
+  { id: 'callout', type: 'callout', label: 'Khung chú thích', icon: <Lightbulb className="w-4 h-4 stroke-[1.75]" /> },
   { id: 'equation', type: 'code', label: 'Phương trình thành phần', icon: <Sigma className="w-4 h-4 stroke-[1.75]" /> },
   { id: 'synced', type: 'paragraph', label: 'Thành phần nội dung đồng bộ', icon: <RefreshCw className="w-4 h-4 stroke-[1.75]" /> },
   { id: 'toggle_h1', type: 'toggle', label: 'Đề mục chuyển đổi 1', icon: <span className="font-bold text-xs leading-none">▸H₁</span>, headingLevel: 1 },
