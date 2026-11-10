@@ -1,3 +1,4 @@
+import { memoryStorage } from './memoryStorage';
 import { Document, Folder, SpaceType } from '../types';
 import { INITIAL_DOCUMENTS, INITIAL_FOLDERS } from '../data/mockData';
 import { validateFolderParent } from './folders';
@@ -10,64 +11,46 @@ const STORAGE_KEYS = {
 
 export const getStoredDocuments = (): Document[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+    const raw = memoryStorage.getItem(STORAGE_KEYS.DOCUMENTS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
-      return INITIAL_DOCUMENTS;
+      memoryStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(INITIAL_DOCUMENTS));
+      return JSON.parse(JSON.stringify(INITIAL_DOCUMENTS));
     }
     const docs: Document[] = JSON.parse(raw);
-    return docs
-      .filter(
-        (d) =>
-          d.id !== 'doc_quick_notes' &&
-          d.id !== 'doc_team_meeting_template' &&
-          d.id !== 'doc_sprint_recap' &&
-          d.title !== 'Ghi chú nhanh' &&
-          d.title !== 'Mẫu họp nhóm' &&
-          d.title !== 'Tổng kết sprint'
-      )
-      .map((doc) => ({
-        ...doc,
-        blocks: doc.blocks?.filter(
-          (b) =>
-            b.id !== 'blk_u_02' &&
-            b.id !== 'b_t1_2' &&
-            b.content !== 'Ghi chú này mặc định được giữ ở không gian Cá nhân và riêng tư.'
-        ) || [],
-      }));
+    return docs;
   } catch (err) {
-    console.error('Error reading documents from localStorage:', err);
+    console.error('Error reading documents from memoryStorage:', err);
     return INITIAL_DOCUMENTS;
   }
 };
 
 export const saveStoredDocuments = (docs: Document[]): void => {
   try {
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
+    memoryStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
   } catch (err) {
-    console.error('Error saving documents to localStorage:', err);
+    console.error('Error saving documents to memoryStorage:', err);
   }
 };
 
 export const getStoredFolders = (): Folder[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.FOLDERS);
+    const raw = memoryStorage.getItem(STORAGE_KEYS.FOLDERS);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(INITIAL_FOLDERS));
-      return INITIAL_FOLDERS;
+      memoryStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(INITIAL_FOLDERS));
+      return JSON.parse(JSON.stringify(INITIAL_FOLDERS));
     }
     return JSON.parse(raw);
   } catch (err) {
-    console.error('Error reading folders from localStorage:', err);
+    console.error('Error reading folders from memoryStorage:', err);
     return INITIAL_FOLDERS;
   }
 };
 
 export const saveStoredFolders = (folders: Folder[]): void => {
   try {
-    localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
+    memoryStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
   } catch (err) {
-    console.error('Error saving folders to localStorage:', err);
+    console.error('Error saving folders to memoryStorage:', err);
   }
 };
 
@@ -191,15 +174,15 @@ export const deleteFolderAndReassign = (folderId: string): { folders: Folder[]; 
     doc.folderId === folderId ? { ...doc, folderId: parentId, updatedAt: now } : doc
   );
   // Both records must be persisted before the UI reports a successful deletion.
-  const oldFolders = localStorage.getItem(STORAGE_KEYS.FOLDERS);
-  const oldDocuments = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+  const oldFolders = memoryStorage.getItem(STORAGE_KEYS.FOLDERS);
+  const oldDocuments = memoryStorage.getItem(STORAGE_KEYS.DOCUMENTS);
   try {
-    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
-    localStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
+    memoryStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(docs));
+    memoryStorage.setItem(STORAGE_KEYS.FOLDERS, JSON.stringify(folders));
   } catch {
     try {
-      if (oldDocuments !== null) localStorage.setItem(STORAGE_KEYS.DOCUMENTS, oldDocuments);
-      if (oldFolders !== null) localStorage.setItem(STORAGE_KEYS.FOLDERS, oldFolders);
+      if (oldDocuments !== null) memoryStorage.setItem(STORAGE_KEYS.DOCUMENTS, oldDocuments);
+      if (oldFolders !== null) memoryStorage.setItem(STORAGE_KEYS.FOLDERS, oldFolders);
     } catch { /* Keep the failure visible so the user can retry. */ }
     throw new Error('Không lưu được thay đổi. Thư mục chưa được xóa; vui lòng thử lại.');
   }

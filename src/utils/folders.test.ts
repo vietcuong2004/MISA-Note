@@ -1,3 +1,4 @@
+import { memoryStorage } from './memoryStorage';
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Folder } from '../types';
@@ -13,14 +14,14 @@ const tree = [folder('Root'), folder('Child', 'Root'), folder('Grandchild', 'Chi
 
 beforeEach(() => {
   records.clear(); failNextFolderWrite = false;
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+  Object.assign(memoryStorage, {
     getItem: (key: string) => records.get(key) ?? null,
     setItem: (key: string, value: string) => {
       if (failNextFolderWrite && key.includes('folders')) { failNextFolderWrite = false; throw new Error('Quota exceeded'); }
       records.set(key, value);
     },
     removeItem: (key: string) => records.delete(key),
-  } });
+  });
   saveStoredFolders(tree);
   saveStoredDocuments([
     { ...INITIAL_DOCUMENTS[0], id: 'in-child', space: 'personal', folderId: 'Child' },

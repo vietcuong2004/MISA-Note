@@ -1,3 +1,4 @@
+import { memoryStorage } from '../utils/memoryStorage';
 import React, { useState, useEffect } from 'react';
 import {
   Document,
@@ -45,7 +46,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('misa_sidebar_width');
+      const saved = memoryStorage.getItem('misa_sidebar_width');
       if (saved) {
         const parsed = Number(saved);
         if (!isNaN(parsed) && parsed >= 200 && parsed <= 520) {

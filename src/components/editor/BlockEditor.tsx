@@ -388,17 +388,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         if (type === 'code') {
           props = { language: 'typescript' };
         }
-        if (type === 'file') {
-          props = { fileSize: '1.8 MB' };
-        }
-        if (type === 'link') {
-          props = { url: 'https://workspace.congty.vn' };
-        }
-        if (type === 'image') {
-          props = {
-            url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&auto=format&fit=crop&q=80',
-          };
-        }
+
 
         return {
           ...b,
@@ -515,6 +505,7 @@ function getTextareaSelectionCoords(
     selectedText: string;
     blockId: string | null;
     blockType?: BlockType;
+    fontSize?: number;
   }>({
     isOpen: false,
     position: { top: 0, left: 0 },
@@ -564,6 +555,7 @@ function getTextareaSelectionCoords(
               selectedText: text,
               blockId: bId,
               blockType: matchedBlock?.type || 'paragraph',
+              fontSize: Number.parseFloat(window.getComputedStyle(activeEl).fontSize) || matchedBlock?.properties?.fontSize || 14,
             });
             return;
           }
@@ -598,6 +590,8 @@ function getTextareaSelectionCoords(
               selectionBottom: rect.bottom,
             },
             selectedText: text,
+            fontSize: Number.parseFloat(window.getComputedStyle(range.startContainer.nodeType === Node.ELEMENT_NODE
+              ? range.startContainer as Element : range.startContainer.parentElement!).fontSize) || matchedBlock?.properties?.fontSize || 14,
             blockId: bId,
             blockType: matchedBlock?.type || 'paragraph',
           });
@@ -1066,6 +1060,14 @@ function getTextareaSelectionCoords(
         onClose={() => setEditTextDialog((prev) => ({ ...prev, isOpen: false }))}
         onTurnInto={handleTurnIntoBlock}
         onApplyColor={handleApplyColor}
+        formatting={{ fontSize: editTextDialog.fontSize, ...doc.blocks.find(block => block.id === editTextDialog.blockId)?.properties }}
+        onFormat={patch => {
+          if (!editTextDialog.blockId || isReadOnly) return;
+          const updatedDoc = { ...doc, blocks: doc.blocks.map(block => block.id === editTextDialog.blockId
+            ? { ...block, properties: { ...block.properties, ...patch } } : block), updatedAt: new Date().toISOString() };
+          setDoc(updatedDoc);
+          triggerAutoSave(updatedDoc);
+        }}
         onCopyLink={handleCopyBlockLink}
         onDuplicate={handleDuplicateBlockOrText}
         onMoveTo={() => setMoveOpen(true)}

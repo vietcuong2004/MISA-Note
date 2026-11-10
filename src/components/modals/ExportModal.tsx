@@ -32,7 +32,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       if (['bullet', 'numbered', 'checklist'].includes(block.type) && block.properties?.listItems?.length) {
         const numbers = listNumbers(block.properties.listItems);
         md += block.properties.listItems.map((item, index) => {
-          const prefix = ' '.repeat((listLevel(item) - 1) * 4) + (block.type === 'bullet' ? '- ' : block.type === 'numbered' ? `${numbers[index]}. ` : `- [${item.checked ? 'x' : ' '}] `);
+          const prefix = ' '.repeat((listLevel(item) - 1) * 4) + (block.type === 'bullet' ? '- ' : block.type === 'numbered' ? `${numbers[index]}${listLevel(item) === 1 ? '.' : ''} ` : `- [${item.checked ? 'x' : ' '}] `);
           return prefix + item.content.replace(/\n/g, `\n${' '.repeat(prefix.length)}`);
         }).join('\n') + '\n\n';
         return;

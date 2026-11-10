@@ -2,30 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Repeat,
   Palette,
-  Link2,
   Copy,
-  CornerUpRight,
   Trash2,
-  MessageSquare,
-  Pencil,
-  Sparkles,
-  Zap,
   ChevronRight,
   Check,
-  FileText,
-  FileSpreadsheet,
-  List,
-  ListOrdered,
-  CheckSquare,
-  Code,
-  Quote,
-  Sigma,
-  RefreshCw,
-  Columns2,
-  Columns3,
-  Lightbulb,
+  Bold,
+  Italic,
+  Underline,
 } from 'lucide-react';
-import { BlockType } from '../../types';
+import { BlockProperties, BlockType } from '../../types';
 
 export interface EditTextDialogProps {
   isOpen: boolean;
@@ -43,6 +28,8 @@ export interface EditTextDialogProps {
   onClose: () => void;
   onTurnInto?: (newType: BlockType, extra?: any) => void;
   onApplyColor?: (color: string, isBg?: boolean) => void;
+  formatting?: BlockProperties;
+  onFormat?: (patch: Partial<BlockProperties>) => void;
   onCopyLink?: () => void;
   onDuplicate?: () => void;
   onMoveTo?: () => void;
@@ -53,7 +40,7 @@ export interface EditTextDialogProps {
   onSkillAction?: (skillId: string, text: string) => void;
 }
 
-type SubmenuType = 'turnInto' | 'color' | 'skills' | null;
+type SubmenuType = 'turnInto' | 'color' | null;
 
 interface TurnIntoOption {
   id: string;
@@ -70,23 +57,7 @@ const TURN_INTO_OPTIONS: TurnIntoOption[] = [
   { id: 'h2', type: 'h2', label: 'Đề mục 2', icon: <span className="font-bold text-xs leading-none">H₂</span> },
   { id: 'h3', type: 'h3', label: 'Đề mục 3', icon: <span className="font-bold text-xs leading-none">H₃</span> },
   { id: 'h4', type: 'h4', label: 'Đề mục 4', icon: <span className="font-bold text-xs leading-none">H₄</span> },
-  { id: 'page', type: 'link', label: 'Trang', icon: <FileText className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'subpage', type: 'link', label: 'Trang trong', icon: <FileSpreadsheet className="w-4 h-4 stroke-[1.75]" />, hasChevron: true },
-  { id: 'bullet', type: 'bullet', label: 'Danh sách có dấu đầu dòng', icon: <List className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'numbered', type: 'numbered', label: 'Danh sách được đánh số', icon: <ListOrdered className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'checklist', type: 'checklist', label: 'Danh sách việc cần làm', icon: <CheckSquare className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'toggle', type: 'toggle', label: 'Danh sách có thể thu gọn', icon: <ChevronRight className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'code', type: 'code', label: 'Mã', icon: <Code className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'quote', type: 'quote', label: 'Trích dẫn', icon: <Quote className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'callout', type: 'callout', label: 'Khung chú thích', icon: <Lightbulb className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'equation', type: 'code', label: 'Phương trình thành phần', icon: <Sigma className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'synced', type: 'paragraph', label: 'Thành phần nội dung đồng bộ', icon: <RefreshCw className="w-4 h-4 stroke-[1.75]" /> },
-  { id: 'toggle_h1', type: 'toggle', label: 'Đề mục chuyển đổi 1', icon: <span className="font-bold text-xs leading-none">▸H₁</span>, headingLevel: 1 },
-  { id: 'toggle_h2', type: 'toggle', label: 'Đề mục có thể thu gọn 2', icon: <span className="font-bold text-xs leading-none">▸H₂</span>, headingLevel: 2 },
-  { id: 'toggle_h3', type: 'toggle', label: 'Đề mục chuyển đổi 3', icon: <span className="font-bold text-xs leading-none">▸H₃</span>, headingLevel: 3 },
-  { id: 'toggle_h4', type: 'toggle', label: 'Đề mục chuyển đổi 4', icon: <span className="font-bold text-xs leading-none">▸H₄</span>, headingLevel: 4 },
-  { id: '2cols', type: 'table', label: '2 cột', icon: <Columns2 className="w-4 h-4 stroke-[1.75]" /> },
-  { id: '3cols', type: 'table', label: '3 cột', icon: <Columns3 className="w-4 h-4 stroke-[1.75]" /> },
+
 ];
 
 const COLOR_OPTIONS: { name: string; textClass: string; hex: string }[] = [
@@ -102,43 +73,25 @@ const COLOR_OPTIONS: { name: string; textClass: string; hex: string }[] = [
   { name: 'Đỏ', textClass: 'text-red-600', hex: '#DC2626' },
 ];
 
-const SKILL_OPTIONS = [
-  { id: 'summarize', label: 'Tóm tắt nội dung', icon: '📋' },
-  { id: 'rewrite', label: 'Viết lại văn phong tự nhiên', icon: '✍️' },
-  { id: 'fixSpelling', label: 'Sửa lỗi chính tả & ngữ pháp', icon: '🔍' },
-  { id: 'translateEn', label: 'Dịch sang tiếng Anh', icon: '🌐' },
-  { id: 'translateVi', label: 'Dịch sang tiếng Việt', icon: '🇻🇳' },
-];
-
 export const EditTextDialog: React.FC<EditTextDialogProps> = ({
   isOpen,
   position,
-  selectedText,
   blockId: _blockId,
   blockType = 'paragraph',
-  authorName = 'Việt Cường Vương',
-  updatedTime = 'Hôm nay lúc 11:30',
   onClose,
   onTurnInto,
   onApplyColor,
-  onCopyLink,
+  formatting = {},
+  onFormat,
   onDuplicate,
-  onMoveTo,
   onDelete,
-  onComment,
-  onSuggestEdit,
-  onAskAI,
-  onSkillAction,
 }) => {
-  const [search, setSearch] = useState('');
   const [activeSubmenu, setActiveSubmenu] = useState<SubmenuType>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Reset search and submenu when opening without stealing focus from editor
+  // Reset submenu without stealing focus from the editor
   useEffect(() => {
     if (isOpen) {
-      setSearch('');
       setActiveSubmenu(null);
     }
   }, [isOpen]);
@@ -168,19 +121,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
 
   if (!isOpen) return null;
 
-  // Calculate word and character count
-  const trimmed = selectedText.trim();
-  const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
-  const charCount = selectedText.length;
-
-  // Filter actions for search
-  const query = search.trim().toLowerCase();
-  const matchesSearch = (text: string) => {
-    if (!query) return true;
-    return text.toLowerCase().includes(query);
-  };
-
-  const dialogWidth = 270;
+  const dialogWidth = 320;
   const submenuWidth = 245;
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1200;
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -221,61 +162,51 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
     >
       {/* MENU CẤP 1 (Primary Menu) */}
       <div
-        className="w-[270px] bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-2xl overflow-hidden text-xs text-[var(--ui-text)] flex flex-col shrink-0"
+        className="w-[320px] bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-2xl overflow-hidden text-xs text-[var(--ui-text)] flex flex-col shrink-0"
         style={{ maxHeight: `${Math.min(480, maxAvailableHeight)}px` }}
       >
-        {/* 1. Search Input */}
-        <div className="p-2 border-b border-[var(--ui-border)]">
-          <div className="relative flex items-center">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm kiếm hành động…"
-              className="w-full h-7 pl-2.5 pr-6 text-xs rounded-lg border border-[#2383E2] bg-[var(--ui-surface)] text-[var(--ui-text)] focus:outline-none focus:ring-1 focus:ring-[#2383E2] placeholder:text-[var(--ui-tertiary)]"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-1.5 text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+        <div role="toolbar" aria-label="Định dạng nhanh" className="grid grid-cols-[32px_32px_32px_minmax(0,1fr)_76px] items-center gap-1.5 border-b border-[var(--ui-border)] p-3">
+          {([{ key: 'bold', label: 'Đậm', Icon: Bold }, { key: 'italic', label: 'Nghiêng', Icon: Italic }, { key: 'underline', label: 'Gạch chân', Icon: Underline }] as const).map(({ key, label, Icon }) =>
+            <button key={key} type="button" title={label} aria-label={label} aria-pressed={!!formatting[key]}
+              onMouseDown={event => event.preventDefault()} onClick={() => onFormat?.({ [key]: !formatting[key] })}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${formatting[key] ? 'bg-blue-100 text-blue-600' : 'bg-[var(--ui-hover)] hover:bg-[var(--ui-hover-strong)]'}`}>
+              <Icon className="h-4 w-4" />
+            </button>)}
+          <select aria-label="Font chữ" value={formatting.fontFamily || 'Arial'} onChange={event => onFormat?.({ fontFamily: event.target.value })}
+            className="h-8 w-full min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2 outline-none focus:ring-2 focus:ring-[#2383e2]/30">
+            {['Arial', 'Times New Roman', 'Calibri', 'Verdana', 'Georgia', 'Tahoma', 'Courier New'].map(font => <option key={font} value={font}>{font}</option>)}
+          </select>
+          <select aria-label="Cỡ chữ" value={formatting.fontSize || 14} onChange={event => onFormat?.({ fontSize: Number(event.target.value) })}
+            className="h-8 w-full min-w-0 rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-2 outline-none focus:ring-2 focus:ring-[#2383e2]/30">
+            {Array.from(new Set([10, 11, 12, 13, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72, formatting.fontSize || 14])).sort((a, b) => a - b).map(size => <option key={size} value={size}>{size}</option>)}
+          </select>
         </div>
-
         {/* 2. Menu 1 Actions list */}
         <div className="flex-1 overflow-y-auto divide-y divide-[var(--ui-border)]">
           {/* Section 1: Text category */}
-          <div className="p-1 space-y-0.5">
+          <div className="p-2 space-y-1">
             <div className="px-2.5 pt-1.5 pb-0.5 text-[11px] font-semibold text-[var(--ui-tertiary)]">
               Văn bản
             </div>
 
-            {matchesSearch('chuyển thành') && (
               <button
                 type="button"
                 onClick={() => setActiveSubmenu((prev) => (prev === 'turnInto' ? null : 'turnInto'))}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer group ${
                   activeSubmenu === 'turnInto' ? 'bg-[var(--ui-hover)]' : 'hover:bg-[var(--ui-hover)]'
                 }`}
               >
                 <div className="flex items-center gap-2.5">
                   <Repeat className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                  <span>Chuyển thành</span>
+                  <span>Định dạng</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]" />
               </button>
-            )}
 
-            {matchesSearch('màu') && (
               <button
                 type="button"
                 onClick={() => setActiveSubmenu((prev) => (prev === 'color' ? null : 'color'))}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer group ${
                   activeSubmenu === 'color' ? 'bg-[var(--ui-hover)]' : 'hover:bg-[var(--ui-hover)]'
                 }`}
               >
@@ -285,32 +216,12 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]" />
               </button>
-            )}
           </div>
 
           {/* Section 2: Actions with shortcuts */}
-          <div className="p-1 space-y-0.5">
-            {matchesSearch('sao chép liên kết đến thành phần nội dung') && (
-              <button
-                type="button"
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  onCopyLink?.();
-                  onClose();
-                }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <Link2 className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
-                  <span className="truncate">Sao chép liên kết đến t...</span>
-                </div>
-                <span className="text-[10px] text-[var(--ui-tertiary)] font-mono whitespace-nowrap">
-                  Alt+⇧+L
-                </span>
-              </button>
-            )}
+          <div className="p-2 space-y-1">
 
-            {matchesSearch('sao chép') && (
+
               <button
                 type="button"
                 onMouseEnter={() => setActiveSubmenu(null)}
@@ -318,7 +229,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                   onDuplicate?.();
                   onClose();
                 }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <Copy className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
@@ -326,27 +237,9 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                 </div>
                 <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+D</span>
               </button>
-            )}
 
-            {matchesSearch('di chuyển đến') && (
-              <button
-                type="button"
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  onMoveTo?.();
-                  onClose();
-                }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <CornerUpRight className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                  <span>Di chuyển đến</span>
-                </div>
-                <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+P</span>
-              </button>
-            )}
 
-            {matchesSearch('xóa') && (
+
               <button
                 type="button"
                 onMouseEnter={() => setActiveSubmenu(null)}
@@ -354,7 +247,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                   onDelete?.();
                   onClose();
                 }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-left transition-colors cursor-pointer group text-red-600"
+                className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-left transition-colors cursor-pointer group text-red-600"
               >
                 <div className="flex items-center gap-2.5">
                   <Trash2 className="w-4 h-4 stroke-[1.75]" />
@@ -364,101 +257,8 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                   Del
                 </span>
               </button>
-            )}
           </div>
 
-          {/* Section 3: Collaboration */}
-          <div className="p-1 space-y-0.5">
-            {matchesSearch('bình luận') && (
-              <button
-                type="button"
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  onComment?.(selectedText);
-                  onClose();
-                }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <MessageSquare className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                  <span>Bình luận</span>
-                </div>
-                <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+M</span>
-              </button>
-            )}
-
-            {matchesSearch('đề xuất chỉnh sửa') && (
-              <button
-                type="button"
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  onSuggestEdit?.(selectedText);
-                  onClose();
-                }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Pencil className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                  <span>Đề xuất chỉnh sửa</span>
-                </div>
-                <span className="text-[10px] text-[var(--ui-tertiary)] font-mono whitespace-nowrap">
-                  Ctrl+⇧+Alt+X
-                </span>
-              </button>
-            )}
-          </div>
-
-          {/* Section 4: AI & Skills */}
-          <div className="p-1 space-y-0.5">
-            {matchesSearch('hỏi ai') && (
-              <button
-                type="button"
-                onMouseEnter={() => setActiveSubmenu(null)}
-                onClick={() => {
-                  onAskAI?.(selectedText);
-                  onClose();
-                }}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-[var(--ui-primary)] stroke-[1.75]" />
-                  <span>Hỏi AI</span>
-                </div>
-                <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+J</span>
-              </button>
-            )}
-
-            {matchesSearch('kỹ năng') && (
-              <button
-                type="button"
-                onClick={() => setActiveSubmenu((prev) => (prev === 'skills' ? null : 'skills'))}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
-                  activeSubmenu === 'skills' ? 'bg-[var(--ui-hover)]' : 'hover:bg-[var(--ui-hover)]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                  <span>Kỹ năng</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-[var(--ui-tertiary)] group-hover:text-[var(--ui-text)]" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 3. Footer: Author info & Word/Character Count */}
-        <div className="px-3 py-2.5 border-t border-[var(--ui-border)] bg-[var(--ui-subtle)] text-[11px] space-y-1">
-          <div className="text-[var(--ui-tertiary)] font-medium">Lần chỉnh sửa gần nhất</div>
-          <div className="flex items-center gap-1.5 text-[var(--ui-text)]">
-            <div className="w-4 h-4 rounded-full bg-[var(--ui-hover)] border border-[var(--ui-border)] flex items-center justify-center text-[9px] font-bold shrink-0">
-              {authorName.charAt(0).toUpperCase()}
-            </div>
-            <span className="font-medium truncate">{authorName}</span>
-          </div>
-          <div className="text-[var(--ui-tertiary)]">{updatedTime}</div>
-          <div className="text-[var(--ui-tertiary)]">
-            {wordCount} từ, {charCount} ký tự
-          </div>
         </div>
       </div>
 
@@ -470,37 +270,11 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
           }`}
           style={{ maxHeight: `${Math.min(420, maxAvailableHeight)}px` }}
         >
-          {/* SUBMENU: CHUYỂN THÀNH (Turn into) matching user screenshot */}
+          {/* SUBMENU: ĐỊNH DẠNG */}
           {activeSubmenu === 'turnInto' && (
             <div className="p-1 space-y-0.5 overflow-y-auto">
               {TURN_INTO_OPTIONS.map((opt) => {
-                const isSelected = blockType === opt.type && (opt.headingLevel ? true : true);
-                const isParagraph = opt.id === 'paragraph' && blockType === 'paragraph';
-                const isH1 = opt.id === 'h1' && blockType === 'h1';
-                const isH2 = opt.id === 'h2' && blockType === 'h2';
-                const isH3 = opt.id === 'h3' && blockType === 'h3';
-                const isH4 = opt.id === 'h4' && blockType === 'h4';
-                const isBullet = opt.id === 'bullet' && blockType === 'bullet';
-                const isNumbered = opt.id === 'numbered' && blockType === 'numbered';
-                const isChecklist = opt.id === 'checklist' && blockType === 'checklist';
-                const isCode = opt.id === 'code' && blockType === 'code';
-                const isQuote = opt.id === 'quote' && blockType === 'quote';
-                const isCallout = opt.id === 'callout' && blockType === 'callout';
-                const isToggle = opt.id === 'toggle' && blockType === 'toggle';
-
-                const isActive =
-                  isParagraph ||
-                  isH1 ||
-                  isH2 ||
-                  isH3 ||
-                  isH4 ||
-                  isBullet ||
-                  isNumbered ||
-                  isChecklist ||
-                  isCode ||
-                  isQuote ||
-                  isCallout ||
-                  isToggle;
+                const isActive = blockType === opt.type;
 
                 return (
                   <button
@@ -510,7 +284,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                       onTurnInto?.(opt.type, opt.headingLevel ? { headingLevel: opt.headingLevel } : undefined);
                       onClose();
                     }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
+                    className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer group ${
                       isActive ? 'bg-[var(--ui-hover)]' : 'hover:bg-[var(--ui-hover)]'
                     }`}
                   >
@@ -547,7 +321,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                         onApplyColor?.(c.hex, false);
                         onClose();
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-[var(--ui-hover)] text-left cursor-pointer"
                     >
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0"
@@ -572,7 +346,7 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
                         onApplyColor?.(c.hex, true);
                         onClose();
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left cursor-pointer"
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-[var(--ui-hover)] text-left cursor-pointer"
                     >
                       <span
                         className="w-3.5 h-3.5 rounded border border-black/10 shrink-0"
@@ -586,25 +360,6 @@ export const EditTextDialog: React.FC<EditTextDialogProps> = ({
             </div>
           )}
 
-          {/* SUBMENU: KỸ NĂNG AI (AI Skills) */}
-          {activeSubmenu === 'skills' && (
-            <div className="p-1 space-y-0.5 overflow-y-auto">
-              {SKILL_OPTIONS.map((skill) => (
-                <button
-                  key={skill.id}
-                  type="button"
-                  onClick={() => {
-                    onSkillAction?.(skill.id, selectedText);
-                    onClose();
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-[var(--ui-hover)] text-left transition-colors cursor-pointer"
-                >
-                  <span className="text-sm shrink-0">{skill.icon}</span>
-                  <span className="truncate">{skill.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

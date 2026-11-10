@@ -1,3 +1,4 @@
+import { memoryStorage } from '../../utils/memoryStorage';
 import { RenameDialog } from '../modals/RenameDialog';
 import { DocumentLinkShare } from '../modals/DocumentLinkShare';
 import React, { useState, useRef, useEffect } from 'react';
@@ -151,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       try {
-        localStorage.setItem('misa_sidebar_width', String(widthRef.current));
+        memoryStorage.setItem('misa_sidebar_width', String(widthRef.current));
       } catch (err) {}
     };
 
@@ -164,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     widthRef.current = DEFAULT_SIDEBAR_WIDTH;
     onWidthChange?.(DEFAULT_SIDEBAR_WIDTH);
     try {
-      localStorage.setItem('misa_sidebar_width', String(DEFAULT_SIDEBAR_WIDTH));
+      memoryStorage.setItem('misa_sidebar_width', String(DEFAULT_SIDEBAR_WIDTH));
     } catch (err) {}
     onToast?.(`Đã đặt lại độ rộng thanh bên về mặc định (${DEFAULT_SIDEBAR_WIDTH}px)`, 'info');
   };
@@ -201,7 +202,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [locationKey, navigatedSpace]);
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [recentExpanded, setRecentExpanded] = useState(true);
-  const [unclassifiedExpanded, setUnclassifiedExpanded] = useState({ personal: true, company: true });
+  const [unclassifiedExpanded, setUnclassifiedExpanded] = useState({ personal: false, company: false });
   const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
@@ -265,12 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Rename dialog state
   const [renamingDocId, setRenamingDocId] = useState<string | null>(null);
 
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({
-    fld_work: true,
-    fld_personal: false,
-    fld_process: false,
-    fld_product_docs: false,
-  });
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
 
   const knownFolderIds = useRef(new Set(folders.map(folder => folder.id)));
   const activeFolderId = viewState.type === 'folder' ? viewState.folderId :
@@ -636,7 +632,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
         <FolderIcon className="w-3.5 h-3.5 shrink-0" />
         <button type="button" aria-current={selected ? 'page' : undefined}
-          onClick={() => onNavigate({ type: 'unclassified', space })}
+          onClick={() => { setUnclassifiedExpanded(previous => ({ ...previous, [space]: true })); onNavigate({ type: 'unclassified', space }); }}
           className="flex-1 text-left text-xs font-medium truncate">Chưa phân loại</button>
         <span className="text-[10px] text-[var(--ui-tertiary)]">{notes.length}</span>
         {draggingOver && <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 rounded font-medium shrink-0">Thả vào đây</span>}

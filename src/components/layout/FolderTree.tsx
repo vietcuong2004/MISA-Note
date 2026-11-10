@@ -267,12 +267,14 @@ export function FolderTree(props: Props) {
                       aria-current={props.view.type === 'folder' && props.view.folderId === folder.id ? 'page' : undefined}
                       onClick={(event) => {
                         event.stopPropagation();
+                        if (!open) props.onToggle(folder.id);
                         props.onNavigate({ type: 'folder', folderId: folder.id });
                       }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
                           event.stopPropagation();
+                          if (!open) props.onToggle(folder.id);
                           props.onNavigate({ type: 'folder', folderId: folder.id });
                         }
                       }}

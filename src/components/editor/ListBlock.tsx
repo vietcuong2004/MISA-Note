@@ -42,8 +42,8 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
           className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border ${item.checked
             ? 'bg-[var(--ui-primary)] border-[var(--ui-primary)] text-white' : 'border-[var(--ui-border-strong)]'}`}>
           {item.checked && <Check className="h-3 w-3" />}
-        </button> : <span aria-hidden="true" className={`inline-flex h-6 min-w-5 shrink-0 items-center justify-center leading-6 text-[var(--ui-text)] ${block.type === 'numbered' ? 'text-sm' : 'text-base'}`}>
-          {block.type === 'numbered' ? `${numbers[index]}.` : ['–', '●', '○', '■'][listLevel(item) - 1]}
+        </button> : <span aria-hidden="true" className={`inline-flex h-6 min-w-5 shrink-0 items-center justify-center whitespace-nowrap leading-6 text-[var(--ui-text)] ${block.type === 'numbered' ? 'text-sm' : 'text-base'}`}>
+          {block.type === 'numbered' ? `${numbers[index]}${listLevel(item) === 1 ? '.' : ''}` : ['–', '●', '○', '■'][listLevel(item) - 1]}
         </span>}
         <textarea ref={node => { if (node) inputs.current.set(item.id, node); else inputs.current.delete(item.id); }}
           rows={1} disabled={readOnly} aria-label={`Nội dung mục ${index + 1}`} value={item.content}

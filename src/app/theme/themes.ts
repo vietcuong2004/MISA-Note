@@ -1,3 +1,4 @@
+import { memoryStorage } from '../../utils/memoryStorage';
 export const THEME_STORAGE_KEY = 'misa_ui_theme';
 export const THEMES = [
   { id: 'default', name: 'Mặc định', description: 'Màu sắc và bố cục hiện tại', colors: ['#1F59B6', '#FAFAFA', '#1D1D1F'] },
@@ -8,6 +9,6 @@ export type ThemeId = typeof THEMES[number]['id'];
 export const resolveTheme = (value: string | null): ThemeId => THEMES.find(theme => theme.id === value)?.id || 'default';
 
 export function readTheme(): ThemeId {
-  try { return resolveTheme(window.localStorage.getItem(THEME_STORAGE_KEY)); }
+  try { return resolveTheme(memoryStorage.getItem(THEME_STORAGE_KEY)); }
   catch { return 'default'; }
 }

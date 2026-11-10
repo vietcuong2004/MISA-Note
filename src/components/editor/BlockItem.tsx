@@ -1,3 +1,8 @@
+import { TableBlock } from './TableBlock';
+import { LinkBlock } from './LinkBlock';
+import { AttachmentBlock } from './AttachmentBlock';
+import { AudioBlock } from './AudioBlock';
+import { ImageBlock } from './ImageBlock';
 import { ListBlock } from './ListBlock';
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import {
@@ -136,7 +141,12 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   const renderBlockContent = () => {
     switch (block.type) {
       case 'video':
+      case 'file':
+        return <AttachmentBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
       case 'audio':
+        return <AudioBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
       case 'embed':
       case 'utility':
         return <UtilityBlock block={block} readOnly={isReadOnly}
@@ -324,238 +334,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         );
 
       case 'image':
-        const imgUrl =
-          block.properties?.url ||
-          'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000&auto=format&fit=crop&q=80';
-        return (
-          <div className="w-full my-2 space-y-2">
-            <div className="rounded-[20px] overflow-hidden border border-[var(--ui-border)] bg-[var(--ui-hover)] max-h-80 flex items-center justify-center ios-card-shadow">
-              <img
-                src={imgUrl}
-                alt={block.content || 'Hình ảnh'}
-                referrerPolicy="no-referrer"
-                className="w-full h-auto max-h-80 object-cover"
-              />
-            </div>
-            {!isReadOnly && (
-              <div className="flex items-center gap-2 px-1">
-                <input
-                  type="text"
-                  value={block.properties?.url || ''}
-                  onChange={(e) =>
-                    onUpdate(block.id, block.content, { ...block.properties, url: e.target.value })
-                  }
-                  placeholder="Dán liên kết ảnh (URL)..."
-                  className="flex-1 text-xs px-3 py-1.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl focus:outline-none text-[var(--ui-text)]"
-                />
-                <input
-                  type="text"
-                  value={block.content}
-                  onChange={(e) => onUpdate(block.id, e.target.value, block.properties)}
-                  placeholder="Chú thích ảnh..."
-                  className="w-48 text-xs px-3 py-1.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl focus:outline-none text-[var(--ui-text)]"
-                />
-              </div>
-            )}
-          </div>
-        );
-
-      case 'file':
-        return (
-          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-subtle)] transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] flex items-center justify-center shrink-0">
-                <Paperclip className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-[var(--ui-text)]">
-                  {block.content || 'Tai_lieu_dinh_kem.pdf'}
-                </div>
-                <div className="text-[11px] text-[var(--ui-tertiary)] font-mono">
-                  {block.properties?.fileSize || '2.4 MB'} · Tệp đính kèm nội bộ
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => alert(`Tải xuống tệp: ${block.content || 'tài liệu'}`)}
-              className="text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-border)] px-3.5 py-1.5 rounded-xl border border-[var(--ui-border-strong)] bg-[var(--ui-hover)] ios-interactive"
-            >
-              Tải tệp
-            </button>
-          </div>
-        );
+        return <ImageBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
 
       case 'link':
-        return (
-          <div className="w-full p-4 rounded-2xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:border-[var(--ui-primary)]/30 transition-colors flex items-center justify-between my-1.5 ios-card-shadow">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-[var(--ui-hover)] border border-[var(--ui-border)] text-[var(--ui-text)] flex items-center justify-center shrink-0">
-                <ExternalLink className="w-5 h-5 stroke-[1.75]" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-[var(--ui-text)] truncate">
-                  {block.content || 'Cổng thông tin nội bộ OneWorkspace'}
-                </div>
-                <div className="text-[11px] text-[var(--ui-muted)] truncate">
-                  {block.properties?.url || 'https://workspace.congty.vn'}
-                </div>
-              </div>
-            </div>
-            <a
-              href={block.properties?.url || '#'}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-[var(--ui-text)] font-semibold px-3 py-1 hover:underline shrink-0"
-            >
-              Mở ↗
-            </a>
-          </div>
-        );
+        return <LinkBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
 
       case 'table':
-        const tableData = block.properties?.tableData || {
-          headers: ['Công việc', 'Người phụ trách', 'Trạng thái'],
-          rows: [
-            ['Hoàn thiện wireframe', 'Việt Cường', 'Đang thực hiện'],
-            ['Chuẩn bị slide họp', 'Lan Anh', 'Chưa bắt đầu'],
-            ['Review ghi chú cũ', 'Minh Đức', 'Hoàn thành'],
-          ],
-        };
-
-        const updateCell = (rowIndex: number, colIndex: number, val: string) => {
-          const newRows = [...tableData.rows];
-          newRows[rowIndex] = [...newRows[rowIndex]];
-          newRows[rowIndex][colIndex] = val;
-          onUpdate(block.id, block.content, {
-            ...block.properties,
-            tableData: { ...tableData, rows: newRows },
-          });
-        };
-
-        const updateHeader = (colIndex: number, val: string) => {
-          const newHeaders = [...tableData.headers];
-          newHeaders[colIndex] = val;
-          onUpdate(block.id, block.content, {
-            ...block.properties,
-            tableData: { ...tableData, headers: newHeaders },
-          });
-        };
-
-        const addRow = () => {
-          const emptyRow = tableData.headers.map((_, i) =>
-            i === tableData.headers.length - 1 && tableData.headers[i].toLowerCase().includes('trạng thái')
-              ? 'Chưa bắt đầu'
-              : ''
-          );
-          onUpdate(block.id, block.content, {
-            ...block.properties,
-            tableData: { ...tableData, rows: [...tableData.rows, emptyRow] },
-          });
-        };
-
-        const deleteRow = (rowIndex?: number) => {
-          if (tableData.rows.length <= 1) return;
-          const targetIndex = rowIndex !== undefined ? rowIndex : tableData.rows.length - 1;
-          const newRows = tableData.rows.filter((_, idx) => idx !== targetIndex);
-          onUpdate(block.id, block.content, {
-            ...block.properties,
-            tableData: { ...tableData, rows: newRows },
-          });
-        };
-
-        const cycleStatus = (rowIndex: number, colIndex: number, currentVal: string) => {
-          if (isReadOnly) return;
-          const statusCycle = ['Chưa bắt đầu', 'Đang thực hiện', 'Hoàn thành', 'Chờ duyệt'];
-          const currentIdx = statusCycle.indexOf(currentVal);
-          const nextVal = currentIdx === -1 ? 'Đang thực hiện' : statusCycle[(currentIdx + 1) % statusCycle.length];
-          updateCell(rowIndex, colIndex, nextVal);
-        };
-
-        return (
-          <div className="w-full my-2.5 overflow-x-auto">
-            <div className="border border-[var(--ui-border)] rounded-xl overflow-hidden bg-[var(--ui-surface)]">
-              <table className="w-full text-xs text-left border-collapse">
-                <thead className="bg-[var(--ui-panel)] text-[var(--ui-text)] font-semibold border-b border-[var(--ui-border)]">
-                  <tr>
-                    {tableData.headers.map((hdr, cIdx) => (
-                      <th key={cIdx} className="px-3.5 py-2.5 border-r border-[var(--ui-border)] last:border-r-0 font-semibold text-xs text-[var(--ui-text)]">
-                        <input
-                          type="text"
-                          disabled={isReadOnly}
-                          value={hdr}
-                          onChange={(e) => updateHeader(cIdx, e.target.value)}
-                          className="w-full bg-transparent font-semibold focus:outline-none text-[var(--ui-text)]"
-                        />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--ui-border)] bg-[var(--ui-surface)]">
-                  {tableData.rows.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-[var(--ui-panel)]/70 transition-colors">
-                      {row.map((cell, cIdx) => {
-                        const isStatusCol = tableData.headers[cIdx]?.toLowerCase().includes('trạng thái');
-
-                        return (
-                          <td key={cIdx} className="px-3.5 py-2.5 border-r border-[var(--ui-border)] last:border-r-0 text-xs text-[var(--ui-text)] align-middle">
-                            {isStatusCol ? (
-                              <button
-                                type="button"
-                                disabled={isReadOnly}
-                                onClick={() => cycleStatus(rIdx, cIdx, cell)}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#EAEAEC] text-[var(--ui-text)] text-xs font-medium hover:bg-[var(--ui-hover-strong)] transition-colors cursor-pointer"
-                                title="Bấm để chuyển trạng thái"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#6E6E73]" />
-                                <span>{cell || 'Chưa bắt đầu'}</span>
-                              </button>
-                            ) : (
-                              <input
-                                type="text"
-                                disabled={isReadOnly}
-                                value={cell}
-                                onChange={(e) => updateCell(rIdx, cIdx, e.target.value)}
-                                className="w-full bg-transparent focus:outline-none text-[var(--ui-text)] text-xs"
-                                placeholder="..."
-                              />
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {!isReadOnly && (
-              <div className="pt-2 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={addRow}
-                    className="inline-flex items-center gap-1.5 text-xs text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] font-medium transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5 stroke-[2]" />
-                    <span>Thêm hàng</span>
-                  </button>
-                  {tableData.rows.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => deleteRow()}
-                      className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium transition-colors cursor-pointer"
-                      title="Xóa hàng cuối"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 stroke-[1.75]" />
-                      <span>Xóa hàng</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        );
+        return <TableBlock block={block} readOnly={isReadOnly}
+          onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
 
       // Meeting Info with unified monochrome Lucide icon
       case 'meeting_info':
@@ -963,7 +751,18 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         </div>
       )}
 
-      <div className="flex-1 min-w-0 min-h-6 [&_textarea]:block" style={{
+      <div className={`flex-1 min-w-0 min-h-6 [&_textarea]:block
+        ${block.properties?.bold !== undefined ? '[&_textarea]:[font-weight:inherit] [&_input]:[font-weight:inherit]' : ''}
+        ${block.properties?.fontSize ? '[&_textarea]:text-[length:inherit] [&_input]:text-[length:inherit]' : ''}
+        ${block.properties?.fontFamily ? '[&_textarea]:[font-family:inherit] [&_input]:[font-family:inherit]' : ''}
+        ${block.properties?.italic ? '[&_textarea]:italic [&_input]:italic' : ''}
+        ${block.properties?.underline ? '[&_textarea]:underline [&_input]:underline' : ''}
+      `} style={{
+        fontWeight: block.properties?.bold !== undefined ? (block.properties.bold ? 700 : 400) : undefined,
+        fontStyle: block.properties?.italic ? 'italic' : undefined,
+        textDecoration: block.properties?.underline ? 'underline' : undefined,
+        fontFamily: block.properties?.fontFamily,
+        fontSize: block.properties?.fontSize ? `${block.properties.fontSize}px` : undefined,
         color: block.properties?.textColor,
         backgroundColor: block.properties?.backgroundColor,
         ...(block.properties?.textColor ? { '--ui-text': block.properties.textColor } : {}),

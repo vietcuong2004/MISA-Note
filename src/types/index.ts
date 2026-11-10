@@ -65,6 +65,11 @@ export interface BlockTableData {
 }
 
 export interface BlockProperties {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  fontFamily?: string;
+  fontSize?: number;
   listItems?: { id: string; content: string; checked?: boolean; level?: number }[];
   textColor?: string;
   backgroundColor?: string;
@@ -91,6 +96,7 @@ export interface BlockProperties {
   calloutType?: 'info' | 'warning' | 'tip' | 'success';
   url?: string; // for link & image
   fileName?: string; // for file attachment
+  attachmentId?: string;
   fileSize?: string;
   caption?: string;
   // Meeting specific properties

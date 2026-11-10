@@ -130,9 +130,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Folder tree expansion state (all folders expanded by default)
+  // Folder trees start collapsed; users expand individual folders.
   const [treeExpandedFolders, setTreeExpandedFolders] = useState<Record<string, boolean>>({});
-  const isFolderExpanded = (folderId: string) => treeExpandedFolders[folderId] !== false;
+  const isFolderExpanded = (folderId: string) => treeExpandedFolders[folderId] === true;
   const toggleFolderExpanded = (folderId: string) => {
     setTreeExpandedFolders((prev) => ({
       ...prev,

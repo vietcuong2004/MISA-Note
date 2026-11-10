@@ -1,9 +1,12 @@
+import { memoryStorage } from '../utils/memoryStorage';
+import { clearAttachments } from '../utils/attachments';
 import React, { act } from 'react';
 import { before, after, afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import type { Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
+import { File as NodeFile } from 'node:buffer';
 
 let dom: JSDOM;
 let root: Root | undefined;
@@ -25,7 +28,8 @@ before(async () => {
 
 afterEach(async () => {
   if (root) { await act(async () => root!.unmount()); root = undefined; }
-  localStorage.clear();
+  memoryStorage.clear();
+  clearAttachments();
 });
 after(() => dom.window.close());
 
@@ -42,6 +46,250 @@ async function click(element: Element | null | undefined) {
 }
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
+
+test('library folder tree starts collapsed and expands on demand', async () => {
+  await mount('/library');
+  const main = document.querySelector('main')!;
+  assert(button('Mở tất cả', main));
+  assert.equal(main.querySelectorAll('table tbody button[title="Tùy chọn khác"]').length, 0);
+  await click(button('Mở tất cả', main));
+  assert(button('Thu gọn', main));
+  assert(main.querySelector('table tbody button[title="Tùy chọn khác"]'));
+  await click(button('Thu gọn', main));
+  assert.equal(main.querySelectorAll('table tbody button[title="Tùy chọn khác"]').length, 0);
+});
+
+test('sidebar folders start collapsed and clicking a folder expands only that folder', async () => {
+  await mount('/private');
+  const sidebar = document.querySelector('aside')!;
+  const toggles = Array.from(sidebar.querySelectorAll('button[aria-label^="Mở thư mục"], button[aria-label*="Chưa phân loại"]'));
+  assert(toggles.length > 0);
+  for (const toggle of toggles) assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  await click(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]'));
+  assert.equal(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]')?.getAttribute('aria-expanded'), 'true');
+  assert.equal(sidebar.querySelector('[aria-label="Mở thư mục Cá nhân"]')?.getAttribute('aria-expanded'), 'false');
+  await click(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'));
+  assert(sidebar.querySelector('[aria-label="Mở thư mục Công việc"]'));
+  await click(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]'));
+  assert(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'));
+});
+
+test('table selection inserts and removes rows and columns without losing neighboring cells', async () => {
+  const { TableBlock } = await import('../components/editor/TableBlock');
+  let block: import('../types').Block = { id: 'table-actions', type: 'table', content: '', properties: { tableData: { headers: ['A', 'B'], rows: [['a1', 'b1'], ['a2', 'b2']] } } };
+  root = createRoot(document.getElementById('root')!);
+  const render = () => root!.render(<TableBlock block={block} readOnly={false} onChange={(content, properties) => { block = { ...block, content, properties }; render(); }} />);
+  await act(async () => render());
+  await click(document.querySelector('[aria-label="Chọn hàng 2"]'));
+  assert(document.querySelector('[role="dialog"][aria-label="Thao tác hàng"]'));
+  await click(button('Thêm hàng phía trên'));
+  assert.deepEqual(block.properties!.tableData!.rows, [['a1', 'b1'], ['', ''], ['a2', 'b2']]);
+  await click(document.querySelector('[aria-label="Chọn hàng 2"]'));
+  await click(button('Xóa hàng'));
+  await click(document.querySelector('[aria-label="Chọn hàng 1"]'));
+  await click(button('Thêm hàng bên dưới'));
+  assert.deepEqual(block.properties!.tableData!.rows[1], ['', '']);
+  await click(document.querySelector('[aria-label="Chọn cột 2"]'));
+  await click(button('Thêm cột bên trái'));
+  assert.deepEqual(block.properties!.tableData!.headers, ['A', '', 'B']);
+  assert.deepEqual(block.properties!.tableData!.rows[2], ['a2', '', 'b2']);
+  await click(document.querySelector('[aria-label="Chọn cột 2"]'));
+  await click(button('Xóa cột'));
+  await click(document.querySelector('[aria-label="Chọn cột 2"]'));
+  await click(button('Thêm cột bên phải'));
+  assert.deepEqual(block.properties!.tableData!.headers, ['A', 'B', '']);
+  assert.deepEqual(block.properties!.tableData!.rows[0], ['a1', 'b1', '']);
+  assert.equal(button('Thêm hàng'), undefined);
+  assert.equal(button('Thêm cột'), undefined);
+  await click(document.querySelector('[aria-label="Chọn cột 3"]'));
+  await click(button('Thêm cột bên phải'));
+  assert.equal(block.properties!.tableData!.headers.length, 4);
+  const cells = document.querySelectorAll('tbody tr:first-child td');
+  await act(async () => {
+    cells[1].dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    cells[4].dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  assert(document.querySelector('[aria-label="Thao tác hàng"]'));
+  await act(async () => document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  assert.equal(document.querySelector('[role="dialog"]'), null);
+});
+
+test('video supports uploads and URLs while attachments only upload and retain their bytes within the page', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const { readAttachment } = await import('../utils/attachments');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'attachment-test', blocks: [
+    { id: 'video-input', type: 'paragraph', content: '' }, { id: 'file-input', type: 'paragraph', content: '' },
+  ] }]);
+  const fill = async (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    await act(async () => {
+      const prototype = input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  const waitFor = async (predicate: () => boolean) => {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
+      if (predicate()) return;
+    }
+    assert.fail('Attachment did not become ready');
+  };
+  const upload = async (input: Element, file: NodeFile) => {
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+    await act(async () => { input.dispatchEvent(new window.Event('change', { bubbles: true })); });
+  };
+  try {
+    await mount('/documents/attachment-test');
+    await fill(document.querySelector('[data-block-id="video-input"] textarea')!, '/video');
+    await click(document.querySelector('button[title="Video"]'));
+    let dialog = document.querySelector('[aria-label="Chọn video"]')!;
+    assert.equal(dialog.querySelectorAll('[role="tab"]').length, 2);
+    await click(button('Liên kết', dialog));
+    await fill(dialog.querySelector('input')!, 'javascript:alert(1)');
+    await click(button('Nhúng video', dialog));
+    assert(dialog.querySelector('[role="alert"]'));
+    await fill(dialog.querySelector('input')!, 'https://example.com/demo.mp4');
+    await click(button('Nhúng video', dialog));
+    assert.equal(document.querySelector('video')?.getAttribute('src'), 'https://example.com/demo.mp4');
+    await click(button('Thay video', document.querySelector('[data-attachment-block="video-input"]')!));
+    dialog = document.querySelector('[aria-label="Chọn video"]')!;
+    await click(button('Tải lên', dialog));
+    await upload(dialog.querySelector('input[type="file"]')!, new NodeFile(['video bytes'], 'demo.mp4', { type: 'video/mp4' }));
+    await waitFor(() => !!document.querySelector('video')?.getAttribute('src')?.startsWith('blob:'));
+    await fill(document.querySelector('[aria-label="Chú thích video"]')!, 'Video từ máy tính');
+    await fill(document.querySelector('[data-block-id="file-input"] textarea')!, '/tep');
+    await click(document.querySelector('button[title="Tệp"]'));
+    dialog = document.querySelector('[aria-label="Chọn tệp"]')!;
+    assert.equal(dialog.querySelector('[role="tab"]'), null);
+    assert.equal(dialog.querySelector('input[type="url"]'), null);
+    const bytes = new Uint8Array(3 * 1024 * 1024).fill(42);
+    await upload(dialog.querySelector('input[type="file"]')!, new NodeFile([bytes], 'bao-cao.pdf', { type: 'application/pdf' }));
+    await waitFor(() => !document.querySelector('[aria-label="Chọn tệp"]') && !!document.querySelector('[aria-label="Thao tác tệp"]'));
+    assert(document.querySelector('[data-attachment-block="file-input"]')?.textContent?.includes('bao-cao.pdf'));
+    await mount('/private');
+    const saved = getStoredDocuments().find(doc => doc.id === 'attachment-test')!;
+    const fileId = saved.blocks[1].properties?.attachmentId;
+    assert(fileId);
+    const stored = await readAttachment(fileId);
+    assert.equal(stored?.size, bytes.length);
+    assert.equal(stored?.type, 'application/pdf');
+    assert.equal(new Uint8Array(await stored!.arrayBuffer())[0], 42);
+    assert.equal(saved.blocks[0].properties?.url, undefined);
+    await mount('/documents/attachment-test');
+    await waitFor(() => !!document.querySelector('[aria-label="Thao tác tệp"]') && !!document.querySelector('video'));
+    assert.equal(document.querySelector('video')?.getAttribute('src')?.startsWith('blob:'), true);
+    assert.equal((document.querySelector('[aria-label="Chú thích video"]') as HTMLInputElement).value, 'Video từ máy tính');
+    let downloaded = '';
+    const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+    dom.window.HTMLAnchorElement.prototype.click = function () { downloaded = this.download; };
+    try { await click(button('Tải tệp xuống', document.querySelector('[aria-label="Thao tác tệp"]')!)); }
+    finally { dom.window.HTMLAnchorElement.prototype.click = originalClick; }
+    assert.equal(downloaded, 'bao-cao.pdf');
+  } finally {
+    if (root) { await act(async () => root!.unmount()); root = undefined; }
+
+  }
+});
+
+test('slash image opens upload/link tabs and saves embedded URLs or local image files', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'image-test', blocks: [{ id: 'image-input', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/image-test');
+  const fill = async (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    await act(async () => {
+      const prototype = input.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+  await fill(document.querySelector('[data-block-id="image-input"] textarea')!, '/hinh anh');
+  await click(document.querySelector('button[title="Hình ảnh"]'));
+  const block = document.querySelector('[data-image-block="image-input"]')!;
+  assert.equal(block.querySelector('img'), null);
+  let dialog = block.querySelector('[aria-label="Chọn hình ảnh"]')!;
+  assert(dialog);
+  assert.equal(dialog.querySelectorAll('[role="tab"]').length, 2);
+  assert(!dialog.textContent?.includes('Unsplash') && !dialog.textContent?.includes('GIPHY'));
+  await click(button('Liên kết', dialog));
+  const link = dialog.querySelector('input')!;
+  await fill(link, 'javascript:alert(1)');
+  await click(button('Nhúng hình ảnh', dialog));
+  assert(dialog.querySelector('[role="alert"]'));
+  assert.equal(block.querySelector('img'), null);
+  await fill(link, 'https://example.com/image.png');
+  await click(button('Nhúng hình ảnh', dialog));
+  assert.equal(block.querySelector('img')?.getAttribute('src'), 'https://example.com/image.png');
+  assert.equal(block.querySelector('[aria-label="Chọn hình ảnh"]'), null);
+  const toolbar = block.querySelector('[role="toolbar"][aria-label="Thao tác hình ảnh"]')!;
+  assert(button('Thay ảnh', toolbar));
+  assert(button('Tải ảnh xuống', toolbar));
+  assert.equal(button('Thay ảnh', block)?.closest('[role="toolbar"]'), toolbar);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => { throw new Error('Blocked by CORS'); };
+  try {
+    await click(button('Tải ảnh xuống', toolbar));
+    assert(block.querySelector('[role="alert"]')?.textContent?.includes('Không tải được ảnh'));
+    assert(block.querySelector('a[target="_blank"]'));
+  } finally { globalThis.fetch = originalFetch; }
+  await act(async () => { block.querySelector('img')!.dispatchEvent(new window.Event('error')); });
+  await click(Array.from(block.querySelectorAll('button')).find(item => item.textContent?.includes('Không tải được ảnh')));
+  dialog = block.querySelector('[aria-label="Chọn hình ảnh"]')!;
+  await click(button('Tải lên', dialog));
+  const input = dialog.querySelector('input[type="file"]')!;
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'FileReader');
+  let loaded!: () => void;
+  const ready = new Promise<void>(resolve => { loaded = resolve; });
+  Object.defineProperty(globalThis, 'FileReader', { configurable: true, value: class extends dom.window.FileReader {
+    constructor() { super(); this.addEventListener('loadend', () => loaded()); }
+  } });
+  try {
+    Object.defineProperty(input, 'files', { configurable: true, value: [new dom.window.File(['image bytes'], 'local.png', { type: 'image/png' })] });
+    await act(async () => { input.dispatchEvent(new window.Event('change', { bubbles: true })); await ready; });
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'FileReader', previous); else Reflect.deleteProperty(globalThis, 'FileReader');
+  }
+  assert(block.querySelector('img')?.getAttribute('src')?.startsWith('data:image/png;base64,'));
+  await fill(block.querySelector('[aria-label="Chú thích ảnh"]')!, 'Ảnh từ máy tính');
+  assert(block.querySelector('[aria-label="Chú thích ảnh"]')?.classList.contains('text-center'));
+  let filename = '';
+  let downloadDone!: () => void;
+  const downloaded = new Promise<void>(resolve => { downloadDone = resolve; });
+  const originalClick = dom.window.HTMLAnchorElement.prototype.click;
+  dom.window.HTMLAnchorElement.prototype.click = function () { filename = this.download; downloadDone(); };
+  try {
+    await act(async () => {
+      button('Tải ảnh xuống', block)!.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+      await downloaded;
+    });
+    assert.equal(filename, 'local.png');
+  } finally { dom.window.HTMLAnchorElement.prototype.click = originalClick; }
+  await mount('/private');
+  const saved = getStoredDocuments().find(doc => doc.id === 'image-test')!.blocks[0];
+  assert.equal(saved.properties?.fileName, 'local.png');
+  assert(saved.properties?.url?.startsWith('data:image/png;base64,'));
+  await mount('/documents/image-test');
+  assert.equal(document.querySelector('[data-image-block="image-input"] img')?.getAttribute('alt'), 'Ảnh từ máy tính');
+});
+
+test('numbered lists render hierarchical numbering and update it when indentation changes', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'hierarchical-numbers', blocks: [{ id: 'number-tree', type: 'numbered', content: '', properties: {
+    listItems: [1, 2, 3, 4, 4, 3, 2, 1, 2].map((level, index) => ({ id: `number-${index}`, content: `Item ${index}`, level })),
+  } }] }]);
+  await mount('/documents/hierarchical-numbers');
+  const numbers = () => Array.from(document.querySelectorAll('[data-block-id="number-tree"] li > span')).map(span => span.textContent);
+  assert.deepEqual(numbers(), ['1.', '1.1', '1.1.1', '1.1.1.1', '1.1.1.2', '1.1.2', '1.2', '2.', '2.1']);
+  const input = document.querySelector('[data-list-item="number-8"] textarea') as HTMLTextAreaElement;
+  await act(async () => {
+    input.focus();
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+  });
+  assert.equal(numbers().at(-1), '3.');
+  assert.equal(document.activeElement, input);
+});
 
 test('arrow keys move between paragraphs, headings and list items while preserving multiline navigation', async () => {
   const { saveStoredDocuments } = await import('../utils/storage');
@@ -645,6 +893,7 @@ test('note rename uses the folder-style dialog and only saves on confirmation', 
   assert.equal(document.querySelector('[aria-label="Đặt lại tên ghi chú"]'), null);
   await mount('/library');
   const main = document.querySelector('main')!;
+  await click(button('Mở tất cả', main));
   await click(main.querySelector('table button[title="Tùy chọn khác"]'));
   await click(Array.from(main.querySelectorAll('[aria-label="Thao tác tài liệu"] button')).find(item => Array.from(item.querySelectorAll('span')).some(span => span.textContent === 'Đổi tên')));
   dialog = document.querySelector('[aria-label="Đặt lại tên ghi chú"]')!;
@@ -685,6 +934,7 @@ test('share menu copies the current document URL and reports clipboard failures 
   await click(dialog.querySelector('button[aria-label="Đóng chia sẻ"]'));
   await mount('/library');
   const main = document.querySelector('main')!;
+  await click(button('Mở tất cả', main));
   await click(main.querySelector('table button[title="Tùy chọn khác"]'));
   await click(button('Chia sẻ', main));
   dialog = document.querySelector('[aria-label="Chia sẻ tài liệu"]')!;
@@ -716,6 +966,7 @@ test('trash uses library layout and keeps restore, delete confirmation and empty
   assert.equal(heading(), 'Thùng rác');
   assert(main.querySelector('input[placeholder="Tìm trong thùng rác..."]'));
   assert(main.querySelector('table'));
+  await click(button('Mở tất cả', main));
   assert(main.textContent?.includes('TRASH PERSONAL') && main.textContent?.includes('TRASH COMPANY'));
   assert(!main.textContent?.includes('LIVE NOTE'));
   assert(!button('Ghi chú mới', main));
@@ -756,14 +1007,14 @@ async function goHistory(direction: 'back' | 'forward') {
 
 test('real sidebar and library clicks update both URL and the rendered page', async () => {
   await mount('/private');
-  assert.equal(heading(), 'Ghi chú của tôi');
+  assert.equal(heading(), 'Thư viện');
   await click(button('Mẫu ghi chú', document.querySelector('aside')!));
   assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
   await click(document.getElementById('space-tab-company'));
-  assert.equal(window.location.pathname, '/company'); assert.equal(heading(), 'Tài liệu công ty');
+  assert.equal(window.location.pathname, '/company'); assert.equal(heading(), 'Thư viện');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(button('GHI CHÉP CỦA TÔI'));
-  assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Ghi chú của tôi');
+  assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Thư viện');
   await click(button('Thư viện', document.querySelector('aside')!));
   assert.equal(window.location.pathname, '/library');
   await click(button('Của tôi', document.querySelector('main')!));
@@ -775,7 +1026,7 @@ test('Back and Forward render the page stored in browser history', async () => {
   await click(button('Mẫu ghi chú'));
   await click(document.getElementById('space-tab-company'));
   await goHistory('back'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
-  await goHistory('back'); assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Ghi chú của tôi');
+  await goHistory('back'); assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Thư viện');
   await goHistory('forward'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
 });
 
@@ -784,6 +1035,10 @@ test('all library navigation tabs, sidebar lists and folder names have working r
     await mount('/library');
     await click(button(label, document.querySelector('main')!));
     assert.equal(window.location.pathname, path);
+    if (path !== '/templates') {
+      assert.equal(heading(), 'Thư viện');
+      assert(document.querySelector('main')?.textContent?.includes('Tất cả ghi chú và tài liệu bạn có quyền truy cập.'));
+    }
   }
   await mount('/private');
   await click(button('Công việc', document.querySelector('aside')!));
@@ -824,7 +1079,7 @@ test('all five template actions create, persist and open distinct document URLs'
 });
 
 test('direct links and reloads open templates, private/company lists, folders and not-found pages', async () => {
-  for (const [path, title] of [['/templates', 'Mẫu ghi chú'], ['/private', 'Ghi chú của tôi'], ['/company', 'Tài liệu công ty'], ['/folders/fld_work', 'Công việc']]) {
+  for (const [path, title] of [['/templates', 'Mẫu ghi chú'], ['/private', 'Thư viện'], ['/company', 'Thư viện'], ['/folders/fld_work', 'Công việc']]) {
     await mount(path); assert.equal(window.location.pathname, path); assert.equal(heading(), title);
     await mount(path); assert.equal(window.location.pathname, path); assert.equal(heading(), title);
   }
@@ -870,7 +1125,7 @@ test('avatar appearance picker switches all three themes and persists the select
   for (const id of ['blue-yellow', 'graphite-champagne', 'default']) {
     await click(document.getElementById(`theme-option-${id}`));
     assert.equal(document.documentElement.dataset.theme, id);
-    assert.equal(localStorage.getItem('misa_ui_theme'), id);
+    assert.equal(memoryStorage.getItem('misa_ui_theme'), id);
     assert.equal(document.getElementById(`theme-option-${id}`)?.getAttribute('aria-checked'), 'true');
     assert.equal(document.querySelectorAll('#appearance-options [aria-checked="true"]').length, 1);
   }
@@ -880,11 +1135,11 @@ test('avatar appearance picker switches all three themes and persists the select
   assert.equal(document.documentElement.dataset.theme, 'graphite-champagne');
   await mount('/company');
   assert.equal(document.documentElement.dataset.theme, 'graphite-champagne');
-  assert.equal(heading(), 'Tài liệu công ty');
+  assert.equal(heading(), 'Thư viện');
 });
 
 test('appearance options support arrow keys, Escape and an invalid saved value', async () => {
-  localStorage.setItem('misa_ui_theme', 'invalid-theme');
+  memoryStorage.setItem('misa_ui_theme', 'invalid-theme');
   await mount('/templates');
   assert.equal(document.documentElement.dataset.theme, 'default');
   await click(document.querySelector('button[aria-label="Tài khoản cá nhân"]'));
@@ -1035,6 +1290,8 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   assert.equal(document.querySelector('input[aria-label="Tên thư mục mới"]'), null);
   assert(getStoredFolders().some(folder => folder.parentId === 'fld_work' && folder.name === 'Thư mục mới 2'));
   await mount('/private');
+  assert.equal(button('Thư mục mới', document.querySelector('aside')!), undefined);
+  await click(document.querySelector('aside [aria-label="Mở thư mục Công việc"]'));
   assert(button('Thư mục mới', document.querySelector('aside')!));
   assert(button('Thư mục mới 2', document.querySelector('aside')!));
 });
@@ -1109,6 +1366,7 @@ test('selecting text in block editor renders EditTextDialog with side-by-side su
   const textarea = document.querySelector('#document-editor-container textarea') as HTMLTextAreaElement;
   assert(textarea, 'Expected at least one textarea in document editor');
   assert(textarea.value.length >= 7, 'Expected textarea to contain initial document text');
+  textarea.style.fontSize = '19px';
   await act(async () => {
     textarea.focus();
     textarea.setSelectionRange(0, 7);
@@ -1116,18 +1374,44 @@ test('selecting text in block editor renders EditTextDialog with side-by-side su
   });
   let dialog = document.querySelector('[aria-label="Định dạng văn bản"]');
   assert(dialog, 'Expected EditTextDialog to open upon text selection');
-  assert(dialog.querySelector('input[placeholder="Tìm kiếm hành động…"]'));
-  assert(dialog.textContent?.includes('Chuyển thành'));
+  assert.equal(dialog.querySelector('input[placeholder="Tìm kiếm hành động…"]'), null);
+  assert.equal((dialog.querySelector('[aria-label="Cỡ chữ"]') as HTMLSelectElement).value, '19');
+  assert(!dialog.textContent?.includes('Tự động'));
+  textarea.style.fontSize = '';
+  assert(dialog.textContent?.includes('Định dạng'));
   assert(dialog.textContent?.includes('Màu'));
-  assert(dialog.textContent?.includes('7 ký tự'));
-  // Submenu is closed initially; clicking 'Chuyển thành' opens menu cấp 2 side-by-side
-  const turnIntoBtn = Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent?.includes('Chuyển thành'));
-  assert(turnIntoBtn, 'Expected Chuyển thành button in menu cấp 1');
+  for (const removed of ['Sao chép liên kết', 'Di chuyển đến', 'Bình luận', 'Đề xuất chỉnh sửa', 'Hỏi AI', 'Kỹ năng', 'Lần chỉnh sửa gần nhất', '7 ký tự']) assert(!dialog.textContent?.includes(removed));
+  assert(dialog.textContent?.includes('Sao chép'));
+  assert(dialog.textContent?.includes('Xóa'));
+  // Submenu is closed initially; clicking 'Định dạng' opens menu cấp 2 side-by-side
+  const turnIntoBtn = Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent?.includes('Định dạng'));
+  assert(turnIntoBtn, 'Expected Định dạng button in menu cấp 1');
   await act(async () => {
     turnIntoBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
   });
   assert(dialog.textContent?.includes('Đề mục 1'));
-  assert(dialog.textContent?.includes('Danh sách có dấu đầu dòng'));
+  assert(!dialog.textContent?.includes('Danh sách có dấu đầu dòng'));
+  for (const label of ['Văn bản', 'Đề mục 1', 'Đề mục 2', 'Đề mục 3', 'Đề mục 4']) assert(dialog.textContent?.includes(label));
+  assert(!dialog.textContent?.includes('Trang trong'));
+
+  for (const label of ['Đậm', 'Nghiêng', 'Gạch chân']) {
+    await click(dialog.querySelector(`[aria-label="${label}"]`));
+    assert.equal(dialog.querySelector(`[aria-label="${label}"]`)?.getAttribute('aria-pressed'), 'true');
+  }
+  for (const [label, value] of [['Font chữ', 'Georgia'], ['Cỡ chữ', '24']]) {
+    const select = dialog.querySelector(`[aria-label="${label}"]`) as HTMLSelectElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!.call(select, value);
+      select.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+    assert.equal(select.value, value);
+  }
+  const formatted = textarea.parentElement!;
+  assert.equal(formatted.style.fontWeight, '700');
+  assert.equal(formatted.style.fontFamily, 'Georgia');
+  assert.equal(formatted.style.fontSize, '24px');
+  assert.equal(formatted.style.fontStyle, 'italic');
+  assert.equal(formatted.style.textDecoration, 'underline');
 
   // When selection is cleared, dialog closes
   await act(async () => {

@@ -30,6 +30,38 @@ const workspace: Omit<AppPagesProps, 'view'> = {
 };
 const render = (path: string) => renderToStaticMarkup(<AppPages {...workspace} view={viewForLocation(path)} />);
 
+test('session data stays in memory and reinitializes to mock data when runtime stores reset', async () => {
+  const { memoryStorage } = await import('../../utils/memoryStorage');
+  const { getStoredDocuments, getStoredFolders, saveStoredDocuments, saveStoredFolders } = await import('../../utils/storage');
+  const { saveAttachment, readAttachment, clearAttachments } = await import('../../utils/attachments');
+  const descriptors = ['localStorage', 'sessionStorage', 'indexedDB'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)] as const);
+  for (const [key] of descriptors) Object.defineProperty(globalThis, key, { configurable: true, get() { throw new Error('Persistent storage must not be accessed'); } });
+  memoryStorage.clear(); clearAttachments();
+  try {
+    assert.deepEqual(getStoredDocuments(), INITIAL_DOCUMENTS);
+    assert.deepEqual(getStoredFolders(), INITIAL_FOLDERS);
+    const documents = getStoredDocuments(); documents[0].title = 'Changed without saving';
+    assert.deepEqual(getStoredDocuments(), INITIAL_DOCUMENTS);
+    saveStoredDocuments([]); saveStoredFolders([]);
+    memoryStorage.setItem('misa_ui_theme', 'blue-yellow');
+    const id = await saveAttachment(new Blob(['temporary upload']));
+    assert.equal(await (await readAttachment(id))!.text(), 'temporary upload');
+    assert.deepEqual(getStoredDocuments(), []);
+    assert.deepEqual(getStoredFolders(), []);
+    // Simulate the empty stores created by a new page's JavaScript runtime.
+    memoryStorage.clear(); clearAttachments();
+    assert.deepEqual(getStoredDocuments(), INITIAL_DOCUMENTS);
+    assert.deepEqual(getStoredFolders(), INITIAL_FOLDERS);
+    assert.equal(memoryStorage.getItem('misa_ui_theme'), null);
+    assert.equal(await readAttachment(id), undefined);
+  } finally {
+    memoryStorage.clear(); clearAttachments();
+    for (const [key, descriptor] of descriptors) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key);
+    }
+  }
+});
+
 test('unclassified folders filter root notes by space and recent includes filed notes', () => {
   const personal = render('/private/unclassified');
   const company = render('/company/unclassified');
@@ -44,7 +76,8 @@ test('unclassified folders filter root notes by space and recent includes filed 
 
 test('private and company URLs render only their own notes, excluding trash', () => {
   const personal = render('/private'); const company = render('/company');
-  assert(personal.includes('PERSONAL_FOLDER_NOTE') && personal.includes('PERSONAL_ROOT_NOTE'));
+  assert(personal.includes('Công việc') && personal.includes('PERSONAL_ROOT_NOTE'));
+  assert(!personal.includes('PERSONAL_FOLDER_NOTE'));
   assert(!personal.includes('COMPANY_ROOT_NOTE') && !personal.includes('TRASHED_NOTE'));
   assert(company.includes('COMPANY_ROOT_NOTE') && company.includes('COMPANY_MEETING_NOTE'));
   assert(!company.includes('PERSONAL_FOLDER_NOTE'));
