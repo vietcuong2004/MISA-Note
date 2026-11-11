@@ -340,6 +340,8 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
   const [openPopover, setOpenPopover] = useState<'format' | 'color' | 'editorMenu' | null>(null);
   const [listMenuState, setListMenuState] = useState<{ noteId: string; position: { top: number; left: number } } | null>(null);
   const [renamingNote, setRenamingNote] = useState<QuickNote | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const [slashState, setSlashState] = useState<{
     isOpen: boolean;
     blockId: string | null;
@@ -374,6 +376,8 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const titlePointerFocusRef = useRef(false);
+  const shouldSelectTitleRef = useRef(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const listMenuRef = useRef<HTMLDivElement>(null);
   const editorBodyRef = useRef<HTMLDivElement>(null);
@@ -393,6 +397,10 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
     dirtyRef.current = false;
     hasUnflushedEditsRef.current = false;
     activeNoteIdRef.current = nextDraft.id;
+    titlePointerFocusRef.current = false;
+    shouldSelectTitleRef.current = false;
+    setIsEditingTitle(false);
+    setTitleDraft('');
     setDraft(nextDraft);
     setActiveNoteId(nextDraft.id);
     setIsDirty(false);
@@ -639,8 +647,20 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
       }
       setCopiedFeedback(false);
       setIsDraggingDialog(false);
+      titlePointerFocusRef.current = false;
+      shouldSelectTitleRef.current = false;
+      setIsEditingTitle(false);
+      setTitleDraft('');
     }
   }, [clearAutosaveTimer, initializeNotesOnOpen, isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isEditingTitle || !shouldSelectTitleRef.current) return;
+    const input = titleInputRef.current;
+    if (!input) return;
+    shouldSelectTitleRef.current = false;
+    input.select();
+  }, [isEditingTitle]);
 
   // Keep floating dialog reachable inside viewport when window resizes or dialog opens.
   useEffect(() => {
@@ -1516,10 +1536,44 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
               <input
                 ref={titleInputRef}
                 type="text"
-                value={draft.title}
-                onFocus={clearSelection}
+                value={isEditingTitle ? titleDraft : draft.title}
+                onMouseDown={(event) => {
+                  const wasFocused = window.document.activeElement === event.currentTarget;
+                  titlePointerFocusRef.current = !wasFocused;
+                  if (!wasFocused) {
+                    window.addEventListener('mouseup', () => {
+                      queueMicrotask(() => {
+                        titlePointerFocusRef.current = false;
+                      });
+                    }, { once: true });
+                  }
+                }}
+                onMouseUp={(event) => {
+                  if (!titlePointerFocusRef.current) return;
+                  titlePointerFocusRef.current = false;
+                  event.preventDefault();
+                  event.currentTarget.select();
+                }}
+                onClick={(event) => {
+                  if (window.document.activeElement !== event.currentTarget) {
+                    event.currentTarget.focus();
+                  }
+                }}
+                onFocus={() => {
+                  clearSelection();
+                  const nextDraftTitle = draft.title || (editorHasContent ? getQuickNoteDisplayTitle(draft) : '');
+                  shouldSelectTitleRef.current = true;
+                  setTitleDraft(nextDraftTitle);
+                  setIsEditingTitle(true);
+                }}
+                onBlur={() => {
+                  titlePointerFocusRef.current = false;
+                  shouldSelectTitleRef.current = false;
+                  setIsEditingTitle(false);
+                }}
                 onChange={(event) => {
                   const title = event.target.value;
+                  if (isEditingTitle) setTitleDraft(title);
                   updateDraftAndAutosave((prev) => ({ ...prev, title, updatedAt: new Date().toISOString() }));
                 }}
                 onKeyDown={(event) => {
@@ -1530,12 +1584,14 @@ export const QuickNoteModal: React.FC<QuickNoteModalProps> = ({
                     const input = editorBodyRef.current?.querySelector<HTMLElement>(`[data-block-id="${firstId}"] textarea`);
                     input?.focus();
                     setActiveBlockId(firstId);
+                  } else {
+                    event.currentTarget.blur();
                   }
                 }}
-                placeholder={currentTitlePlaceholder}
+                placeholder={isEditingTitle ? 'Nhập tên ghi chú...' : currentTitlePlaceholder}
                 aria-label="Tiêu đề ghi chú nhanh"
-                className={`flex-1 min-w-0 text-center text-sm font-semibold text-[var(--ui-text)] bg-transparent focus:outline-none truncate px-2 py-1 rounded-md focus:bg-[var(--ui-surface)] focus:ring-1 focus:ring-[var(--ui-border)] ${
-                  editorHasContent ? 'placeholder:text-[var(--ui-text)]' : 'placeholder:text-[var(--ui-tertiary)]'
+                className={`flex-1 min-w-0 select-text cursor-text text-center text-sm font-semibold text-[var(--ui-text)] bg-transparent focus:outline-none truncate px-2 py-1 rounded-md focus:bg-[var(--ui-surface)] focus:ring-1 focus:ring-[var(--ui-border)] ${
+                  !isEditingTitle && editorHasContent ? 'placeholder:text-[var(--ui-text)]' : 'placeholder:text-[var(--ui-tertiary)]'
                 }`}
               />
 

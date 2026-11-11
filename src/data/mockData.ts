@@ -17,6 +17,11 @@ export const TEAM_MEMBERS = [
   { id: 'usr_03', name: 'Lê Hoàng Nam', email: 'nam.le@congty.vn', role: 'Thiết kế Trải nghiệm UI/UX' },
   { id: 'usr_04', name: 'Phạm Quỳnh Anh', email: 'anh.pham@congty.vn', role: 'Quản lý Dự án (PM)' },
   { id: 'usr_05', name: 'Đặng Tuấn Kiệt', email: 'kiet.dang@congty.vn', role: 'QA & Kiểm thử Hệ thống' },
+  { id: 'usr_06', name: 'Nguyễn Minh Anh', email: 'minhanh.nguyen@congty.vn', role: 'Chuyên viên Phân tích nghiệp vụ' },
+  { id: 'usr_07', name: 'Vũ Đức Huy', email: 'huy.vu@congty.vn', role: 'Lập trình viên Backend' },
+  { id: 'usr_08', name: 'Đỗ Ngọc Linh', email: 'linh.do@congty.vn', role: 'Lập trình viên Frontend' },
+  { id: 'usr_09', name: 'Bùi Thanh Tùng', email: 'tung.bui@congty.vn', role: 'Kỹ sư DevOps' },
+  { id: 'usr_10', name: 'Lê Thu Trang', email: 'trang.le@congty.vn', role: 'Chuyên viên Nhân sự' },
 ];
 
 export const INITIAL_FOLDERS: Folder[] = [

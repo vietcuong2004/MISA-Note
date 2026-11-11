@@ -1,4 +1,5 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ContactRound, Search, X } from 'lucide-react';
 import { TEAM_MEMBERS } from '../../data/mockData';
 
@@ -16,6 +17,9 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
   const [active, setActive] = useState(0);
   const container = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const directoryButton = useRef<HTMLButtonElement>(null);
+  const popup = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ top: 0, left: 0 });
   const listId = useId();
   const matches = TEAM_MEMBERS.filter(person => !value.includes(person.email) && !exclude.includes(person.email) &&
     (browse || normalize(`${person.name} ${person.email} ${person.role}`).includes(normalize(query))));
@@ -27,14 +31,30 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
   }, [autoFocus]);
   useEffect(() => {
     const outside = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) { setOpen(false); setBrowse(false); }
+      if (!container.current?.contains(event.target as Node) && !popup.current?.contains(event.target as Node)) { setOpen(false); setBrowse(false); }
     };
     document.addEventListener('mousedown', outside);
     return () => document.removeEventListener('mousedown', outside);
   }, []);
   useEffect(() => {
-    if (open) container.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
+    if (open) popup.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [active, open, query]);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const update = () => {
+      const anchor = browse ? directoryButton.current : input.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(320, window.innerWidth - 24);
+      const height = popup.current?.getBoundingClientRect().height || 280;
+      const top = rect.bottom + height + 8 <= window.innerHeight - 12 ? rect.bottom + 8 : Math.max(12, rect.top - height - 8);
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
+      setPosition(previous => previous.top === top && previous.left === left ? previous : { top, left });
+    };
+    update();
+    window.addEventListener('resize', update); window.addEventListener('scroll', update, true);
+    return () => { window.removeEventListener('resize', update); window.removeEventListener('scroll', update, true); };
+  }, [open, browse, value.length, matches.length]);
 
   const choose = (email: string) => {
     if (!value.includes(email)) onChange([...value, email]);
@@ -43,7 +63,7 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
   };
 
   return <div ref={container} className="relative min-w-0 flex-1 basis-48"
-    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) closeList(); }}>
+    onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node) && !popup.current?.contains(event.relatedTarget as Node)) closeList(); }}>
     {value.length > 0 && <div className="flex flex-wrap gap-1 px-1 pb-1" aria-label="Nhân viên đã chọn">
       {value.map(email => <span key={email} className="inline-flex max-w-full items-center gap-1 rounded-md bg-[#2383e2]/10 px-2 py-1 text-xs text-[var(--ui-text)]">
         <span className="truncate" title={email}>{employeeName(email)}</span>
@@ -72,7 +92,7 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
           }
         }} className="w-full min-w-0 bg-transparent py-1 text-sm outline-none" />
       </div>
-      <button type="button" aria-label="Danh bạ" aria-haspopup="listbox" aria-expanded={open && browse}
+      <button ref={directoryButton} type="button" aria-label="Danh bạ" aria-haspopup="listbox" aria-expanded={open && browse}
         onClick={() => {
           if (open && browse) closeList();
           else { setQuery(''); setBrowse(true); setOpen(true); setActive(0); }
@@ -81,9 +101,11 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
         <ContactRound className="w-3.5 h-3.5" />Danh bạ
       </button>
     </div>
-    {open && <div className="absolute top-full left-0 z-20 mt-2 w-80 max-w-[calc(100vw-72px)] rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-xl">
+    {open && createPortal(<div ref={popup} data-employee-picker-popover={browse ? 'directory' : 'search'} style={position}
+      onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeList(); input.current?.focus(); } }}
+      className="fixed z-[150] w-80 max-w-[calc(100vw-24px)] rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-xl text-[var(--ui-text)]">
       <div className="flex items-center justify-between border-b border-[var(--ui-border)] px-2 py-1 text-xs text-[var(--ui-muted)]">
-        <span>{browse ? 'Danh bạ nhân viên' : 'Kết quả tìm kiếm'}</span>
+        <span>{browse ? 'Danh sách nhân viên' : 'Kết quả tìm kiếm'}</span>
         <button type="button" aria-label="Đóng danh sách nhân viên" onClick={() => { closeList(); input.current?.focus(); }}
           className="rounded p-1 hover:bg-[var(--ui-hover)]"><X className="h-3.5 w-3.5" /></button>
       </div>
@@ -98,6 +120,6 @@ export function EmployeePicker({ value, onChange, autoFocus = false, exclude = [
           <span className="block text-[11px] text-[var(--ui-muted)]">{person.role}</span></span>
       </button>) : <p role="status" className="p-3 text-xs text-[var(--ui-tertiary)]">{query.trim() ? 'Không tìm thấy nhân viên phù hợp.' : 'Đã chọn tất cả nhân viên.'}</p>}
       </div>
-    </div>}
+    </div>, document.body)}
   </div>;
 }

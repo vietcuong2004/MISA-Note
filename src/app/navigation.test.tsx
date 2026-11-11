@@ -50,6 +50,56 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('share dialog adds employees from search and directory, saves roles and reopens session settings', async () => {
+  await mount('/documents/doc_personal_production_meeting');
+  const main = document.querySelector('main')!;
+  await click(button('Chia sẻ', main));
+  let dialog = document.querySelector('[aria-label="Chia sẻ tài liệu"]')!;
+  assert(dialog.textContent?.includes('Những người có quyền truy cập'));
+  const search = dialog.querySelector<HTMLInputElement>('[aria-label="Tìm nhân viên"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(search, 'Quỳnh Anh');
+    search.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await click(document.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
+  await click(button('Thêm', dialog));
+  const setValue = async (label: string, value: string) => {
+    if (label === 'Quyền qua liên kết' || label.startsWith('Quyền của ')) {
+      await click(dialog.querySelector(`[aria-label="${label}"]`));
+      await click(document.querySelector(`[aria-label="Vai trò"] [data-value="${value}"]`));
+      return;
+    }
+    const select = dialog.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`) !;
+    assert(select);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')!.set!.call(select, value);
+      select.dispatchEvent(new window.Event('change', { bubbles: true }));
+    });
+  };
+  await setValue('Quyền của Phạm Quỳnh Anh', 'viewer');
+  const directoryButton = button('Danh bạ', dialog)!;
+  directoryButton.getBoundingClientRect = () => new window.DOMRect(650, 210, 100, 44);
+  await click(directoryButton);
+  const directoryPopup = document.querySelector<HTMLElement>('[data-employee-picker-popover="directory"]')!;
+  assert.equal(directoryPopup.style.left, '650px');
+  assert.equal(directoryPopup.style.top, '262px');
+  await click(Array.from(document.querySelectorAll('[aria-label="Danh sách nhân viên"] [role="option"]')).find(item => item.textContent?.includes('Đặng Tuấn Kiệt')));
+  await click(button('Thêm', dialog));
+  assert(dialog.querySelector('[aria-label="Quyền của Đặng Tuấn Kiệt"]'));
+  await setValue('Quyền truy cập chung', 'link');
+  await setValue('Quyền qua liên kết', 'commenter');
+  await click(button('Xong', dialog));
+  assert.equal(document.querySelector('[aria-label="Chia sẻ tài liệu"]'), null);
+  await click(button('Chia sẻ', main));
+  dialog = document.querySelector('[aria-label="Chia sẻ tài liệu"]')!;
+  assert.equal(dialog.querySelector('[aria-label="Quyền của Phạm Quỳnh Anh"]')?.getAttribute('data-value'), 'viewer');
+  assert.equal(dialog.querySelector('[aria-label="Quyền qua liên kết"]')?.getAttribute('data-value'), 'commenter');
+  assert(dialog.querySelector('[aria-label="Quyền của Đặng Tuấn Kiệt"]'));
+  await setValue('Quyền của Phạm Quỳnh Anh', 'remove');
+  assert.equal(dialog.querySelector('[aria-label="Quyền của Phạm Quỳnh Anh"]'), null);
+  await click(dialog.querySelector('[aria-label="Đóng chia sẻ"]'));
+});
+
 test('favorite production minutes opens in personal space and company notes have no favorite action', async () => {
   layoutConfig.useSidebar2 = true;
   try {
@@ -1132,15 +1182,20 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   let dialog = document.querySelector('[aria-label="Mời và phân quyền"]')!;
   assert(dialog);
   assert(!dialog.textContent?.includes('Các mức quyền'));
-  assert.equal(dialog.querySelector('[aria-label="Danh sách nhân viên"]'), null);
-  await click(dialog.querySelector('[aria-label="Danh bạ"]'));
-  assert(dialog.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
-  await click(dialog.querySelector('[aria-label="Đóng danh sách nhân viên"]'));
+  assert.equal(document.querySelector('[aria-label="Danh sách nhân viên"]'), null);
+  const mentionDirectory = dialog.querySelector('[aria-label="Danh bạ"]')!;
+  mentionDirectory.getBoundingClientRect = () => new window.DOMRect(600, 180, 100, 44);
+  await click(mentionDirectory);
+  const mentionPopup = document.querySelector<HTMLElement>('[data-employee-picker-popover="directory"]')!;
+  assert.equal(mentionPopup.style.left, '600px');
+  assert.equal(mentionPopup.style.top, '232px');
+  assert(document.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
+  await click(document.querySelector('[aria-label="Đóng danh sách nhân viên"]'));
   await click(button('Gửi lời mời (0)', dialog));
   assert(dialog.querySelector('[role="alert"]'));
   const add = async (query: string) => {
     await fill(dialog.querySelector<HTMLInputElement>('input[aria-label="Tìm nhân viên"]')!, query);
-    await click(dialog.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
+    await click(document.querySelector('[aria-label="Danh sách nhân viên"] [role="option"]'));
     await click(button('Thêm', dialog));
   };
   await add('thu ha');
@@ -1286,8 +1341,9 @@ test('share menu copies the current document URL and reports clipboard failures 
   let dialog = document.querySelector('[role="dialog"][aria-label="Chia sẻ tài liệu"]')!;
   assert(dialog);
   const expected = `http://localhost:3000/documents/${encodeURIComponent(doc.id)}`;
-  assert.equal(dialog.querySelector('input')?.value, expected);
-  await click(button('Sao chép liên kết', dialog));
+  assert(dialog.textContent?.includes('Thêm người'));
+  assert(dialog.textContent?.includes('Quyền truy cập chung'));
+  await click(button('Sao chép đường liên kết', dialog));
   assert.equal(copied, expected);
   assert(button('Đã sao chép', dialog));
   await click(dialog.querySelector('button[aria-label="Đóng chia sẻ"]'));
@@ -1300,10 +1356,10 @@ test('share menu copies the current document URL and reports clipboard failures 
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
     writeText: async () => { throw new Error('Permission denied'); },
   } });
-  await click(button('Sao chép liên kết', dialog));
+  await click(button('Sao chép đường liên kết', dialog));
   assert(dialog.textContent?.includes('Nhấn Ctrl+C'));
   assert(!button('Đã sao chép', dialog));
-  const input = dialog.querySelector('input')!;
+  const input = dialog.querySelector<HTMLInputElement>('[aria-label="Liên kết tài liệu"]')!;
   assert.equal(input.selectionEnd, input.value.length);
   await act(async () => { dialog.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert.equal(document.querySelector('[aria-label="Chia sẻ tài liệu"]'), null);
@@ -3099,6 +3155,76 @@ test('print layout renders normal-flow text mirrors, reflows linked text, recalc
   assert(indexCss.includes('[data-print-source]'));
   assert(indexCss.includes('.main-header'));
   assert(indexCss.includes('position: static !important'));
+});
+
+test('Quick Note header title input selects all text on focus/click for immediate inline rename', async () => {
+  const { getStoredQuickNotes } = await import('../utils/quickNotes');
+  await mount('/private');
+  await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+  const modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  const bodyTextarea = modal.querySelector<HTMLTextAreaElement>('[data-block-id] textarea')!;
+  const titleInput = modal.querySelector<HTMLInputElement>('input[aria-label="Tiêu đề ghi chú nhanh"]')!;
+  assert(titleInput.classList.contains('select-text'));
+
+  // 1. Untitled note with body content 'aaa': clicking/focusing title promotes 'aaa' and selects all text
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(bodyTextarea, 'aaa');
+    bodyTextarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(titleInput.value, '');
+  assert.equal(titleInput.getAttribute('placeholder'), 'aaa');
+
+  let mouseUpEvent!: MouseEvent;
+  await act(async () => {
+    titleInput.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    titleInput.focus();
+    mouseUpEvent = new window.MouseEvent('mouseup', { bubbles: true, cancelable: true });
+    titleInput.dispatchEvent(mouseUpEvent);
+  });
+  assert.equal(mouseUpEvent.defaultPrevented, true, 'Initial click mouseup must not collapse select-all');
+  assert.equal(titleInput.value, 'aaa');
+  assert.equal(titleInput.selectionStart, 0);
+  assert.equal(titleInput.selectionEnd, 'aaa'.length);
+
+  // 2. Blurring without modifying keeps derived title dynamic (draft.title stays '')
+  await act(async () => {
+    titleInput.blur();
+  });
+  assert.equal(titleInput.value, '');
+
+  // 3. Re-focus, rename to 'Tên ghi chú mới', blur, then click again -> selects full explicit title
+  await act(async () => {
+    titleInput.focus();
+  });
+  assert.equal(titleInput.selectionStart, 0);
+  assert.equal(titleInput.selectionEnd, 'aaa'.length);
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(titleInput, 'Tên ghi chú mới');
+    titleInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  await act(async () => {
+    titleInput.blur();
+  });
+  await act(async () => { await new Promise((r) => setTimeout(r, 400)); });
+  assert.equal(getStoredQuickNotes()[0]?.title, 'Tên ghi chú mới');
+
+  await act(async () => {
+    titleInput.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    titleInput.focus();
+    mouseUpEvent = new window.MouseEvent('mouseup', { bubbles: true, cancelable: true });
+    titleInput.dispatchEvent(mouseUpEvent);
+  });
+  assert.equal(titleInput.selectionStart, 0);
+  assert.equal(titleInput.selectionEnd, 'Tên ghi chú mới'.length);
+
+  // 4. Subsequent click while already focused allows normal caret placement without preventing mouseup default
+  await act(async () => {
+    titleInput.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    mouseUpEvent = new window.MouseEvent('mouseup', { bubbles: true, cancelable: true });
+    titleInput.dispatchEvent(mouseUpEvent);
+  });
+  assert.equal(mouseUpEvent.defaultPrevented, false);
 });
 
 
