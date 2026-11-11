@@ -159,6 +159,29 @@ export function getDragPayload(
   return null;
 }
 
+/** Determine whether a dragleave event truly left currentTarget rather than moving into a child. */
+export function isLeavingDragTarget(event: React.DragEvent<HTMLElement>): boolean {
+  const related = event.relatedTarget as Node | null;
+  if (related && event.currentTarget.contains(related)) {
+    return false;
+  }
+  if (!related) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (
+      (rect.width > 0 || rect.height > 0) &&
+      Number.isFinite(event.clientX) &&
+      Number.isFinite(event.clientY) &&
+      event.clientX >= rect.left &&
+      event.clientX < rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY < rect.bottom
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /** Hook to listen to global active drag state in any component */
 export function useActiveDrag() {
   const [activeItem, setActiveItem] = useState<DragItem | null>(() => activeDragItem);

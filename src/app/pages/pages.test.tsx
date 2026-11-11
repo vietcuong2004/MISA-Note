@@ -118,3 +118,21 @@ test('document links open the specified editor; missing entities render a recove
     assert(render(path).includes('Về Ghi chép của tôi'));
   }
 });
+
+test('every default folder in personal and company spaces starts with three mock documents', () => {
+  assert.equal(new Set(INITIAL_DOCUMENTS.map(doc => doc.id)).size, INITIAL_DOCUMENTS.length);
+  for (const space of ['personal', 'company'] as const) {
+    const spaceFolders = INITIAL_FOLDERS.filter(folder => folder.space === space);
+    assert.equal(spaceFolders.length, 3);
+    const spaceHtml = renderToStaticMarkup(<AppPages {...workspace} documents={INITIAL_DOCUMENTS} view={viewForLocation(space === 'personal' ? '/private' : '/company')} />);
+    for (const folder of spaceFolders) {
+      const folderDocs = INITIAL_DOCUMENTS.filter(doc => !doc.isTrash && doc.folderId === folder.id && doc.space === space);
+      assert.equal(folderDocs.length, 3, `Expected 3 active mock docs in ${folder.id}`);
+      const folderHtml = renderToStaticMarkup(<AppPages {...workspace} documents={INITIAL_DOCUMENTS} view={viewForLocation(`/folders/${folder.id}`)} />);
+      for (const doc of folderDocs) {
+        assert(spaceHtml.includes(`data-folder-document="${doc.id}"`), `Expected ${doc.id} in ${space} root structure`);
+        assert(folderHtml.includes(`data-folder-document="${doc.id}"`), `Expected ${doc.id} in folder ${folder.id}`);
+      }
+    }
+  }
+});

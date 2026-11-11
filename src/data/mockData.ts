@@ -1,5 +1,5 @@
 import { formatDateTime } from '../utils/dateTime';
-import { Block, BlockType, Document, Folder, User } from '../types';
+import { Block, BlockType, Document, DocumentType, Folder, SpaceType, User, UserRole } from '../types';
 import { ODT_SAMPLE_BLOCKS } from './odtSample';
 
 export const CURRENT_USER: User = {
@@ -71,6 +71,40 @@ export const INITIAL_FOLDERS: Folder[] = [
 ];
 
 const NOW = Date.now();
+
+function createFolderMockDocument(input: {
+  id: string;
+  title: string;
+  icon: string;
+  space: SpaceType;
+  folderId: string;
+  type: DocumentType;
+  tags: string[];
+  blocks: Block[];
+  updatedOffsetMinutes: number;
+  createdOffsetMinutes?: number;
+  author?: Document['author'];
+  permission?: UserRole;
+}): Document {
+  const createdOffset = input.createdOffsetMinutes ?? input.updatedOffsetMinutes + 180;
+  return {
+    id: input.id,
+    title: input.title,
+    icon: input.icon,
+    space: input.space,
+    folderId: input.folderId,
+    type: input.type,
+    tags: input.tags,
+    permission: input.permission ?? 'owner',
+    isPrivate: input.space === 'personal',
+    author: input.author ?? CURRENT_USER,
+    isFavorite: false,
+    isTrash: false,
+    createdAt: new Date(NOW - createdOffset * 60 * 1000).toISOString(),
+    updatedAt: new Date(NOW - input.updatedOffsetMinutes * 60 * 1000).toISOString(),
+    blocks: input.blocks,
+  };
+}
 
 export const TEMPLATES = [
   {
@@ -442,6 +476,267 @@ export const INITIAL_DOCUMENTS: Document[] = [
       },
     ],
   },
+  createFolderMockDocument({
+    id: 'doc_idea_ai_summary',
+    title: 'Ý tưởng trợ lý tóm tắt ghi chú AI',
+    icon: '💡',
+    space: 'personal',
+    folderId: 'fld_ideas',
+    type: 'note',
+    tags: ['Ý tưởng', 'AI', 'Năng suất'],
+    updatedOffsetMinutes: 120,
+    blocks: [
+      { id: 'b_idea1_1', type: 'h2', content: '1. Bối cảnh và vấn đề' },
+      { id: 'b_idea1_2', type: 'paragraph', content: 'Người dùng thường ghi chép rất dài trong các buổi họp hoặc tổng hợp tài liệu nghiên cứu nhưng khó xem lại nhanh các ý chính.' },
+      { id: 'b_idea1_3', type: 'callout', content: 'Mục tiêu: Tóm tắt thành 3–5 gạch đầu dòng kèm danh sách việc cần làm chỉ với một thao tác.', properties: { calloutType: 'info' } },
+      { id: 'b_idea1_4', type: 'h2', content: '2. Ý tưởng tính năng' },
+      { id: 'b_idea1_5', type: 'checklist', content: 'Nút Tóm tắt nhanh ở thanh công cụ đầu trang', properties: { checked: true } },
+      { id: 'b_idea1_6', type: 'checklist', content: 'Tự động trích xuất Action Items từ đoạn văn bản', properties: { checked: false } },
+      { id: 'b_idea1_7', type: 'checklist', content: 'Cho phép chèn bản tóm tắt vào đầu trang bằng khối Callout', properties: { checked: false } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_idea_quick_capture',
+    title: 'Phác thảo tính năng ghi chú nhanh bằng phím tắt',
+    icon: '⚡',
+    space: 'personal',
+    folderId: 'fld_ideas',
+    type: 'note',
+    tags: ['Ý tưởng', 'Trải nghiệm', 'Phím tắt'],
+    updatedOffsetMinutes: 240,
+    blocks: [
+      { id: 'b_idea2_1', type: 'paragraph', content: 'Giúp người dùng mở nhanh hộp nhập liệu từ bất kỳ màn hình nào để không bỏ lỡ ý tưởng thoáng qua.' },
+      { id: 'b_idea2_2', type: 'bullet', content: 'Nhấn Ctrl+Shift+N để bật hộp thoại ghi chú nhanh' },
+      { id: 'b_idea2_3', type: 'bullet', content: 'Tự động lưu vào trang Ghi chép của tôi ở đầu danh sách' },
+      { id: 'b_idea2_4', type: 'bullet', content: 'Hỗ trợ gắn thẻ nhanh ngay bằng ký tự #' },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_idea_knowledge_links',
+    title: 'Đề xuất liên kết tài liệu theo ngữ cảnh',
+    icon: '🔗',
+    space: 'personal',
+    folderId: 'fld_ideas',
+    type: 'plan',
+    tags: ['Ý tưởng', 'Kiến thức', 'Liên kết'],
+    updatedOffsetMinutes: 420,
+    blocks: [
+      { id: 'b_idea3_1', type: 'h2', content: 'Cơ chế đề xuất' },
+      { id: 'b_idea3_2', type: 'numbered', content: 'Quét tiêu đề và thẻ của các tài liệu đang hoạt động trong cùng không gian' },
+      { id: 'b_idea3_3', type: 'numbered', content: 'Gợi ý chèn liên kết nội bộ khi người dùng gõ @ hoặc [[' },
+      { id: 'b_idea3_4', type: 'paragraph', content: 'Giải pháp này giúp xây dựng mạng lưới tri thức cá nhân mà không cần sắp xếp thủ công quá nhiều.' },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_personal_reading_list',
+    title: 'Danh sách sách và bài viết nên đọc',
+    icon: '📖',
+    space: 'personal',
+    folderId: 'fld_personal',
+    type: 'note',
+    tags: ['Cá nhân', 'Đọc sách', 'Phát triển'],
+    updatedOffsetMinutes: 180,
+    blocks: [
+      { id: 'b_per1_1', type: 'h2', content: 'Sách đang đọc & dự kiến' },
+      {
+        id: 'b_per1_2',
+        type: 'table',
+        content: 'Danh mục sách đọc',
+        properties: {
+          tableData: {
+            headers: ['Tên sách / Bài viết', 'Lĩnh vực', 'Trạng thái'],
+            rows: [
+              ['Inspired — Marty Cagan', 'Quản trị sản phẩm', 'Đang đọc'],
+              ['Building a Second Brain', 'Quản lý tri thức', 'Hoàn thành'],
+              ['Designing Data-Intensive Applications', 'Hệ thống', 'Dự kiến'],
+            ],
+          },
+        },
+      },
+      { id: 'b_per1_3', type: 'quote', content: 'Đọc ít nhưng ghi chép và áp dụng được một ý hay mỗi tuần quan trọng hơn đọc lướt thật nhanh.' },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_personal_english_plan',
+    title: 'Lộ trình luyện nghe nói tiếng Anh quý IV',
+    icon: '🎯',
+    space: 'personal',
+    folderId: 'fld_personal',
+    type: 'plan',
+    tags: ['Cá nhân', 'Học tập', 'Mục tiêu'],
+    updatedOffsetMinutes: 360,
+    blocks: [
+      { id: 'b_per2_1', type: 'callout', content: 'Duy trì tối thiểu 25 phút mỗi sáng trước giờ làm việc.', properties: { calloutType: 'tip' } },
+      { id: 'b_per2_2', type: 'checklist', content: 'Nghe podcast công nghệ 15 phút mỗi ngày', properties: { checked: true } },
+      { id: 'b_per2_3', type: 'checklist', content: 'Ghi lại 5 mẫu câu giao tiếp họp nhóm mỗi tuần', properties: { checked: true } },
+      { id: 'b_per2_4', type: 'checklist', content: 'Thực hành thuyết trình ngắn 3 phút vào thứ Sáu', properties: { checked: false } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_personal_weekend_notes',
+    title: 'Ghi chép cuối tuần và việc vặt cần xử lý',
+    icon: '📝',
+    space: 'personal',
+    folderId: 'fld_personal',
+    type: 'note',
+    tags: ['Cá nhân', 'Sinh hoạt', 'Cuối tuần'],
+    updatedOffsetMinutes: 720,
+    blocks: [
+      { id: 'b_per3_1', type: 'h2', content: 'Danh sách đầu việc' },
+      { id: 'b_per3_2', type: 'checklist', content: 'Dọn dẹp thư mục tải xuống và sao lưu ảnh gia đình', properties: { checked: false } },
+      { id: 'b_per3_3', type: 'checklist', content: 'Kiểm tra lịch khám sức khỏe định kỳ', properties: { checked: true } },
+      { id: 'b_per3_4', type: 'checklist', content: 'Chuẩn bị kế hoạch tuần mới vào tối Chủ nhật', properties: { checked: false } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_project_q4_roadmap',
+    title: 'Kế hoạch triển khai MISA Note quý IV',
+    icon: '🚀',
+    space: 'company',
+    folderId: 'fld_projects',
+    type: 'plan',
+    tags: ['Dự án', 'Kế hoạch', 'Quý IV'],
+    updatedOffsetMinutes: 90,
+    author: { id: 'usr_04', name: 'Phạm Quỳnh Anh', avatar: 'QA', email: 'anh.pham@congty.vn', department: 'Quản lý Dự án' },
+    blocks: [
+      { id: 'b_prj1_1', type: 'h2', content: '1. Mốc bàn giao trọng tâm' },
+      {
+        id: 'b_prj1_2',
+        type: 'table',
+        content: 'Lộ trình triển khai',
+        properties: {
+          tableData: {
+            headers: ['Giai đoạn', 'Hạng mục', 'Phụ trách', 'Trạng thái'],
+            rows: [
+              ['Tuần 1–2', 'Hoàn thiện cây thư mục & kéo thả tài liệu', 'Trần Thị Thu Hà', 'Hoàn thành'],
+              ['Tuần 3–4', 'Tối ưu trình soạn thảo khối và phím tắt slash', 'Lê Hoàng Nam', 'Đang triển khai'],
+              ['Tuần 5', 'Kiểm thử hồi quy & phát hành chính thức', 'Đặng Tuấn Kiệt', 'Chờ kiểm thử'],
+            ],
+          },
+        },
+      },
+      { id: 'b_prj1_3', type: 'callout', content: 'Các nhóm cập nhật tiến độ trực tiếp trên bảng theo dõi trước 17h thứ Năm hàng tuần.', properties: { calloutType: 'info' } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_process_onboarding',
+    title: 'Quy trình hội nhập nhân sự mới (Onboarding)',
+    icon: '🧭',
+    space: 'company',
+    folderId: 'fld_process',
+    type: 'internal_doc',
+    tags: ['Quy trình', 'Nhân sự', 'Onboarding'],
+    updatedOffsetMinutes: 150,
+    blocks: [
+      { id: 'b_proc1_1', type: 'h2', content: '1. Tuần đầu tiên' },
+      { id: 'b_proc1_2', type: 'checklist', content: 'Nhận tài khoản email công ty và quyền truy cập MISA Note', properties: { checked: true } },
+      { id: 'b_proc1_3', type: 'checklist', content: 'Đọc cẩm nang văn hóa và quy định bảo mật thông tin', properties: { checked: true } },
+      { id: 'b_proc1_4', type: 'checklist', content: 'Làm quen với mentor và nắm mục tiêu tháng đầu', properties: { checked: false } },
+      { id: 'b_proc1_5', type: 'h2', content: '2. Đầu mối hỗ trợ' },
+      { id: 'b_proc1_6', type: 'bullet', content: 'Hành chính – Nhân sự: Cấp phát thiết bị và hồ sơ' },
+      { id: 'b_proc1_7', type: 'bullet', content: 'IT Support: Cài đặt VPN và phân quyền hệ thống nội bộ' },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_process_doc_review',
+    title: 'Quy trình biên soạn và phê duyệt tài liệu nội bộ',
+    icon: '📚',
+    space: 'company',
+    folderId: 'fld_process',
+    type: 'internal_doc',
+    tags: ['Quy trình', 'Tài liệu công ty', 'Chuẩn hóa'],
+    updatedOffsetMinutes: 300,
+    author: { id: 'usr_02', name: 'Trần Thị Thu Hà', avatar: 'TH', email: 'ha.tran@congty.vn', department: 'Kỹ thuật' },
+    permission: 'editor',
+    blocks: [
+      { id: 'b_proc2_1', type: 'numbered', content: 'Khởi tạo bản thảo trong thư mục chuyên môn tương ứng và gắn đầy đủ thẻ phân loại' },
+      { id: 'b_proc2_2', type: 'numbered', content: 'Chia sẻ quyền xem/nhận xét cho trưởng nhóm để rà soát nội dung kỹ thuật' },
+      { id: 'b_proc2_3', type: 'numbered', content: 'Cập nhật phiên bản cuối cùng và ghi rõ ngày hiệu lực ở đầu trang' },
+      { id: 'b_proc2_4', type: 'callout', content: 'Không lưu trữ tài liệu nghiệp vụ chính thức ở thư mục cá nhân khi cần nhiều phòng ban cùng tra cứu.', properties: { calloutType: 'warning' } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_process_release_checklist',
+    title: 'Danh mục kiểm tra trước khi phát hành sản phẩm',
+    icon: '✅',
+    space: 'company',
+    folderId: 'fld_process',
+    type: 'internal_doc',
+    tags: ['Quy trình', 'Phát hành', 'QA'],
+    updatedOffsetMinutes: 540,
+    author: { id: 'usr_05', name: 'Đặng Tuấn Kiệt', avatar: 'TK', email: 'kiet.dang@congty.vn', department: 'QA' },
+    permission: 'editor',
+    blocks: [
+      { id: 'b_proc3_1', type: 'h2', content: 'Checklist kiểm thử & vận hành' },
+      { id: 'b_proc3_2', type: 'checklist', content: 'Chạy kiểm thử đơn vị và kiểm thử điều hướng đạt 100%', properties: { checked: true } },
+      { id: 'b_proc3_3', type: 'checklist', content: 'Kiểm tra tương thích giao diện trên màn hình desktop và tablet', properties: { checked: true } },
+      { id: 'b_proc3_4', type: 'checklist', content: 'Chuẩn bị ghi chú phát hành (Release Notes) cho đội hỗ trợ khách hàng', properties: { checked: false } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_product_architecture',
+    title: 'Tổng quan kiến trúc trình soạn thảo khối (Block Editor)',
+    icon: '🧱',
+    space: 'company',
+    folderId: 'fld_product_docs',
+    type: 'internal_doc',
+    tags: ['Sản phẩm', 'Kiến trúc', 'Editor'],
+    updatedOffsetMinutes: 110,
+    author: { id: 'usr_02', name: 'Trần Thị Thu Hà', avatar: 'TH', email: 'ha.tran@congty.vn', department: 'Kỹ thuật' },
+    blocks: [
+      { id: 'b_prod1_1', type: 'paragraph', content: 'Mỗi tài liệu trong MISA Note được tổ chức thành mảng các Block độc lập giúp thao tác kéo-thả, định dạng và chuyển đổi loại khối diễn ra tức thì.' },
+      { id: 'b_prod1_2', type: 'h2', content: 'Các nhóm khối chính' },
+      { id: 'b_prod1_3', type: 'bullet', content: 'Văn bản: Đoạn văn, Tiêu đề H1–H3' },
+      { id: 'b_prod1_4', type: 'bullet', content: 'Danh sách: Dấu chấm, Đánh số phân cấp, Việc cần làm, Thu gọn' },
+      { id: 'b_prod1_5', type: 'bullet', content: 'Chèn & Trình bày: Bảng dữ liệu, Hình ảnh, Tệp đính kèm, Khối chú thích' },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_product_permissions_spec',
+    title: 'Đặc tả phân quyền không gian Cá nhân và Công ty',
+    icon: '🔐',
+    space: 'company',
+    folderId: 'fld_product_docs',
+    type: 'internal_doc',
+    tags: ['Sản phẩm', 'Phân quyền', 'Bảo mật'],
+    updatedOffsetMinutes: 270,
+    author: { id: 'usr_03', name: 'Lê Hoàng Nam', avatar: 'HN', email: 'nam.le@congty.vn', department: 'Thiết kế' },
+    permission: 'editor',
+    blocks: [
+      {
+        id: 'b_prod2_1',
+        type: 'table',
+        content: 'Ma trận phân quyền',
+        properties: {
+          tableData: {
+            headers: ['Vai trò', 'Xem tài liệu', 'Chỉnh sửa nội dung', 'Quản lý chia sẻ'],
+            rows: [
+              ['Owner (Chủ sở hữu)', 'Có', 'Có', 'Có'],
+              ['Editor (Biên tập viên)', 'Có', 'Có', 'Không'],
+              ['Viewer (Người xem)', 'Có', 'Không', 'Không'],
+            ],
+          },
+        },
+      },
+      { id: 'b_prod2_2', type: 'callout', content: 'Tài liệu trong Ghi chép của tôi mặc định ở trạng thái riêng tư cho đến khi chủ sở hữu chủ động chia sẻ.', properties: { calloutType: 'info' } },
+    ],
+  }),
+  createFolderMockDocument({
+    id: 'doc_product_release_notes',
+    title: 'Nhật ký cập nhật sản phẩm tháng 11/2026',
+    icon: '🆕',
+    space: 'company',
+    folderId: 'fld_product_docs',
+    type: 'internal_doc',
+    tags: ['Sản phẩm', 'Cập nhật', 'Tháng 11'],
+    updatedOffsetMinutes: 480,
+    blocks: [
+      { id: 'b_prod3_1', type: 'h2', content: 'Điểm mới nổi bật' },
+      { id: 'b_prod3_2', type: 'bullet', content: 'Bỏ thư mục Chưa phân loại trên sidebar, hiển thị tài liệu mới trực tiếp ở đầu không gian' },
+      { id: 'b_prod3_3', type: 'bullet', content: 'Tối ưu bố cục phần đầu Sidebar2 gọn gàng khi thu gọn hoặc mở rộng' },
+      { id: 'b_prod3_4', type: 'bullet', content: 'Tự động tạo thêm khoảng trống phía dưới khi cuộn tới cuối trang soạn thảo' },
+    ],
+  }),
   {
     id: 'doc_trash_sample',
     title: 'Ghi chép dự thảo cũ (Ví dụ thùng rác)',

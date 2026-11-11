@@ -105,7 +105,7 @@ test('library tabs preserve the sidebar workspace in both sidebar variants', asy
       await mount('/private');
       const workspace = () => newSidebar ? document.querySelector('[role="combobox"][aria-label="Không gian tài liệu"]')?.getAttribute('data-space')
         : document.querySelector('[role="tab"][aria-selected="true"]')?.id.replace('space-tab-', '');
-      const openLibrary = async () => click(document.querySelector('aside button[title="Thư viện"]'));
+      const openLibrary = async () => click(document.querySelector('aside button[aria-label="Thư viện"]'));
       await openLibrary();
       await click(button('Công ty', document.querySelector('main')!));
       assert.equal(window.location.pathname, '/library/company');
@@ -381,7 +381,8 @@ test('library folder tree starts collapsed and expands on demand', async () => {
 test('sidebar folders start collapsed and clicking a folder expands only that folder', async () => {
   await mount('/library/private');
   const sidebar = document.querySelector('aside')!;
-  const toggles = Array.from(sidebar.querySelectorAll('button[aria-label^="Mở thư mục"], button[aria-label*="Chưa phân loại"]'));
+  assert.equal(sidebar.querySelector('[data-unclassified-space]'), null);
+  const toggles = Array.from(sidebar.querySelectorAll('button[aria-label^="Mở thư mục"]'));
   assert(toggles.length > 0);
   for (const toggle of toggles) assert.equal(toggle.getAttribute('aria-expanded'), 'false');
   await click(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]'));
@@ -1148,7 +1149,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   assert.equal(reused.properties?.mention?.permission, 'view');
 });
 
-test('unclassified folders highlight document drops, clear feedback and reject folders', async () => {
+test('space panels highlight document drops to root and display moved notes outside folders', async () => {
   const { setActiveDrag, clearActiveDrag } = await import('../utils/dnd');
   const drag = (type: string, target: Element, relatedTarget?: Element) => {
     const event = new window.Event(type, { bubbles: true, cancelable: true });
@@ -1159,36 +1160,23 @@ test('unclassified folders highlight document drops, clear feedback and reject f
     for (const space of ['personal', 'company'] as const) {
       await mount(space === 'personal' ? '/library/private' : '/library/company');
       const doc = getStoredDocuments().find(item => !item.isTrash && item.folderId)!;
-      const target = document.querySelector(`[data-unclassified-space="${space}"]`)!;
+      const panel = document.querySelector(`[data-space-panel="${space}"]`)!;
+      assert.equal(panel.querySelector('[data-unclassified-space]'), null);
       await act(async () => {
         setActiveDrag({ type: 'document', id: doc.id });
-        drag('dragover', target.firstElementChild!);
+        drag('dragover', panel.firstElementChild!);
       });
-      assert(target.querySelector('[data-drop-active="true"]'));
-      assert(target.textContent?.includes('Thả vào đây'));
-      await act(async () => drag('dragleave', target.firstElementChild!, target.querySelector('button')!));
-      assert(target.querySelector('[data-drop-active="true"]'), 'Moving between children must keep the highlight');
-      await act(async () => drag('dragleave', target));
-      assert(!target.querySelector('[data-drop-active="true"]'));
-      await act(async () => drag('dragover', target));
-      await act(async () => drag('drop', target));
+      assert(panel.firstElementChild!.className.includes('ring-1'));
+      await act(async () => drag('dragleave', panel.firstElementChild!, panel.querySelector('button')!));
+      assert(panel.firstElementChild!.className.includes('ring-1'), 'Moving between children must keep the highlight');
+      await act(async () => drag('dragleave', panel.firstElementChild!));
+      assert(!panel.firstElementChild!.className.includes('ring-1'));
+      await act(async () => drag('dragover', panel));
+      await act(async () => drag('drop', panel));
       const moved = getStoredDocuments().find(item => item.id === doc.id)!;
       assert.equal(moved.folderId, null);
       assert.equal(moved.space, space);
-      assert(!target.textContent?.includes('Thả vào đây'));
-      await act(async () => {
-        setActiveDrag({ type: 'folder', id: 'fld_work' });
-        drag('dragover', target);
-      });
-      assert(!target.querySelector('[data-drop-active="true"]'));
-      await act(async () => drag('drop', target));
-      assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.folderId, null);
-      await act(async () => {
-        setActiveDrag({ type: 'document', id: doc.id });
-        drag('dragover', target);
-      });
-      await act(async () => clearActiveDrag());
-      assert(!target.querySelector('[data-drop-active="true"]'));
+      assert(panel.querySelector(`[data-sidebar-document="${doc.id}"]`));
     }
   } finally { await act(async () => clearActiveDrag()); }
 });
@@ -1382,7 +1370,7 @@ test('all library navigation tabs, sidebar lists and folder names have working r
     await click(Array.from(document.querySelectorAll('aside span')).find(element => element.textContent === label));
     assert.equal(window.location.pathname, path); assert.equal(heading(), label);
   }
-  await click(document.querySelector('aside button[title="Thùng rác"]'));
+  await click(document.querySelector('aside button[aria-label="Thùng rác"]'));
   assert.equal(window.location.pathname, '/trash');
 });
 
@@ -1628,7 +1616,7 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   assert(button('Thư mục mới 2', document.querySelector('aside')!));
 });
 
-test('clicking tab Của tôi highlights it and plus creates a note inside Chưa phân loại', async () => {
+test('clicking tab Của tôi highlights it and plus creates a note at the top outside folders', async () => {
   await mount('/company');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(document.getElementById('space-tab-personal'));
@@ -1636,6 +1624,7 @@ test('clicking tab Của tôi highlights it and plus creates a note inside Chưa
   assert.equal(window.location.pathname, '/private');
 
   const personalPanel = document.getElementById('space-panel-personal')!;
+  assert.equal(personalPanel.querySelector('[data-unclassified-space]'), null);
   const createNoteButton = personalPanel.querySelector('button[title="Tạo ghi chú mới"]')!;
   await click(createNoteButton);
   await click(button('Tạo tài liệu', personalPanel));
@@ -1644,47 +1633,51 @@ test('clicking tab Của tôi highlights it and plus creates a note inside Chưa
   assert(workFolder, 'Expected folder fld_work to exist');
   const noteTextElement = Array.from(personalPanel.querySelectorAll('span')).find(el => el.textContent === 'Ghi chú mới');
   assert(noteTextElement, 'Expected new note to be rendered in personal panel');
-  const noteItem = noteTextElement.closest('.group')!;
-  assert(personalPanel.querySelector('[data-unclassified-space="personal"]')!.contains(noteItem));
+  const noteItem = noteTextElement.closest('[data-sidebar-document]')!;
+  assert.equal(noteItem.parentElement?.firstElementChild, noteItem);
   assert(workFolder.compareDocumentPosition(noteItem) & Node.DOCUMENT_POSITION_PRECEDING, 'Expected new note to appear above folder Công việc');
 });
 
-test('both spaces have a permanent unclassified folder and heading plus creates inside it', async () => {
-  for (const space of ['personal', 'company'] as const) {
-    await mount(space === 'personal' ? '/library/private' : '/library/company');
-    const panel = document.querySelector(`[data-space-panel="${space}"]`)!;
-    const systemFolder = panel.querySelector(`[data-unclassified-space="${space}"]`)!;
-    assert(systemFolder, 'Expected default unclassified folder');
-    await click(button('Chưa phân loại', systemFolder));
-    assert.equal(window.location.pathname, `/library/${space === 'personal' ? 'private' : 'company'}/unclassified`);
-    assert.equal(heading(), 'Chưa phân loại');
-    const before = new Set(getStoredDocuments().map(doc => doc.id));
-    await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
-    assert.equal(getStoredDocuments().filter(doc => !before.has(doc.id)).length, 0, 'Opening the menu must not create a document');
-    assert(button('Tạo thư mục', panel));
-    await click(button('Tạo tài liệu', panel));
-    const created = getStoredDocuments().find(doc => !before.has(doc.id))!;
-    assert(created);
-    assert.equal(created.space, space);
-    assert.equal(created.folderId, null);
-    assert(systemFolder.textContent?.includes(created.title));
-    await click(button('Chưa phân loại', systemFolder));
-    assert(document.querySelector('main')?.textContent?.includes(created.title));
-    const { getStoredFolders } = await import('../utils/storage');
-    const previousFolders = new Set(getStoredFolders().map(folder => folder.id));
-    await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
-    await click(button('Tạo thư mục', panel));
-    const newFolder = getStoredFolders().find(folder => !previousFolders.has(folder.id))!;
-    assert(newFolder);
-    assert.equal(newFolder.space, space);
-    assert.equal(newFolder.parentId ?? null, null);
-    await nameNewFolder(`Thư mục đầu ${space}`);
-    const folderNodes = Array.from(panel.querySelectorAll('[data-folder-id]')).filter(el => el.parentElement === systemFolder.parentElement);
-    assert.equal(folderNodes[0]?.getAttribute('data-folder-id'), newFolder.id);
-    assert.equal(systemFolder.nextElementSibling, folderNodes[0]);
-    assert.equal(panel.querySelector('[data-folder-id] .lucide-grip-vertical'), null);
-    assert.equal(folderNodes[1]?.firstElementChild?.getAttribute('draggable'), 'true');
+test('both sidebars omit unclassified folders and place new notes at the top above folders', async () => {
+  for (const useNewSidebar of [false, true]) {
+    layoutConfig.useSidebar2 = useNewSidebar;
+    try {
+      for (const space of ['personal', 'company'] as const) {
+        await mount(space === 'personal' ? '/private' : '/company');
+        const panel = document.querySelector(`[data-space-panel="${space}"]`)!;
+        assert.equal(panel.querySelector('[data-unclassified-space]'), null);
+        assert.equal(panel.textContent?.includes('Chưa phân loại'), false);
+
+        const before = new Set(getStoredDocuments().map(doc => doc.id));
+        await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
+        assert.equal(getStoredDocuments().filter(doc => !before.has(doc.id)).length, 0, 'Opening the menu must not create a document');
+        assert(button('Tạo thư mục', panel));
+        await click(button('Tạo tài liệu', panel));
+        const created = getStoredDocuments().find(doc => !before.has(doc.id))!;
+        assert(created);
+        assert.equal(created.space, space);
+        assert.equal(created.folderId, null);
+
+        const listContainer = panel.querySelector('[data-folder-id]')!.parentElement!;
+        assert.equal(listContainer.firstElementChild?.getAttribute('data-sidebar-document'), created.id);
+
+        const { getStoredFolders } = await import('../utils/storage');
+        const previousFolders = new Set(getStoredFolders().map(folder => folder.id));
+        await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
+        await click(button('Tạo thư mục', panel));
+        const newFolder = getStoredFolders().find(folder => !previousFolders.has(folder.id))!;
+        assert(newFolder);
+        assert.equal(newFolder.space, space);
+        assert.equal(newFolder.parentId ?? null, null);
+        await nameNewFolder(`Thư mục đầu ${space} ${useNewSidebar ? '2' : '1'}`);
+        const folderNodes = Array.from(listContainer.children).filter(el => el.hasAttribute('data-folder-id'));
+        assert.equal(folderNodes[0]?.getAttribute('data-folder-id'), newFolder.id);
+        assert.equal(panel.querySelector('[data-folder-id] .lucide-grip-vertical'), null);
+        assert.equal(folderNodes[1]?.firstElementChild?.getAttribute('draggable'), 'true');
+      }
+    } finally { layoutConfig.useSidebar2 = false; }
   }
+  await mount('/library/private');
   const recentRow = Array.from(document.querySelectorAll('aside span')).find(el => el.textContent === 'Gần đây')!;
   assert(recentRow);
   await click(recentRow);
@@ -1924,5 +1917,28 @@ test('callout block renders lightbulb icon and prominent border', async () => {
   assert.equal(newCallout.querySelector('span[aria-hidden="true"]')?.textContent, '💡');
   await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'callout-test')?.blocks[1].properties?.calloutIcon, '💡');
+});
+
+test('sidebar footer buttons render icons only with hover tooltips in both sidebars', async () => {
+  for (const useNewSidebar of [false, true]) {
+    layoutConfig.useSidebar2 = useNewSidebar;
+    try {
+      await mount('/private');
+      const sidebar = document.querySelector('aside')!;
+      for (const [label, path] of [['Mẫu ghi chú', '/templates'], ['Thư viện', '/library/all'], ['Thùng rác', '/trash']] as const) {
+        const btn = sidebar.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+        assert(btn, `Expected footer button ${label}`);
+        assert.equal(btn.getAttribute('title'), null, 'Footer buttons should rely on a single custom hover tooltip without native title duplication');
+        const labelSpan = btn.querySelector('.sr-only');
+        assert.equal(labelSpan?.textContent, label);
+        const tooltip = btn.parentElement?.querySelector('[role="tooltip"]');
+        assert.equal(tooltip?.textContent, label);
+        assert(tooltip?.className.includes('opacity-0'));
+        assert(tooltip?.className.includes('group-hover/footer-item:opacity-100'));
+        await click(btn);
+        assert.equal(window.location.pathname, path);
+      }
+    } finally { layoutConfig.useSidebar2 = false; }
+  }
 });
 

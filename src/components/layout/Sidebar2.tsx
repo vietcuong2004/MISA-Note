@@ -2,6 +2,7 @@ import { SIDEBAR_HEADER_BUTTON_CLASS } from './sidebarStyles';
 import { SIDEBAR2_DEFAULT_WIDTH } from '../../app/layoutConfig';
 import { WorkspacePicker } from './WorkspacePicker';
 import { CollapsedSidebar } from './CollapsedSidebar';
+import { SidebarFooter } from './SidebarFooter';
 import { memoryStorage } from '../../utils/memoryStorage';
 import { RenameDialog } from '../modals/RenameDialog';
 import { DocumentLinkShare } from '../modals/DocumentLinkShare';
@@ -14,19 +15,15 @@ import {
   Star,
   ChevronRight,
   ChevronDown,
-  Folder as FolderIcon,
   FolderPlus,
   Plus,
-  Trash2,
   Users,
   FileText,
   Upload,
   ChevronsLeft,
   Edit2,
-  BookOpen,
   ArrowRight,
   X,
-  LayoutGrid,
 } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType, UserRole, ViewState } from '../../types';
 import { CURRENT_USER, TEMPLATES } from '../../data/mockData';
@@ -40,6 +37,7 @@ import {
   canDropFolderInto,
   clearActiveDrag,
   getDragPayload,
+  isLeavingDragTarget,
   setDragDocument,
   useActiveDrag,
 } from '../../utils/dnd';
@@ -107,7 +105,6 @@ export const Sidebar2: React.FC<SidebarProps> = ({
     }
   }, [sidebarWidth]);
 
-  const isNarrowFooter = width < 260;
   const isNarrowHeader = width < 260;
   const isIconOnlySpace = width < 260;
 
@@ -181,7 +178,6 @@ export const Sidebar2: React.FC<SidebarProps> = ({
     if (navigatedSpace) setSpaceTab(navigatedSpace);
   }, [locationKey, navigatedSpace]);
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
-  const [unclassifiedExpanded, setUnclassifiedExpanded] = useState({ personal: false, company: false });
   const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
@@ -199,10 +195,6 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [dragOverRootSpace, setDragOverRootSpace] = useState<SpaceType | null>(null);
   const isDraggingAny = isGlobalDragging || !!draggingDocId || !!draggingFolderId;
-  const [dragOverUnclassified, setDragOverUnclassified] = useState<SpaceType | null>(null);
-  useEffect(() => {
-    if (!isDraggingAny) setDragOverUnclassified(null);
-  }, [isDraggingAny]);
 
   // Folder Move Modal state
   const [moveFolderModal, setMoveFolderModal] = useState<{
@@ -447,11 +439,14 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite && d.space === 'personal');
 
 
+  const isRootDoc = (doc: Document, space: SpaceType) =>
+    doc.space === space && (!doc.folderId || !folders.some((folder) => folder.id === doc.folderId && folder.space === space));
+
   const personalRootDocs = activeDocs
-    .filter((d) => d.space === 'personal' && !d.folderId)
+    .filter((d) => isRootDoc(d, 'personal'))
     .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
   const companyRootDocs = activeDocs
-    .filter((d) => d.space === 'company' && !d.folderId)
+    .filter((d) => isRootDoc(d, 'company'))
     .sort((a, b) => new Date(b.createdAt || b.updatedAt).getTime() - new Date(a.createdAt || a.updatedAt).getTime());
 
   const isDocActive = (docId: string) =>
@@ -568,63 +563,10 @@ export const Sidebar2: React.FC<SidebarProps> = ({
     );
   };
 
-  const createUnclassifiedDocument = (space: SpaceType) => {
-    setUnclassifiedExpanded(previous => ({ ...previous, [space]: true }));
+  const createRootDocument = (space: SpaceType) => {
     if (space === 'personal') setPersonalExpanded(true); else setCompanyExpanded(true);
     setSpaceTab(space);
     onCreateDocument(space, null);
-  };
-
-  // Root documents appear in a permanent system folder, without migrating saved notes.
-  const renderUnclassifiedFolder = (space: SpaceType) => {
-    const notes = space === 'personal' ? personalRootDocs : companyRootDocs;
-    const open = unclassifiedExpanded[space];
-    const selected = viewState.type === 'unclassified' && viewState.space === space;
-    const draggingOver = dragOverUnclassified === space;
-    return <div data-unclassified-space={space} className="space-y-0.5"
-        onDragOver={event => {
-          event.preventDefault(); event.stopPropagation();
-          const accepts = getDragPayload(event, folders, documents)?.type === 'document';
-          event.dataTransfer.dropEffect = accepts ? 'move' : 'none';
-          setDragOverUnclassified(accepts ? space : null);
-        }}
-        onDragLeave={event => {
-          event.stopPropagation();
-          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOverUnclassified(null);
-        }}
-        onDrop={event => {
-          setDragOverUnclassified(null);
-          // This system folder contains notes only; folder moves still use the space root.
-          if (getDragPayload(event, folders, documents)?.type === 'folder') {
-            event.preventDefault(); event.stopPropagation(); return;
-          }
-          handleDropOnRoot(event, space);
-          setUnclassifiedExpanded(previous => ({ ...previous, [space]: true }));
-        }}>
-      <div data-drop-active={draggingOver}
-        className={`group flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-colors ${draggingOver
-          ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)] text-[var(--ui-primary)] font-bold shadow-xs'
-          : `text-[var(--ui-text)] ${selected ? 'bg-[var(--ui-selected)]' : 'hover:bg-[var(--ui-selected)]'}`}`}>
-        <button type="button" aria-label={`Thu gọn hoặc mở Chưa phân loại ${space === 'personal' ? 'của tôi' : 'công ty'}`}
-          aria-expanded={open} onClick={() => setUnclassifiedExpanded(previous => ({ ...previous, [space]: !open }))}
-          className="p-0.5 text-[var(--ui-tertiary)]">
-          {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-        </button>
-        <FolderIcon className="w-3.5 h-3.5 shrink-0" />
-        <button type="button" aria-current={selected ? 'page' : undefined}
-          onClick={() => { setUnclassifiedExpanded(previous => ({ ...previous, [space]: true })); onNavigate({ type: 'unclassified', space }); }}
-          className="flex-1 text-left text-xs font-medium truncate">Chưa phân loại</button>
-        <span className="text-[10px] text-[var(--ui-tertiary)]">{notes.length}</span>
-        {draggingOver && <span className="text-[10px] bg-[var(--ui-primary)] text-white px-1.5 rounded font-medium shrink-0">Thả vào đây</span>}
-        <SpaceCreateMenu title={`Tạo mới trong Chưa phân loại ${space === 'personal' ? 'của tôi' : 'công ty'}`}
-          onCreateDocument={() => createUnclassifiedDocument(space)}
-          onCreateFolder={() => onCreateFolder(space, null)} />
-      </div>
-      {open && <div className="pl-3 ml-3.5 border-l border-[var(--ui-border)] space-y-0.5">
-        {notes.map(doc => renderDocumentItem(doc, null))}
-        {!notes.length && <p className="px-2 py-1 text-[10px] italic text-[var(--ui-tertiary)]">Chưa có tài liệu</p>}
-      </div>}
-    </div>;
   };
 
   const renderFolderTree = (space: SpaceType) => (
@@ -707,7 +649,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  createUnclassifiedDocument(spaceTab);
+                  createRootDocument(spaceTab);
                 }}
                 onMouseEnter={() => setShowCreateTooltip(true)}
                 onMouseLeave={() => setShowCreateTooltip(false)}
@@ -887,9 +829,8 @@ export const Sidebar2: React.FC<SidebarProps> = ({
             }}
             onDragLeave={(e) => {
               e.stopPropagation();
-              const rect = e.currentTarget.getBoundingClientRect();
-              if (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom) {
-                if (dragOverRootSpace === 'personal') setDragOverRootSpace(null);
+              if (isLeavingDragTarget(e) && dragOverRootSpace === 'personal') {
+                setDragOverRootSpace(null);
               }
             }}
             onDrop={(e) => handleDropOnRoot(e, 'personal')}
@@ -912,7 +853,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
                 {personalExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               <SpaceCreateMenu title="Tạo ghi chú mới"
-                onCreateDocument={() => createUnclassifiedDocument('personal')}
+                onCreateDocument={() => createRootDocument('personal')}
                 onCreateFolder={() => {
                   setSpaceTab('personal');
                   setPersonalExpanded(true);
@@ -950,8 +891,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
 
           {personalExpanded && (
             <div className="space-y-0.5 mt-1">
-              {/* Unfiled Personal Documents: Ghi chú chưa phân loại at top, above folders (e.g. above "Công việc") */}
-              {renderUnclassifiedFolder('personal')}
+              {personalRootDocs.map((doc) => renderDocumentItem(doc, null))}
 
               {renderFolderTree('personal')}
             </div>
@@ -978,9 +918,8 @@ export const Sidebar2: React.FC<SidebarProps> = ({
             }}
             onDragLeave={(e) => {
               e.stopPropagation();
-              const rect = e.currentTarget.getBoundingClientRect();
-              if (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom) {
-                if (dragOverRootSpace === 'company') setDragOverRootSpace(null);
+              if (isLeavingDragTarget(e) && dragOverRootSpace === 'company') {
+                setDragOverRootSpace(null);
               }
             }}
             onDrop={(e) => handleDropOnRoot(e, 'company')}
@@ -999,7 +938,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
                 {companyExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               <SpaceCreateMenu title="Tạo tài liệu công ty mới"
-                onCreateDocument={() => createUnclassifiedDocument('company')}
+                onCreateDocument={() => createRootDocument('company')}
                 onCreateFolder={() => {
                   setSpaceTab('company');
                   setCompanyExpanded(true);
@@ -1037,8 +976,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
 
           {companyExpanded && (
             <div className="space-y-0.5 mt-1">
-              {/* Unfiled Company Documents at the top */}
-              {renderUnclassifiedFolder('company')}
+              {companyRootDocs.map((doc) => renderDocumentItem(doc, null))}
 
               {renderFolderTree('company')}
             </div>
@@ -1047,69 +985,8 @@ export const Sidebar2: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Fixed Utilities: Mẫu, Thư viện & Thùng rác (3 cái trên 1 hàng: Mẫu -> Thư viện -> Thùng rác) */}
-      <div className="p-2 border-t border-[var(--ui-border)] bg-[var(--ui-sidebar)]">
-        <div className="grid grid-cols-3 gap-1">
-          {/* 1. Mẫu */}
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'templates' })}
-            aria-current={viewState.type === 'templates' ? 'page' : undefined}
-            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer ${
-              viewState.type === 'templates'
-                ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
-                : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
-            }`}
-            title="Mẫu ghi chú"
-          >
-            <LayoutGrid className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
-            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Mẫu</span>
-            <span className="hidden"> ghi chú</span>
-          </button>
-
-          {/* 2. Thư viện */}
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'library' })}
-            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer ${
-              viewState.type === 'library'
-                ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
-                : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
-            }`}
-            title="Thư viện"
-          >
-            <BookOpen className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)] shrink-0" />
-            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Thư viện</span>
-          </button>
-
-          {/* 3. Thùng rác */}
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'trash' })}
-            className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-medium ios-interactive transition-colors cursor-pointer relative ${
-              viewState.type === 'trash'
-                ? 'bg-[#EAEAEC] text-[var(--ui-text)] font-semibold'
-                : 'hover:bg-[var(--ui-selected)] text-[var(--ui-text)]'
-            }`}
-            title="Thùng rác"
-          >
-            <div className="relative flex items-center justify-center shrink-0">
-              <Trash2 className="w-4 h-4 stroke-[1.75] text-[var(--ui-text)]" />
-              {isNarrowFooter && trashDocs.length > 0 && (
-                <span className="absolute -top-1.5 -right-2 px-1 min-w-[14px] h-[14px] text-[9px] font-bold text-white theme-primary bg-[var(--ui-primary)] rounded-full flex items-center justify-center">
-                  {trashDocs.length}
-                </span>
-              )}
-            </div>
-            <span className={isNarrowFooter ? "sr-only" : "whitespace-nowrap"}>Thùng rác</span>
-            {!isNarrowFooter && trashDocs.length > 0 && (
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono px-1 py-0.2 rounded bg-[var(--ui-border)] shrink-0">
-                {trashDocs.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Bottom Fixed Utilities: Icon-only Mẫu ghi chú, Thư viện & Thùng rác */}
+      <SidebarFooter viewState={viewState} trashCount={trashDocs.length} onNavigate={onNavigate} />
 
       {/* Floating Document Context Menu */}
       {renamingDocId && <RenameDialog key={renamingDocId} kind="document"
