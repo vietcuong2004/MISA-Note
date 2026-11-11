@@ -1,3 +1,4 @@
+import { TEMPLATES } from '../../data/mockData';
 import { formatDateTime } from '../../utils/dateTime';
 import { commandForShortcut } from './slashCommands';
 import { recordSlashCommand } from '../../utils/slashHistory';
@@ -405,6 +406,35 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setDoc(updated);
     triggerAutoSave(updated);
     setSlashState({ isOpen: false, blockId: null, query: '' });
+  };
+
+  const handleInsertTemplate = (templateId: string) => {
+    if (isReadOnly || !slashState.blockId) return;
+    const template = TEMPLATES.find(item => item.id === templateId);
+    const index = doc.blocks.findIndex(block => block.id === slashState.blockId);
+    if (!template || index < 0) return;
+    const inserted = template.createBlocks().map(original => {
+      const block = structuredClone(original);
+      block.id = `blk_${crypto.randomUUID()}`;
+      if (block.properties?.listItems) block.properties.listItems = block.properties.listItems.map(item => ({ ...item, id: `list_${crypto.randomUUID()}` }));
+      if (block.properties?.agenda) block.properties.agenda = block.properties.agenda.map(item => ({ ...item, id: `agenda_${crypto.randomUUID()}` }));
+      if (block.properties?.actionItems) block.properties.actionItems = block.properties.actionItems.map(item => ({ ...item, id: `action_${crypto.randomUUID()}` }));
+      return block;
+    });
+    const blankDocument = doc.blocks.every(block => block.id === slashState.blockId || (block.type === 'paragraph' && !block.content.trim()));
+    const defaultTitle = ['', 'Ghi chú mới', 'Ghi chú không có tiêu đề', 'Không có tiêu đề'].includes(doc.title.trim());
+    const updated = { ...doc,
+      title: blankDocument && defaultTitle ? template.title : doc.title,
+      type: blankDocument ? template.type : doc.type,
+      tags: blankDocument ? [...new Set([...doc.tags, ...template.tags])] : doc.tags,
+      blocks: [...doc.blocks.slice(0, index), ...inserted, ...doc.blocks.slice(index + 1)],
+      updatedAt: new Date().toISOString(),
+    };
+    setDoc(updated);
+    triggerAutoSave(updated);
+    setFocusedBlockId(inserted.find(block => ['paragraph', 'h1', 'h2', 'h3', 'h4', 'bullet', 'numbered', 'checklist'].includes(block.type))?.id || inserted[0]?.id || null);
+    setSlashState({ isOpen: false, blockId: null, query: '' });
+    onToast(`Đã chèn mẫu ${template.title}`, 'success');
   };
 
   const handleSelectSlashItem = (type: BlockType, extraProps?: BlockProperties, targetId = slashState.blockId, preserveText = false) => {
@@ -1077,6 +1107,7 @@ function getTextareaSelectionCoords(
                 query={slashState.query}
                 position={slashState.position}
                 onSelect={handleSelectSlashItem}
+                onSelectTemplate={handleInsertTemplate}
                 onApplyColor={handleSlashColor}
                 mentions={doc.blocks.flatMap(block => block.properties?.mention ? [block.properties.mention] : [])}
                 onClose={() => setSlashState({ isOpen: false, blockId: null, query: '' })}

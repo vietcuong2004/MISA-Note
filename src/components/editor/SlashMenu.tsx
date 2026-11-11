@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Type, Heading1, Heading2, Heading3, Heading4, List, ListOrdered, CheckSquare,
   Table, Lightbulb, Image, Video, Music, File,
-  Link, AtSign, Sparkles } from 'lucide-react';
+  Link, AtSign, Sparkles, FileText, Users, Target, Calendar, BookOpen } from 'lucide-react';
 import { BlockProperties, BlockType } from '../../types';
 import { SLASH_COMMANDS, SlashCommand } from './slashCommands';
 import { employeeName } from './EmployeePicker';
 import { readSlashHistory, recordSlashCommand } from '../../utils/slashHistory';
+import { SlashCommandPreview } from './SlashCommandPreview';
 
 type MenuItem = SlashCommand & { sourceId?: string };
 
@@ -14,6 +15,7 @@ interface SlashMenuProps {
   query: string;
   onSelect: (type: BlockType, properties?: BlockProperties) => void;
   onClose: () => void;
+  onSelectTemplate?: (templateId: string) => void;
   onApplyColor?: (color: string, isBackground: boolean) => void;
   mentions?: NonNullable<BlockProperties['mention']>[];
   position?: { top: number; left: number; lineTop?: number };
@@ -29,6 +31,7 @@ function matchCommand(item: SlashCommand, query: string): number {
   const words = title.split(/\s+/);
   const haystack = normalizeCommandQuery([item.title, item.subtitle, item.shortcut, item.type, item.category,
     item.properties?.provider, item.properties?.mention?.emails.join(' ')].join(' '));
+  if (query === 'ai' && !haystack.split(/\s+/).includes('ai')) return -1;
   if (title === query) return 0;
   if (title.startsWith(query)) return 1;
   if (words.some(word => word.startsWith(query))) return 2;
@@ -45,11 +48,14 @@ const icons: Partial<Record<BlockType, typeof Type>> = {
   meeting_info: Sparkles,
 };
 
-export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, onApplyColor, mentions = [], position }) => {
+export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, onSelectTemplate, onApplyColor, mentions = [], position }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [recentIds, setRecentIds] = useState(readSlashHistory);
   const [layout, setLayout] = useState({ top: 56, left: 16, maxHeight: 360 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewLayout, setPreviewLayout] = useState<{ top: number; left: number; width: number } | null>(null);
   const mentionsOnly = query.startsWith('@');
   const cleanQuery = normalizeCommandQuery(mentionsOnly ? query.slice(1) : query);
   const mentionedCommands = new Map<string, SlashCommand>();
@@ -73,7 +79,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     return item ? [{ ...item, id: `recent-${id}`, sourceId: id, category: 'Được đề xuất' }] : [];
   });
   const showRecent = !cleanQuery && !mentionsOnly;
-  const filteredItems: MenuItem[] = (showRecent ? [...recentItems, ...commands] : commands)
+  const filteredItems: MenuItem[] = (showRecent ? [...commands.filter(item => item.category === 'Được đề xuất'), ...recentItems, ...commands.filter(item => item.category !== 'Được đề xuất')] : commands)
     .filter(item => !mentionsOnly || item.category === 'Nội tuyến')
     .map(item => ({ item, rank: matchCommand(item, cleanQuery) }))
     .filter(result => result.rank >= 0)
@@ -81,12 +87,41 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     .map(result => result.item);
   const categories = [...new Set(filteredItems.map(item => item.category))];
   const selectableItems = filteredItems.filter(item => !item.disabled);
+  const previewItem = selectableItems.find(item => item.id === hoveredItemId);
+
+  useLayoutEffect(() => {
+    if (!previewItem) { setPreviewLayout(null); return; }
+    const update = () => {
+      const menu = containerRef.current;
+      if (!menu) return;
+      const rect = menu.getBoundingClientRect();
+      const leftEdge = rect.width ? rect.left : layout.left;
+      const rightEdge = rect.width ? rect.right : layout.left + Math.min(384, window.innerWidth - 24);
+      const rightSpace = window.innerWidth - rightEdge - 24;
+      const leftSpace = leftEdge - 24;
+      const onRight = rightSpace >= 240 || rightSpace >= leftSpace;
+      const width = Math.min(280, onRight ? rightSpace : leftSpace);
+      if (width < 200) { setPreviewLayout(null); return; }
+      const selected = menu.querySelector<HTMLElement>('[aria-selected="true"]');
+      const itemRect = selected?.getBoundingClientRect();
+      const anchorCenter = itemRect && itemRect.height ? itemRect.top + itemRect.height / 2 : layout.top;
+      const height = previewRef.current?.getBoundingClientRect().height || 300;
+      setPreviewLayout({ left: onRight ? rightEdge + 12 : leftEdge - width - 12, top: Math.max(12, Math.min(anchorCenter - height / 2, window.innerHeight - height - 12)), width });
+    };
+    update();
+    window.addEventListener('resize', update);
+    const list = containerRef.current?.querySelector('[role="listbox"]');
+    list?.addEventListener('scroll', update);
+    return () => { window.removeEventListener('resize', update); list?.removeEventListener('scroll', update); };
+  }, [previewItem?.id, layout.top, layout.left, layout.maxHeight, previewLayout !== null]);
 
   const selectItem = (item: MenuItem) => {
     if (item.disabled) return;
+    if (item.templateId && !onSelectTemplate) return;
     if (item.color && !onApplyColor) return;
     setRecentIds(recordSlashCommand(item.sourceId || item.id));
-    if (item.color) onApplyColor?.(item.color.value, item.color.target === 'backgroundColor');
+    if (item.templateId) onSelectTemplate?.(item.templateId);
+    else if (item.color) onApplyColor?.(item.color.value, item.color.target === 'backgroundColor');
     else onSelect(item.type, item.properties);
   };
 
@@ -131,8 +166,12 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
       event.stopPropagation();
       if (event.key === 'Escape') { onClose(); return; }
       if (!selectableItems.length) return;
-      if (event.key === 'ArrowDown') setSelectedIndex(index => (index + 1) % selectableItems.length);
-      if (event.key === 'ArrowUp') setSelectedIndex(index => (index - 1 + selectableItems.length) % selectableItems.length);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIndex = (selectedIndex + direction + selectableItems.length) % selectableItems.length;
+        setSelectedIndex(nextIndex);
+        setHoveredItemId(selectableItems[nextIndex].id);
+      }
       if (event.key === 'Enter') {
         const item = selectableItems[Math.min(selectedIndex, selectableItems.length - 1)];
         selectItem(item);
@@ -141,17 +180,17 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     // Capture before the textarea handles Enter and inserts an unwanted block.
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [selectableItems, selectedIndex, onSelect, onClose, onApplyColor]);
+  }, [selectableItems, selectedIndex, onSelect, onSelectTemplate, onClose, onApplyColor]);
 
   useEffect(() => {
     containerRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex, query]);
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) onClose();
+      if (!containerRef.current?.contains(event.target as Node) && !previewRef.current?.contains(event.target as Node)) onClose();
     };
     const handleScroll = (event: Event) => {
-      if (event.target instanceof Node && !containerRef.current?.contains(event.target)) onClose();
+      if (event.target instanceof Node && !containerRef.current?.contains(event.target) && !previewRef.current?.contains(event.target)) onClose();
     };
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('scroll', handleScroll, true);
@@ -163,11 +202,13 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
 
   const renderItem = (item: MenuItem) => {
     const index = selectableItems.indexOf(item);
-    const Icon = item.category === 'Nội tuyến' || item.properties?.mention || item.properties?.utilityKind?.startsWith('Nhắc đến') ? AtSign : icons[item.type] || Type;
+    const templateIcons: Record<string, typeof Type> = { tpl_personal_note: FileText, tpl_meeting_minutes: Users, tpl_work_plan: Target, tpl_weekly_plan: Calendar, tpl_internal_doc: BookOpen };
+    const Icon = item.templateId ? templateIcons[item.templateId] || FileText : item.category === 'Nội tuyến' || item.properties?.mention || item.properties?.utilityKind?.startsWith('Nhắc đến') ? AtSign : icons[item.type] || Type;
     return <button key={item.id} type="button" role="option" aria-selected={index === selectedIndex}
-      id={`slash-${item.id}`} tabIndex={-1} title={item.title} aria-keyshortcuts={item.shortcut} disabled={item.disabled} aria-disabled={!!item.disabled}
+      id={`slash-${item.id}`} tabIndex={-1} aria-label={item.title} data-slash-command-title={item.title} aria-keyshortcuts={item.shortcut} disabled={item.disabled} aria-disabled={!!item.disabled}
       onMouseDown={event => event.preventDefault()} onClick={() => selectItem(item)}
-      onMouseMove={() => { if (!item.disabled && index !== selectedIndex) setSelectedIndex(index); }}
+      onMouseMove={() => { if (!item.disabled) { setHoveredItemId(item.id); if (index !== selectedIndex) setSelectedIndex(index); } }}
+      onMouseLeave={() => setHoveredItemId(null)}
       className={`w-full min-h-14 flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm ${item.disabled
         ? 'opacity-50 cursor-not-allowed'
         : `cursor-pointer ${index === selectedIndex ? 'bg-[var(--ui-hover)] ring-1 ring-inset ring-[var(--ui-accent)]' : 'hover:bg-[var(--ui-hover)]'}`}`}>
@@ -185,15 +226,11 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     </button>;
   };
 
-  return createPortal(<div ref={containerRef} role="dialog" aria-label="Chèn tiện ích nhanh"
+  return createPortal(<><div ref={containerRef} role="dialog" aria-label="Chèn tiện ích nhanh"
     className="fixed z-50 w-[384px] max-w-[calc(100vw-24px)] flex flex-col bg-[var(--ui-surface)] rounded-xl border border-[var(--ui-border)] shadow-2xl overflow-hidden"
     style={{ top: layout.top, left: layout.left, maxHeight: layout.maxHeight }}>
     <div role="listbox" aria-label="Tiện ích nhanh" aria-activedescendant={selectableItems[selectedIndex] ? `slash-${selectableItems[selectedIndex].id}` : undefined}
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
-      {showRecent && !recentItems.length && <div role="group" aria-label="Được đề xuất" className="mb-2">
-        <p className="px-2 pt-2 pb-1 text-xs text-[var(--ui-tertiary)]">Được đề xuất</p>
-        <p className="px-2 py-1.5 text-xs text-[var(--ui-tertiary)]">Chưa có mục sử dụng gần đây</p>
-      </div>}
       {!filteredItems.length ? <p className="px-3 py-4 text-sm text-[var(--ui-tertiary)]">Không tìm thấy thành phần nào</p> :
         cleanQuery ? <><p className="px-2 py-2 text-xs text-[var(--ui-tertiary)]">Kết quả đã lọc ({filteredItems.length})</p>{filteredItems.map(renderItem)}</> :
           categories.map(category => <div key={category} role="group" aria-label={category}
@@ -203,5 +240,10 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     </div>
     <button type="button" onClick={onClose} className="shrink-0 flex items-center justify-between border-t border-[var(--ui-border)] px-3 py-2 text-xs bg-[var(--ui-surface)] cursor-pointer">
       <span>Đóng menu</span><span className="text-[var(--ui-tertiary)]">esc</span></button>
-  </div>, document.body);
+  </div>
+  {previewItem && previewLayout && <div ref={previewRef} role="region" aria-label={`Xem trước ${previewItem.title}`}
+    data-slash-preview={previewItem.templateId || previewItem.type} style={previewLayout}
+    className="fixed z-50 flex max-h-[calc(100dvh-24px)] flex-col rounded-lg bg-[#262626] p-2 shadow-xl [&>[data-command-preview-content]]:max-h-64">
+    <SlashCommandPreview command={previewItem} />
+  </div>}</>, document.body);
 };

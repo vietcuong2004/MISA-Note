@@ -50,6 +50,95 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('slash previews follow hover and arrow selection without inserting content', async () => {
+  const { TEMPLATES } = await import('../data/mockData');
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'preview-note', blocks: [{ id: 'preview-input', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/preview-note');
+  const input = document.querySelector<HTMLTextAreaElement>('[data-block-id="preview-input"] textarea')!;
+  await act(async () => {
+    input.focus();
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '/');
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(document.querySelector('[data-slash-preview]'), null);
+  const hover = async (title: string) => {
+    const item = document.querySelector(`[data-slash-command-title="${title}"]`)!;
+    assert(item);
+    await act(async () => item.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true })));
+  };
+  for (const template of TEMPLATES) {
+    await hover(template.title);
+    const preview = document.querySelector<HTMLElement>(`[data-slash-preview="${template.id}"]`)!;
+    assert(preview);
+    assert(preview.textContent?.includes(template.createBlocks()[0].content));
+    assert.equal(input.value, '/');
+  }
+  await hover('Danh sách gạch đầu dòng');
+  assert(document.querySelector('[data-slash-preview="bullet"]')?.textContent?.includes('Chuẩn bị nội dung công việc'));
+  await act(async () => input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })));
+  assert(document.querySelector('[data-slash-preview="numbered"]'));
+  await act(async () => input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })));
+  assert(document.querySelector('[data-slash-preview="bullet"]'));
+  await hover('Bảng biểu');
+  assert(document.querySelector('[data-slash-preview="table"] table'));
+  const menu = document.querySelector('[aria-label="Chèn tiện ích nhanh"]')!;
+  menu.getBoundingClientRect = () => new window.DOMRect(600, 100, 384, 400);
+  await hover('Hình ảnh');
+  const preview = document.querySelector<HTMLElement>('[data-slash-preview="image"]')!;
+  assert(preview.textContent?.includes('Thêm hình ảnh'));
+  assert.equal(preview.style.left, '308px', 'Preview flips to the left when there is no room on the right');
+  const selectedItem = document.querySelector('[data-slash-command-title="Hình ảnh"]')!;
+  selectedItem.getBoundingClientRect = () => new window.DOMRect(600, 280, 384, 60);
+  preview.getBoundingClientRect = () => new window.DOMRect(308, 0, 280, 200);
+  await act(async () => window.dispatchEvent(new window.Event('resize')));
+  assert.equal(preview.style.top, '210px', 'Preview center aligns with the selected item center');
+  await act(async () => {
+    preview.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    preview.querySelector('[data-command-preview-content]')!.dispatchEvent(new window.Event('scroll', { bubbles: true }));
+  });
+  assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
+  assert.equal(input.value, '/');
+  const imageItem = document.querySelector('[data-slash-command-title="Hình ảnh"]')!;
+  await act(async () => imageItem.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })));
+  assert.equal(document.querySelector('[data-slash-preview]'), null);
+  assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
+});
+
+test('slash template suggestions insert all five reusable templates into the current document', async () => {
+  const { TEMPLATES } = await import('../data/mockData');
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  for (const template of TEMPLATES) {
+    saveStoredDocuments([{ ...base, id: 'inline-template', title: 'Tài liệu đang viết', blocks: [
+      { id: 'before-template', type: 'paragraph', content: 'Nội dung trước mẫu' },
+      { id: 'template-input', type: 'paragraph', content: '' },
+      { id: 'after-template', type: 'paragraph', content: 'Nội dung sau mẫu' },
+    ] }]);
+    await mount('/documents/inline-template');
+    const input = document.querySelector<HTMLTextAreaElement>('[data-block-id="template-input"] textarea')!;
+    await act(async () => {
+      input.focus();
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '/');
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    const group = document.querySelector('[role="group"][aria-label="Gợi ý template"]')!;
+    assert.equal(group.querySelectorAll('[role="option"]').length, 5);
+    await click(group.querySelector(`[data-slash-command-title="${template.title}"]`));
+    assert.equal(window.location.pathname, '/documents/inline-template');
+    assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
+    await mount('/private');
+    const saved = getStoredDocuments().find(doc => doc.id === 'inline-template')!;
+    assert.equal(saved.title, 'Tài liệu đang viết');
+    assert.equal(saved.blocks[0].content, 'Nội dung trước mẫu');
+    assert.equal(saved.blocks.at(-1)?.content, 'Nội dung sau mẫu');
+    assert.deepEqual(saved.blocks.slice(1, -1).map(block => block.type), template.createBlocks().map(block => block.type));
+    assert.equal(new Set(saved.blocks.map(block => block.id)).size, saved.blocks.length);
+    assert(!saved.blocks.some(block => block.content === '/'));
+  }
+});
+
 test('share dialog adds employees from search and directory, saves roles and reopens session settings', async () => {
   await mount('/documents/doc_personal_production_meeting');
   const main = document.querySelector('main')!;
@@ -564,7 +653,7 @@ test('video supports uploads and URLs while attachments only upload and retain t
   try {
     await mount('/documents/attachment-test');
     await fill(document.querySelector('[data-block-id="video-input"] textarea')!, '/video');
-    await click(document.querySelector('button[title="Video"]'));
+    await click(document.querySelector('button[data-slash-command-title="Video"]'));
     let dialog = document.querySelector('[aria-label="Chọn video"]')!;
     assert.equal(dialog.querySelectorAll('[role="tab"]').length, 2);
     await click(button('Liên kết', dialog));
@@ -581,7 +670,7 @@ test('video supports uploads and URLs while attachments only upload and retain t
     await waitFor(() => !!document.querySelector('video')?.getAttribute('src')?.startsWith('blob:'));
     await fill(document.querySelector('[aria-label="Chú thích video"]')!, 'Video từ máy tính');
     await fill(document.querySelector('[data-block-id="file-input"] textarea')!, '/tep');
-    await click(document.querySelector('button[title="Tệp"]'));
+    await click(document.querySelector('button[data-slash-command-title="Tệp"]'));
     dialog = document.querySelector('[aria-label="Chọn tệp"]')!;
     assert.equal(dialog.querySelector('[role="tab"]'), null);
     assert.equal(dialog.querySelector('input[type="url"]'), null);
@@ -627,7 +716,7 @@ test('slash image opens upload/link tabs and saves embedded URLs or local image 
     });
   };
   await fill(document.querySelector('[data-block-id="image-input"] textarea')!, '/hinh anh');
-  await click(document.querySelector('button[title="Hình ảnh"]'));
+  await click(document.querySelector('button[data-slash-command-title="Hình ảnh"]'));
   const block = document.querySelector('[data-image-block="image-input"]')!;
   assert.equal(block.querySelector('img'), null);
   let dialog = block.querySelector('[aria-label="Chọn hình ảnh"]')!;
@@ -886,20 +975,26 @@ test('slash suggestions show the five most recently used unique items and surviv
       input.dispatchEvent(new window.Event('input', { bubbles: true }));
     });
   };
-  const suggested = () => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Được đề xuất"] [role="option"]')).map(item => item.title);
+  const suggested = () => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="group"][aria-label="Được đề xuất"] [role="option"]:not(:disabled)')).map(item => item.getAttribute('data-slash-command-title'));
   await open();
+  const recommended = document.querySelector('[role="group"][aria-label="Được đề xuất"]')!;
+  assert.equal(recommended.querySelector('button')?.getAttribute('data-slash-command-title'), 'Ghi chép cuộc họp với AI');
+  assert(recommended.querySelector('button')?.disabled);
+  const groups = Array.from(document.querySelectorAll('[role="group"]')).map(group => group.getAttribute('aria-label'));
+  assert.equal(groups[groups.indexOf('Nội tuyến') - 1], 'Gợi ý template');
+  assert(!groups.includes('Đang phát triển'));
   assert.deepEqual(suggested(), []);
-  await click(document.querySelector('button[title="Ghi chép cuộc họp với AI"]'));
+  await click(document.querySelector('button[data-slash-command-title="Ghi chép cuộc họp với AI"]'));
   assert.deepEqual(suggested(), []);
   for (const title of ['Văn bản', 'Đề mục 1', 'Đề mục 2', 'Đề mục 3', 'Đề mục 4', 'Chữ màu đỏ']) {
     if (!document.querySelector('[aria-label="Chèn tiện ích nhanh"]')) await open();
-    await click(document.querySelector(`button[title="${title}"]`));
+    await click(document.querySelector(`button[data-slash-command-title="${title}"]`));
   }
   await open();
   assert.deepEqual(suggested(), ['Chữ màu đỏ', 'Đề mục 4', 'Đề mục 3', 'Đề mục 2', 'Đề mục 1']);
   const options = Array.from(document.querySelectorAll('[role="option"]'));
   assert.equal(new Set(options.map(option => option.id)).size, options.length);
-  await click(document.querySelector('[aria-label="Được đề xuất"] button[title="Đề mục 2"]'));
+  await click(document.querySelector('[aria-label="Được đề xuất"] button[data-slash-command-title="Đề mục 2"]'));
   await mount('/library/private');
   await mount('/documents/recent-slash');
   await open();
@@ -923,7 +1018,7 @@ test('list Enter creates nested items and clicking below exits into a normal par
     });
   };
   await fill(document.querySelector('[data-block-id="bullet-list"] textarea')!, '/');
-  await click(document.querySelector('button[title="Danh sách gạch đầu dòng"]'));
+  await click(document.querySelector('button[data-slash-command-title="Danh sách gạch đầu dòng"]'));
   let rootCount = 3;
   for (const id of ['bullet-list', 'numbered-list', 'check-list']) {
     const list = document.querySelector(`[data-block-id="${id}"]`)!;
@@ -1006,7 +1101,7 @@ test('slash filters while typing and arrow keys select without moving the editor
   };
   const selected = () => document.querySelector<HTMLButtonElement>('[aria-label="Tiện ích nhanh"] [aria-selected="true"]');
   await type('/h');
-  assert.equal(selected()?.title, 'Hình ảnh');
+  assert.equal(selected()?.getAttribute('data-slash-command-title'), 'Hình ảnh');
   const first = selected()!.id;
   await key('ArrowDown');
   assert.notEqual(selected()?.id, first);
@@ -1015,9 +1110,9 @@ test('slash filters while typing and arrow keys select without moving the editor
   assert.equal(selected()?.id, first);
   await type('/de muc');
   assert.equal(document.querySelectorAll('[aria-label="Tiện ích nhanh"] [role="option"]').length, 4);
-  assert.equal(selected()?.title, 'Đề mục 1');
+  assert.equal(selected()?.getAttribute('data-slash-command-title'), 'Đề mục 1');
   await key('ArrowDown');
-  assert.equal(selected()?.title, 'Đề mục 2');
+  assert.equal(selected()?.getAttribute('data-slash-command-title'), 'Đề mục 2');
   await key('Enter');
   assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
   assert.equal(document.querySelectorAll('[data-block-id]').length, 1);
@@ -1105,14 +1200,14 @@ test('slash colors apply independently, preserve block type and reset to default
   await type('/');
   const groups = Array.from(document.querySelectorAll('[aria-label="Tiện ích nhanh"] [role="group"]'));
   assert.deepEqual(groups.slice(-2).map(group => group.getAttribute('aria-label')), ['Màu chữ', 'Màu nền']);
-  const yellowSwatch = document.querySelector<HTMLSpanElement>('button[title="Nền vàng"] span[aria-hidden="true"]')!;
+  const yellowSwatch = document.querySelector<HTMLSpanElement>('button[data-slash-command-title="Nền vàng"] span[aria-hidden="true"]')!;
   assert.equal(yellowSwatch.style.backgroundColor, 'rgb(252, 225, 129)');
   assert.equal(yellowSwatch.style.borderColor, 'rgb(203, 145, 47)');
-  const defaultSwatch = document.querySelector<HTMLSpanElement>('button[title="Nền mặc định"] span[aria-hidden="true"]')!;
+  const defaultSwatch = document.querySelector<HTMLSpanElement>('button[data-slash-command-title="Nền mặc định"] span[aria-hidden="true"]')!;
   assert.equal(defaultSwatch.style.backgroundColor, 'transparent');
-  await click(document.querySelector('button[title="Chữ màu đỏ"]'));
+  await click(document.querySelector('button[data-slash-command-title="Chữ màu đỏ"]'));
   await type('/nen xanh lam');
-  await click(document.querySelector('button[title="Nền xanh lam"]'));
+  await click(document.querySelector('button[data-slash-command-title="Nền xanh lam"]'));
   await type('Nội dung được giữ');
   const content = document.querySelector('[data-block-id="color-block"] textarea')!.parentElement!;
   assert.equal(content.style.color, 'rgb(212, 76, 71)');
@@ -1126,7 +1221,7 @@ test('slash colors apply independently, preserve block type and reset to default
   assert.equal(block.properties?.backgroundColor, '#E7F3F8');
   await mount('/documents/colors-test');
   await type('/chu mac dinh');
-  await click(document.querySelector('button[title="Chữ mặc định"]'));
+  await click(document.querySelector('button[data-slash-command-title="Chữ mặc định"]'));
   await mount('/library/private');
   block = getStoredDocuments().find(doc => doc.id === 'colors-test')!.blocks[0];
   assert.equal(block.type, 'h2');
@@ -1147,16 +1242,16 @@ test('AI meeting command is visible but cannot be selected with mouse or keyboar
     });
   };
   await type('/AI');
-  const ai = document.querySelector('button[title="Ghi chép cuộc họp với AI"]') as HTMLButtonElement;
+  const ai = document.querySelector('button[data-slash-command-title="Ghi chép cuộc họp với AI"]') as HTMLButtonElement;
   assert(ai.disabled);
   assert(ai.textContent?.includes('Đang phát triển'));
   await click(ai);
   await act(async () => { textarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); });
   assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
   await type('/');
-  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Văn bản');
+  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('data-slash-command-title'), 'Văn bản');
   await act(async () => { textarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); });
-  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Nền đỏ');
+  assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('data-slash-command-title'), 'Nền đỏ');
   await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'disabled-slash')?.blocks[0].type, 'paragraph');
 });
@@ -1178,7 +1273,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
     });
   };
   await fill(document.querySelector('[data-block-id="mention-person"] textarea')!, '@');
-  await click(document.querySelector('button[title="Nhắc đến 1 người"]'));
+  await click(document.querySelector('button[data-slash-command-title="Nhắc đến 1 người"]'));
   let dialog = document.querySelector('[aria-label="Mời và phân quyền"]')!;
   assert(dialog);
   assert(!dialog.textContent?.includes('Các mức quyền'));
@@ -1217,7 +1312,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   assert(!person.textContent?.includes('Có thể bình luận'));
   assert(!person.textContent?.includes('Bạn kiểm tra giúp mình nhé'));
   await fill(document.querySelector('[data-block-id="mention-group"] textarea')!, '/nhom');
-  await click(document.querySelector('button[title="Nhắc đến 1 nhóm"]'));
+  await click(document.querySelector('button[data-slash-command-title="Nhắc đến 1 nhóm"]'));
   dialog = document.querySelector('[aria-label="Mời và phân quyền nhóm"]')!;
   await fill(dialog.querySelector('[aria-label="Tên nhóm"]')!, 'Nhóm sản phẩm');
   await add('nam.le');
@@ -1236,7 +1331,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   await role('Việt Cường', 'full');
   await click(button('Hủy', dialog));
   await fill(document.querySelector('[data-block-id="mention-reuse"] textarea')!, '@cuong.viet');
-  await click(document.querySelector('button[title="Việt Cường"]'));
+  await click(document.querySelector('button[data-slash-command-title="Việt Cường"]'));
   await mount('/library/private');
   const reused = getStoredDocuments().find(doc => doc.id === 'mentions-test')!.blocks[2];
   assert.equal(reused.content, '@Việt Cường');
@@ -2021,7 +2116,7 @@ test('callout block renders lightbulb icon and prominent border', async () => {
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '/');
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
   });
-  await click(document.querySelector('button[title="Khung chú thích"]'));
+  await click(document.querySelector('button[data-slash-command-title="Khung chú thích"]'));
 
   const newCallout = document.querySelector('[data-block-id="callout-input"] [data-callout-box]')!;
   assert(newCallout);
