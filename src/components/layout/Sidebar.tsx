@@ -196,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? documents.find(doc => doc.id === viewState.documentId)?.space
     : viewState.type === 'folder' ? folders.find(folder => folder.id === viewState.folderId)?.space
     : viewState.type === 'unclassified' ? viewState.space
-    : viewState.type === 'space_root' ? viewState.space : viewState.type === 'private' ? 'personal' : viewState.type === 'company' ? 'company' : undefined;
+    : viewState.type === 'space_root' ? viewState.space : undefined;
   useEffect(() => {
     if (navigatedSpace) setSpaceTab(navigatedSpace);
   }, [locationKey, navigatedSpace]);
@@ -465,7 +465,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const recentDocs = activeDocs
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
+  const favoriteDocs = activeDocs.filter((d) => d.isFavorite && d.space === 'personal');
 
 
   const personalRootDocs = activeDocs
@@ -1145,7 +1145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>GHI CHÉP CỦA TÔI</span>
             </button>
             <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setPersonalExpanded(!personalExpanded)} aria-label="Thu gọn hoặc mở ghi chú của tôi" aria-expanded={personalExpanded} className="p-1 rounded-md hover:bg-[var(--ui-border)]">
+              <button type="button" onClick={() => setPersonalExpanded(!personalExpanded)} aria-label="Thu gọn hoặc mở Ghi chép của tôi" aria-expanded={personalExpanded} className="p-1 rounded-md hover:bg-[var(--ui-border)]">
                 {personalExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
               <SpaceCreateMenu title="Tạo ghi chú mới"
@@ -1359,11 +1359,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         position={docMenuState.position}
         onShare={() => { if (docMenuState.doc) setShareDocument(docMenuState.doc); }}
         onClose={closeDocMenu}
-        onToggleFavorite={() => {
+        onToggleFavorite={docMenuState.doc?.space === 'personal' ? () => {
           if (docMenuState.doc) {
             onToggleFavorite?.(docMenuState.doc.id);
           }
-        }}
+        } : undefined}
         onRename={() => {
           if (docMenuState.doc) {
             setRenamingDocId(docMenuState.doc.id);

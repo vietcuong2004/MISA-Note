@@ -31,7 +31,7 @@ export function AppPages({ view, onNavigate, onUseTemplate, editor, trash, ...wo
     case 'company': return <CompanyPage {...workspace} />;
     case 'templates': return <TemplatesPage onUseTemplate={onUseTemplate} />;
     case 'library': return <LibraryPage {...workspace} />;
-    case 'favorite': return <FavoritesPage {...workspace} />;
+    case 'favorite': return <FavoritesPage {...workspace} onNavigate={onNavigate} />;
     case 'recent': return <RecentPage {...workspace} />;
     case 'unclassified': return <UnclassifiedPage {...workspace} space={view.space} />;
     case 'meeting_notes': return <MeetingsPage {...workspace} />;

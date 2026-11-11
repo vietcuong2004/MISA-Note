@@ -1,3 +1,6 @@
+import { formatDateTime } from '../../utils/dateTime';
+import { commandForShortcut } from './slashCommands';
+import { recordSlashCommand } from '../../utils/slashHistory';
 import { EmptyBlockRow } from './EmptyBlockRow';
 import { navigateEditorArrow } from '../../utils/editorArrowNavigation';
 import { RenameDialog } from '../modals/RenameDialog';
@@ -340,21 +343,25 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSlashState({ isOpen: false, blockId: null, query: '' });
   };
 
-  const handleSelectSlashItem = (type: BlockType, extraProps?: BlockProperties) => {
-    if (!slashState.blockId) return;
+  const handleSelectSlashItem = (type: BlockType, extraProps?: BlockProperties, targetId = slashState.blockId, preserveText = false) => {
+    if (!targetId) return;
+    let focusId = targetId;
 
-    const updatedBlocks = doc.blocks.map((b) => {
-      if (b.id === slashState.blockId) {
-        let props: any = {};
+    const updatedBlocks = doc.blocks.flatMap((b) => {
+      if (b.id === targetId) {
+        const textType = ['paragraph', 'h1', 'h2', 'h3', 'h4', 'bullet', 'numbered', 'checklist', 'callout'].includes(type);
+        const sourceText = b.properties?.listItems?.map(item => item.content).join('\n') ?? b.content;
+        const content = preserveText && textType ? sourceText : '';
+        let props: BlockProperties = preserveText && textType ? { textColor: b.properties?.textColor, backgroundColor: b.properties?.backgroundColor, bold: b.properties?.bold, italic: b.properties?.italic, underline: b.properties?.underline, fontFamily: b.properties?.fontFamily, fontSize: b.properties?.fontSize, inlineLinks: b.properties?.inlineLinks } : {};
         if (['bullet', 'numbered', 'checklist'].includes(type)) props = {
-          listItems: [{ id: `list_${crypto.randomUUID()}`, content: '', checked: false }],
+          ...props, listItems: preserveText && b.properties?.listItems?.length ? b.properties.listItems : [{ id: `list_${crypto.randomUUID()}`, content, checked: false, inlineLinks: props.inlineLinks }],
         };
         if (type === 'toggle') props = { open: true, caption: '' };
-        if (type === 'callout') props = { calloutType: 'info', calloutIcon: '💡' };
+        if (type === 'callout') props = { ...props, calloutType: 'info', calloutIcon: '💡' };
         if (type === 'meeting_info') {
           props = {
             meetingTime: '09:00 - 10:30',
-            meetingDate: new Date().toLocaleDateString('vi-VN'),
+            meetingDate: formatDateTime(new Date()),
             meetingLocation: 'Phòng họp & Google Meet',
             meetingLink: 'https://meet.google.com/xyz',
           };
@@ -404,18 +411,23 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
         }
 
 
-        return {
+        const converted: Block = {
           ...b,
           type,
-          content: extraProps?.mention ? `@${extraProps.mention.groupName || extraProps.mention.emails.map(employeeName).join(', ')}` : '',
+          content: extraProps?.mention ? `@${extraProps.mention.groupName || extraProps.mention.emails.map(employeeName).join(', ')}` : content,
           properties: { ...props, ...extraProps },
         };
+        if (preserveText && !textType && sourceText.trim()) {
+          focusId = `blk_${crypto.randomUUID()}`;
+          return [b, { ...converted, id: focusId }];
+        }
+        return [converted];
       }
       return b;
     });
 
     const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
-    setFocusedBlockId(slashState.blockId);
+    setFocusedBlockId(focusId);
     setDoc(updatedDoc);
     triggerAutoSave(updatedDoc);
     setSlashState({ isOpen: false, blockId: null, query: '' });
@@ -777,8 +789,8 @@ function getTextareaSelectionCoords(
             {wideContent ? <Maximize2 aria-hidden="true" className="h-3.5 w-3.5" /> : <Minimize2 aria-hidden="true" className="h-3.5 w-3.5" />}
             <span>{wideContent ? 'Xem toàn màn hình' : 'Vừa đọc'}</span>
           </button>
-          {/* Favorite Toggle Button */}
-          <button
+          {/* Favorites are personal only. */}
+          {doc.space === 'personal' && <button
             type="button"
             onClick={() => {
               onToggleFavorite(doc.id);
@@ -799,7 +811,7 @@ function getTextareaSelectionCoords(
             <span>
               {doc.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
             </span>
-          </button>
+          </button>}
 
           {/* Share Button (white rounded-xl with border) */}
           <button
@@ -826,10 +838,10 @@ function getTextareaSelectionCoords(
               isFavorite={doc.isFavorite}
               triggerRef={moreButtonRef}
               onClose={() => setShowMoreMenu(false)}
-              onToggleFavorite={() => {
+              onToggleFavorite={doc.space === 'personal' ? () => {
                 onToggleFavorite(doc.id);
                 setDoc((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
-              }}
+              } : undefined}
               onShare={() => setShareOpen(true)}
               onRename={!isReadOnly ? () => setRenameOpen(true) : undefined}
               onMove={!isReadOnly ? () => setMoveOpen(true) : undefined}
@@ -900,19 +912,28 @@ function getTextareaSelectionCoords(
               className="block w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
             />
 
-            {/* Meta Status matching screenshot: "✓ Đã lưu  ·  Cập nhật 2 phút trước" */}
+            {/* Save status and last update time. */}
             <div className="flex items-center gap-2 text-xs text-[var(--ui-tertiary)] mt-2 font-normal">
               <span className="flex items-center gap-1 text-[var(--ui-text-secondary)]">
                 <Check className="w-3.5 h-3.5 stroke-[2]" />
                 <span>Đã lưu</span>
               </span>
               <span>·</span>
-              <span>Cập nhật 2 phút trước</span>
+              <span>Cập nhật {formatDateTime(doc.updatedAt)}</span>
             </div>
           </div>
 
           {/* Blocks container */}
-          <div id="document-editor-container" onKeyDown={navigateEditorArrow} className="space-y-2 relative min-h-[300px] pt-2">
+          <div id="document-editor-container" onKeyDownCapture={event => {
+            if (isReadOnly || event.nativeEvent.isComposing || event.nativeEvent.getModifierState?.('AltGraph')) return;
+            if (!(event.target instanceof HTMLTextAreaElement)) return;
+            const command = commandForShortcut(event);
+            const blockId = event.target.closest<HTMLElement>('[data-block-id]')?.dataset.blockId;
+            if (!command || !blockId) return;
+            event.preventDefault(); event.stopPropagation();
+            recordSlashCommand(command.id);
+            handleSelectSlashItem(command.type, command.properties, blockId, !slashState.isOpen);
+          }} onKeyDown={navigateEditorArrow} className="space-y-2 relative min-h-[300px] pt-2">
             {doc.blocks.map((block, idx) => (
               <React.Fragment key={block.id}>
               <BlockItem
@@ -1079,7 +1100,7 @@ function getTextareaSelectionCoords(
         blockId={editTextDialog.blockId}
         blockType={editTextDialog.blockType}
         authorName={doc.author?.name || 'Việt Cường Vương'}
-        updatedTime={doc.updatedAt ? 'Hôm nay lúc 11:30' : 'Hôm nay lúc 11:30'}
+        updatedTime={formatDateTime(doc.updatedAt)}
         onClose={() => setEditTextDialog((prev) => ({ ...prev, isOpen: false }))}
         onTurnInto={handleTurnIntoBlock}
         onApplyColor={handleApplyColor}

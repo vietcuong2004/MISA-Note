@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import React, { useState } from 'react';
 import {
   Search,
@@ -312,7 +313,7 @@ export const Overview: React.FC<OverviewProps> = ({
                       </div>
                       <div className="flex items-center gap-1 shrink-0 font-mono tabular-nums">
                         <Clock className="w-3 h-3 stroke-[1.75]" />
-                        <span>{new Date(doc.updatedAt).toLocaleDateString('vi-VN')}</span>
+                        <span>{formatDateTime(doc.updatedAt)}</span>
                       </div>
                     </div>
                   </div>

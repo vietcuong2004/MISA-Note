@@ -1,7 +1,8 @@
+import { formatDateTime } from '../../utils/dateTime';
 import { SpaceCreateMenu } from '../../components/layout/SpaceCreateMenu';
 import { FolderActions } from '../../components/layout/FolderActions';
 import React, { useState } from 'react';
-import { Folder as FolderIcon, FolderOpen, Plus, Home, ChevronRight, ChevronDown, LayoutGrid, List, FolderTree, MoreHorizontal, FileText } from 'lucide-react';
+import { Folder as FolderIcon, FolderOpen, Plus, Home, Star, ChevronRight, ChevronDown, LayoutGrid, List, FolderTree, MoreHorizontal, FileText } from 'lucide-react';
 import { DocumentPageProps } from './pageTypes';
 import { NotFoundPage } from './NotFoundPage';
 import { Folder, Document, ViewState, SpaceType } from '../../types';
@@ -14,8 +15,8 @@ import { RenameDialog } from '../../components/modals/RenameDialog';
 type Mode = 'structure' | 'grid' | 'list';
 type Sort = 'sidebar' | 'name-asc' | 'name-desc' | 'updated';
 
-export function FolderPage({ folderId, rootSpace, documents, folders, actions, onNavigate }:
-  DocumentPageProps & { folderId: string; rootSpace?: SpaceType; onNavigate: (view: ViewState) => void }) {
+export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documents, folders, actions, onNavigate }:
+  DocumentPageProps & { folderId: string; rootSpace?: SpaceType; favoritesOnly?: boolean; onNavigate: (view: ViewState) => void }) {
   const [mode, setMode] = useState<Mode>('structure');
   const [sort, setSort] = useState<Sort>('sidebar');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -23,13 +24,15 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
   const [documentMenu, setDocumentMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const folder: Folder | undefined = rootSpace ? { id: '__space_root', name: rootSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty', space: rootSpace, parentId: null, createdAt: '', updatedAt: '' } : folders.find(item => item.id === folderId);
+  const folder: Folder | undefined = rootSpace ? { id: '__space_root', name: favoritesOnly ? 'Yêu thích' : rootSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty', space: rootSpace, parentId: null, createdAt: '', updatedAt: '' } : folders.find(item => item.id === folderId);
   if (!folder) return <NotFoundPage title="Không tìm thấy thư mục" />;
-  const activeDocs = documents.filter(doc => !doc.isTrash && doc.space === folder.space);
+  const activeDocs = documents.filter(doc => !doc.isTrash && (favoritesOnly ? doc.isFavorite && doc.space === 'personal' : doc.space === folder.space));
+  const favoriteFolderIds = new Set(activeDocs.flatMap(doc => doc.folderId ? getFolderAncestors(doc.folderId, folders).map(item => item.id) : []));
+  const HeaderIcon = favoritesOnly ? Star : FolderIcon;
   const ancestors = rootSpace ? [] : getFolderAncestors(folder.id, folders);
   const sortItems = <T extends { updatedAt: string }>(items: T[], name: (item: T) => string): T[] => [...items].sort((a, b) =>
     sort === 'sidebar' ? 0 : sort === 'updated' ? Date.parse(b.updatedAt) - Date.parse(a.updatedAt) : name(a).localeCompare(name(b), 'vi', { numeric: true }) * (sort === 'name-desc' ? -1 : 1));
-  const childFolders = (parentId: string) => sortItems(folders.filter(item => (rootSpace && parentId === folder.id ? !item.parentId : item.parentId === parentId) && item.space === folder.space), item => item.name);
+  const childFolders = (parentId: string) => sortItems(folders.filter(item => (rootSpace && parentId === folder.id ? !item.parentId : item.parentId === parentId) && (favoritesOnly ? favoriteFolderIds.has(item.id) : item.space === folder.space)), item => item.name);
   const folderDocs = (parentId: string) => {
     const notes = activeDocs.filter(doc => (rootSpace && parentId === folder.id ? !doc.folderId : doc.folderId === parentId));
     return sort === 'sidebar' ? notes.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)) : sortItems(notes, doc => doc.title);
@@ -38,7 +41,7 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
   const notes = folderDocs(folder.id);
   const menuDocument = documents.find(doc => doc.id === documentMenu?.id && !doc.isTrash);
   const shareDocument = documents.find(doc => doc.id === shareId && !doc.isTrash);
-  const date = (value: string) => new Date(value).toLocaleDateString('vi-VN');
+  const date = formatDateTime;
   const count = (item: Folder) => childFolders(item.id).length + folderDocs(item.id).length;
 
   const drop = (event: React.DragEvent, parentId: string | null) => {
@@ -54,7 +57,7 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
       actions.onMoveFolder?.(payload.id, parentId, folder.space);
     } else actions.onMoveDocument?.(payload.id, parentId, folder.space);
   };
-  const dropProps = (id: string | null) => ({
+  const dropProps = (id: string | null) => favoritesOnly ? {} : ({
     onDragOver: (event: React.DragEvent) => {
       event.preventDefault(); event.stopPropagation();
       const payload = getDragPayload(event, folders, documents);
@@ -68,7 +71,7 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
     },
     onDrop: (event: React.DragEvent) => drop(event, id),
   });
-  const folderMenu = (item: Folder) => <FolderActions folder={item} onCreateDocument={actions.onCreateDocument}
+  const folderMenu = (item: Folder) => favoritesOnly ? null : <FolderActions folder={item} onCreateDocument={actions.onCreateDocument}
     onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder} onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />;
   const dragFolder = (item: Folder) => ({
     draggable: true,
@@ -81,7 +84,7 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
     <span aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
     <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
     <button type="button" onClick={() => actions.onOpenDocument(doc.id)} className="min-w-0 flex-1 truncate text-left text-xs">{doc.title || 'Không có tiêu đề'}</button>
-    <span className="hidden w-40 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(doc.updatedAt)}</span>
+    <span className="hidden w-52 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(doc.updatedAt)}</span>
     <div className="flex w-14 shrink-0 justify-end">
     <button type="button" aria-label={`Tùy chọn tài liệu ${doc.title}`} onClick={event => {
       const rect = event.currentTarget.getBoundingClientRect();
@@ -102,7 +105,7 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
           : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />}
         <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className="min-w-0 flex-1 truncate text-left text-xs font-medium">{item.name}</button>
         <span className="shrink-0 whitespace-nowrap text-xs text-[var(--ui-muted)]">{count(item)} mục</span>
-        <span className="hidden w-40 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
+        <span className="hidden w-52 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
         <div className="flex w-14 shrink-0 justify-end">{folderMenu(item)}</div>
       </div>
       {!collapsed.has(item.id) && tree(item.id, depth + 1, new Set([...seen, parentId, item.id]))}
@@ -113,9 +116,9 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
   return <div className="flex-1 min-h-0 overflow-y-auto bg-[var(--ui-surface)] text-[var(--ui-text)]">
     <section aria-label="Thao tác thư mục và thư mục con" className="border-b border-[var(--ui-border)]">
       <nav aria-label="Đường dẫn thư mục" className="flex w-full flex-wrap items-center gap-2 px-[5%] py-4 text-sm">
-        <button type="button" {...dropProps(null)} onClick={() => onNavigate({ type: 'space_root', space: folder.space })}
+        <button type="button" {...dropProps(null)} onClick={() => onNavigate(favoritesOnly ? { type: 'favorite' } : { type: 'space_root', space: folder.space })}
           className={`flex items-center gap-2 rounded-lg p-1 text-[var(--ui-accent)] ${dragOver === 'root' ? 'ring-2 ring-[var(--ui-primary)]' : ''}`}>
-          <Home className="h-4 w-4" />{folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
+          <Home className="h-4 w-4" />{favoritesOnly ? 'Yêu thích' : folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
         </button>
         {ancestors.map(item => <React.Fragment key={item.id}><ChevronRight className="h-3.5 w-3.5 text-[var(--ui-tertiary)]" />
           <button type="button" {...dropProps(item.id)} onClick={() => onNavigate({ type: 'folder', folderId: item.id })}
@@ -126,9 +129,9 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
     </section>
     <div className="w-full space-y-6 px-[5%] py-6">
       <header className="flex flex-wrap items-start justify-between gap-5">
-        <div className="flex min-w-0 items-center gap-4"><FolderIcon className="h-14 w-14 shrink-0 text-[var(--ui-text)]" strokeWidth={1.2} />
+        <div className="flex min-w-0 items-center gap-4"><HeaderIcon className="h-14 w-14 shrink-0 text-[var(--ui-text)]" strokeWidth={1.2} />
           <div className="min-w-0"><h1 className="break-words text-3xl font-bold tracking-tight">{folder.name}</h1>
-            <p className="mt-1 text-sm text-[var(--ui-muted)]">Các thư mục và tài liệu bên trong</p></div></div>
+            <p className="mt-1 text-sm text-[var(--ui-muted)]">{favoritesOnly ? 'Các tài liệu quan trọng đã được gắn dấu sao' : 'Các thư mục và tài liệu bên trong'}</p></div></div>
         <div className="flex flex-wrap items-center gap-3">
           <div role="group" aria-label="Cách hiển thị thư mục" className="inline-flex rounded-lg border border-[var(--ui-border)] p-0.5">
             {([{ id: 'structure', label: 'Structure', Icon: FolderTree }, { id: 'grid', label: 'Lưới', Icon: LayoutGrid }, { id: 'list', label: 'Danh sách', Icon: List }] as const).map(({ id, label, Icon }) =>
@@ -138,9 +141,9 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
           <select aria-label="Sắp xếp thư mục" value={sort} onChange={event => setSort(event.target.value as Sort)} className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 text-xs">
             <option value="sidebar">Mặc định</option><option value="name-asc">Tên (A → Z)</option><option value="name-desc">Tên (Z → A)</option><option value="updated">Mới cập nhật</option>
           </select>
-          {rootSpace ? <SpaceCreateMenu title="Tạo mới" onCreateDocument={() => actions.onCreateDocument?.(rootSpace, null)} onCreateFolder={() => actions.onCreateFolder?.(rootSpace, null)} /> : <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
+          {!favoritesOnly && (rootSpace ? <SpaceCreateMenu title="Tạo mới" onCreateDocument={() => actions.onCreateDocument?.(rootSpace, null)} onCreateFolder={() => actions.onCreateFolder?.(rootSpace, null)} /> : <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
             onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder}
-            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />}
+            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />)}
         </div>
       </header>
       <section aria-label="Nội dung thư mục" data-folder-mode={mode} {...dropProps(folder.id)} className="min-h-36">
@@ -157,12 +160,12 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
           </div>
           {notes.length > 0 && <div className="mt-5 rounded-xl border border-[var(--ui-border)]">{notes.map(doc => documentRow(doc))}</div>}
         </>}
-        {!children.length && !notes.length && <p className="py-12 text-center text-sm text-[var(--ui-tertiary)]">Thư mục trống. Tạo tài liệu hoặc thư mục con để bắt đầu.</p>}
+        {!children.length && !notes.length && <p className="py-12 text-center text-sm text-[var(--ui-tertiary)]">{favoritesOnly ? 'Chưa có tài liệu nào được gắn sao yêu thích.' : 'Thư mục trống. Tạo tài liệu hoặc thư mục con để bắt đầu.'}</p>}
       </section>
     </div>
     <DocumentActionMenu isOpen={!!menuDocument} isFavorite={menuDocument?.isFavorite}
       position={documentMenu || undefined} onClose={() => setDocumentMenu(null)}
-      onToggleFavorite={() => { if (menuDocument) actions.onToggleFavorite(menuDocument.id); }}
+      onToggleFavorite={menuDocument?.space === 'personal' ? () => actions.onToggleFavorite(menuDocument.id) : undefined}
       onRename={() => { if (menuDocument) setRenameId(menuDocument.id); }}
       onShare={() => { if (menuDocument) setShareId(menuDocument.id); }}
       onMove={() => { if (menuDocument) actions.onMoveDocumentRequest?.(menuDocument); }}

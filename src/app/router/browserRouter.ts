@@ -4,6 +4,15 @@ import { pathForView, viewForLocation } from './routes';
 export type BrowserNavigation = Pick<Window, 'history' | 'location' | 'addEventListener' | 'removeEventListener' | 'dispatchEvent'>;
 const navigationEvent = 'misa:navigate';
 
+/** Run once at page startup; refreshing discards session data and returns home. */
+export function resetLocationAfterReload(browser: {
+  performance: Pick<Performance, 'getEntriesByType'>;
+  history: Pick<History, 'replaceState'>;
+}) {
+  const navigation = browser.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  if (navigation?.type === 'reload') browser.history.replaceState(null, '', '/private');
+}
+
 /** Native History API navigation: one history entry per page change. */
 export class BrowserRouter {
   constructor(private browser: BrowserNavigation) {}

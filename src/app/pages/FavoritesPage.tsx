@@ -1,8 +1,8 @@
 import React from 'react';
+import { ViewState } from '../../types';
 import { DocumentPageProps } from './pageTypes';
-import { DocumentListPage } from './DocumentListPage';
+import { FolderPage } from './FolderPage';
 
-export function FavoritesPage({ documents, actions }: DocumentPageProps) {
-  return <DocumentListPage title="Yêu thích" description="Các tài liệu quan trọng đã được gắn dấu sao" favorite
-    documents={documents.filter(doc => doc.isFavorite && !doc.isTrash)} onOpenDocument={actions.onOpenDocument} />;
+export function FavoritesPage({ onNavigate, ...workspace }: DocumentPageProps & { onNavigate: (view: ViewState) => void }) {
+  return <FolderPage {...workspace} folderId="" rootSpace="personal" favoritesOnly onNavigate={onNavigate} />;
 }

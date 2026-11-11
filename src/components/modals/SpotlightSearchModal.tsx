@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
@@ -234,7 +235,7 @@ export const SpotlightSearchModal: React.FC<SpotlightSearchModalProps> = ({
                           </>
                         )}
                         <span>·</span>
-                        <span>{new Date(doc.updatedAt).toLocaleDateString('vi-VN')}</span>
+                        <span>{formatDateTime(doc.updatedAt)}</span>
                       </div>
                     </div>
                   </div>

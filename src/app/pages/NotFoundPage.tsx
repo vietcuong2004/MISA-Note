@@ -6,6 +6,6 @@ export function NotFoundPage({ title = 'Không tìm thấy trang', onGoHome }: {
     <h1 className="text-xl font-semibold">{title}</h1>
     <p className="text-sm text-[var(--ui-muted)]">Nội dung không tồn tại hoặc đã được xóa.</p>
     <a href={pathForView({ type: 'private' })} onClick={event => { if (onGoHome) { event.preventDefault(); onGoHome(); } }}
-      className="rounded-lg theme-primary bg-[var(--ui-primary)] text-white px-4 py-2 text-sm">Về ghi chú của tôi</a>
+      className="rounded-lg theme-primary bg-[var(--ui-primary)] text-white px-4 py-2 text-sm">Về Ghi chép của tôi</a>
   </div>;
 }

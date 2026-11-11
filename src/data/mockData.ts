@@ -1,3 +1,4 @@
+import { formatDateTime } from '../utils/dateTime';
 import { Block, BlockType, Document, Folder, User } from '../types';
 import { ODT_SAMPLE_BLOCKS } from './odtSample';
 
@@ -71,6 +72,197 @@ export const INITIAL_FOLDERS: Folder[] = [
 
 const NOW = Date.now();
 
+export const TEMPLATES = [
+  {
+    id: 'tpl_personal_note',
+    title: 'Ghi chú cá nhân',
+    description: 'Ghi chép nhanh các suy nghĩ, ý tưởng và danh sách việc cần giải quyết trong ngày.',
+    type: 'note' as const,
+    space: 'personal' as const,
+    icon: '📝',
+    tags: ['Cá nhân', 'Ý tưởng', 'Ghi chú nhanh'],
+    createBlocks: (): Block[] => [
+      { id: 'b_t1_1', type: 'h1', content: 'Ý tưởng & Ghi chép hôm nay' },
+      { id: 'b_t1_3', type: 'h2', content: '1. Nội dung cốt lõi' },
+      { id: 'b_t1_4', type: 'paragraph', content: 'Bắt đầu gõ nội dung hoặc gõ / để chèn các tiện ích...' },
+      { id: 'b_t1_5', type: 'h2', content: '2. Việc cần làm trong ngày' },
+      { id: 'b_t1_6', type: 'checklist', content: 'Kiểm tra hộp thư và phản hồi các yêu cầu gấp', properties: { checked: false } },
+      { id: 'b_t1_7', type: 'checklist', content: 'Đồng bộ tài liệu với nhóm sản phẩm', properties: { checked: false } },
+    ],
+  },
+  {
+    id: 'tpl_meeting_minutes',
+    title: 'Biên bản cuộc họp',
+    description: 'Biên bản chuẩn gồm thời gian, người tham dự, nội dung, kết luận và việc cần làm.',
+    type: 'meeting' as const,
+    space: 'company' as const,
+    icon: '📋',
+    tags: ['Biên bản họp', 'Nội bộ', 'Theo dõi'],
+    createBlocks: (): Block[] => [
+      {
+        id: 'b_t2_1',
+        type: 'meeting_info',
+        content: 'Chủ đề: Cuộc họp định kỳ thảo luận tiến độ công việc',
+        properties: {
+          meetingDate: formatDateTime(new Date()),
+          meetingTime: '10:00 - 11:30',
+          meetingLocation: 'Phòng họp chính & Online',
+          meetingLink: 'https://meet.google.com/internal-sync',
+        },
+      },
+      {
+        id: 'b_t2_2',
+        type: 'meeting_attendees',
+        content: 'Thành phần tham dự',
+        properties: {
+          attendees: [
+            { name: 'Nguyễn Văn Minh', role: 'Chủ trì cuộc họp', status: 'present' },
+            { name: 'Trần Thị Thu Hà', role: 'Thành viên tham dự', status: 'present' },
+            { name: 'Phạm Quỳnh Anh', role: 'Thư ký cuộc họp', status: 'present' },
+          ],
+        },
+      },
+      { id: 'b_t2_3', type: 'h2', content: '1. Chương trình cuộc họp' },
+      {
+        id: 'b_t2_4',
+        type: 'meeting_agenda',
+        content: 'Nội dung chi tiết',
+        properties: {
+          agenda: [
+            { id: 'ag_tpl_1', title: 'Báo cáo tổng kết tuần vừa qua', duration: '15 phút', speaker: 'Quỳnh Anh' },
+            { id: 'ag_tpl_2', title: 'Thảo luận các vướng mắc và giải pháp tháo gỡ', duration: '30 phút', speaker: 'Cả nhóm' },
+          ],
+        },
+      },
+      { id: 'b_t2_5', type: 'h2', content: '2. Kết luận cuộc họp' },
+      {
+        id: 'b_t2_6',
+        type: 'callout',
+        content: 'Các bên thống nhất giải pháp và kế hoạch triển khai cho tuần tới mà không có ý kiến phản đối.',
+        properties: { calloutType: 'success' },
+      },
+      { id: 'b_t2_7', type: 'h2', content: '3. Đầu việc phân công (Action Items)' },
+      {
+        id: 'b_t2_8',
+        type: 'meeting_action_items',
+        content: 'Nhiệm vụ cụ thể sau cuộc họp',
+        properties: {
+          actionItems: [
+            {
+              id: 'act_tpl_1',
+              task: 'Soạn thảo tài liệu hướng dẫn và gửi cho các bên liên quan',
+              assignee: 'Phạm Quỳnh Anh',
+              dueDate: 'Hết ngày mai',
+              completed: false,
+              priority: 'high',
+            },
+            {
+              id: 'act_tpl_2',
+              task: 'Cập nhật lại trạng thái trên hệ thống quản lý dự án',
+              assignee: 'Trần Thị Thu Hà',
+              dueDate: 'Cuối tuần',
+              completed: false,
+              priority: 'medium',
+            },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    id: 'tpl_work_plan',
+    title: 'Kế hoạch công việc',
+    description: 'Bản kế hoạch hành động chi tiết theo mục tiêu, bảng theo dõi và các mốc thời gian.',
+    type: 'plan' as const,
+    space: 'company' as const,
+    icon: '🎯',
+    tags: ['Kế hoạch', 'Dự án', 'Mục tiêu'],
+    createBlocks: (): Block[] => [
+      { id: 'b_t3_1', type: 'h1', content: 'Kế hoạch triển khai dự án' },
+      { id: 'b_t3_2', type: 'callout', content: 'Bản kế hoạch tổng thể nhằm đạt được mục tiêu quý với sự phối hợp liên phòng ban.', properties: { calloutType: 'info' } },
+      { id: 'b_t3_3', type: 'h2', content: '1. Bảng phân kỳ giai đoạn' },
+      {
+        id: 'b_t3_4',
+        type: 'table',
+        content: 'Tiến độ phân kỳ',
+        properties: {
+          tableData: {
+            headers: ['Giai đoạn', 'Nội dung triển khai', 'Thời gian', 'Người phụ trách', 'Trạng thái'],
+            rows: [
+              ['Giai đoạn 1', 'Nghiên cứu & Khảo sát yêu cầu', 'Tuần 1 - 2', 'Minh Nguyễn', 'Hoàn tất'],
+              ['Giai đoạn 2', 'Thiết kế nguyên mẫu & Kiểm thử', 'Tuần 3 - 4', 'Nam Lê', 'Đang làm'],
+              ['Giai đoạn 3', 'Phát hành chính thức & Đào tạo', 'Tuần 5', 'Quỳnh Anh', 'Chờ xử lý'],
+            ],
+          },
+        },
+      },
+      { id: 'b_t3_5', type: 'h2', content: '2. Các tiêu chí nghiệm thu' },
+      { id: 'b_t3_6', type: 'checklist', content: 'Hoàn thiện tài liệu kiến trúc', properties: { checked: true } },
+      { id: 'b_t3_7', type: 'checklist', content: 'Đạt kiểm thử bảo mật & an toàn dữ liệu', properties: { checked: false } },
+    ],
+  },
+  {
+    id: 'tpl_weekly_plan',
+    title: 'Kế hoạch tuần',
+    description: 'Xác định mục tiêu tuần, sắp xếp công việc và tổng kết kết quả thực hiện.',
+    type: 'plan' as const,
+    space: 'personal' as const,
+    icon: '📅',
+    tags: ['Kế hoạch', 'Công việc', 'Theo tuần'],
+    createBlocks: (): Block[] => [
+      { id: 'b_week_1', type: 'h1', content: 'Kế hoạch tuần' },
+      { id: 'b_week_2', type: 'paragraph', content: 'Tuần: … / … / … đến … / … / …' },
+      { id: 'b_week_3', type: 'h2', content: 'Mục tiêu tuần này' },
+      { id: 'b_week_4', type: 'checklist', content: 'Mục tiêu ưu tiên 1', properties: { checked: false } },
+      { id: 'b_week_5', type: 'checklist', content: 'Mục tiêu ưu tiên 2', properties: { checked: false } },
+      { id: 'b_week_6', type: 'h2', content: 'Công việc chính' },
+      { id: 'b_week_7', type: 'table', content: '', properties: { tableData: {
+        headers: ['Ngày', 'Công việc', 'Kết quả mong đợi', 'Trạng thái'],
+        rows: [
+          ['Thứ Hai', '', '', 'Chưa bắt đầu'],
+          ['Thứ Ba', '', '', 'Chưa bắt đầu'],
+          ['Thứ Tư', '', '', 'Chưa bắt đầu'],
+          ['Thứ Năm', '', '', 'Chưa bắt đầu'],
+          ['Thứ Sáu', '', '', 'Chưa bắt đầu'],
+        ],
+      } } },
+      { id: 'b_week_8', type: 'h2', content: 'Vướng mắc và hỗ trợ cần thiết' },
+      { id: 'b_week_9', type: 'paragraph', content: '' },
+      { id: 'b_week_10', type: 'h2', content: 'Tổng kết cuối tuần' },
+      { id: 'b_week_11', type: 'bullet', content: 'Kết quả đạt được:' },
+      { id: 'b_week_12', type: 'bullet', content: 'Việc cần chuyển sang tuần sau:' },
+      { id: 'b_week_13', type: 'bullet', content: 'Điều cần cải thiện:' },
+    ],
+  },
+  {
+    id: 'tpl_internal_doc',
+    title: 'Tài liệu nội bộ',
+    description: 'Tài liệu hướng dẫn, quy trình vận hành và cẩm nang chia sẻ cho toàn thể công ty.',
+    type: 'internal_doc' as const,
+    space: 'company' as const,
+    icon: '📚',
+    tags: ['Tài liệu công ty', 'Quy trình', 'Hướng dẫn'],
+    createBlocks: (): Block[] => [
+      { id: 'b_t4_1', type: 'h1', content: 'Cẩm nang & Quy trình vận hành chuẩn (SOP)' },
+      { id: 'b_t4_2', type: 'paragraph', content: 'Tài liệu này quy định các bước chuẩn hóa nhằm nâng cao hiệu suất làm việc nhóm và bảo toàn tri thức tổ chức.' },
+      { id: 'b_t4_3', type: 'divider', content: '' },
+      { id: 'b_t4_4', type: 'h2', content: '1. Quy định chung' },
+      { id: 'b_t4_5', type: 'bullet', content: 'Mọi tài liệu quan trọng phải được lưu trữ đúng thư mục phòng ban tương ứng.' },
+      { id: 'b_t4_6', type: 'bullet', content: 'Tài liệu phải được gắn thẻ (tag) rõ ràng để thuận tiện cho việc tra cứu trên Thư viện.' },
+      { id: 'b_t4_7', type: 'h2', content: '2. Các câu hỏi thường gặp (FAQ)' },
+      {
+        id: 'b_t4_8',
+        type: 'toggle',
+        content: 'Làm thế nào để yêu cầu cấp quyền Chỉnh sửa cho tài liệu?',
+        properties: {
+          open: false,
+          caption: 'Nhấn vào nút Chia sẻ ở góc trên bên phải của tài liệu và chọn người dùng cần cấp quyền.',
+        },
+      },
+    ],
+  },
+];
+
 export const INITIAL_DOCUMENTS: Document[] = [
   {
     id: 'doc_odt_meeting_20261026',
@@ -88,6 +280,41 @@ export const INITIAL_DOCUMENTS: Document[] = [
     createdAt: '2026-10-26T06:40:00Z',
     updatedAt: new Date(NOW - 60 * 1000).toISOString(),
     blocks: ODT_SAMPLE_BLOCKS,
+  },
+  {
+    id: 'doc_personal_production_meeting',
+    title: 'Biên bản giao ban sản xuất',
+    icon: '📅',
+    space: 'personal',
+    folderId: 'fld_work',
+    type: 'meeting',
+    tags: ['Cuộc họp', 'Sản xuất'],
+    permission: 'owner',
+    isPrivate: true,
+    author: CURRENT_USER,
+    isFavorite: true,
+    isTrash: false,
+    createdAt: '2026-10-26T06:40:00Z',
+    updatedAt: new Date(NOW - 60 * 1000).toISOString(),
+    blocks: structuredClone(ODT_SAMPLE_BLOCKS).map(block => ({ ...block, id: `personal_${block.id}` })),
+  },
+  {
+    id: 'doc_personal_meeting_minutes',
+    title: 'Biên bản cuộc họp',
+    icon: '📋',
+    space: 'personal',
+    folderId: 'fld_work',
+    type: 'meeting',
+    tags: ['Biên bản họp', 'Nội bộ', 'Theo dõi'],
+    permission: 'owner',
+    isPrivate: true,
+    author: CURRENT_USER,
+    isFavorite: false,
+    isTrash: false,
+    createdAt: new Date(NOW - 10 * 60 * 1000).toISOString(),
+    updatedAt: new Date(NOW - 5 * 60 * 1000).toISOString(),
+    blocks: TEMPLATES.find(template => template.id === 'tpl_meeting_minutes')!.createBlocks()
+      .map(block => ({ ...block, id: `personal_minutes_${block.id}` })),
   },
   {
     id: 'doc_week_plan',
@@ -193,7 +420,7 @@ export const INITIAL_DOCUMENTS: Document[] = [
         type: 'meeting_info',
         content: 'Cuộc họp sản phẩm tuần 45 - Rà soát tiến độ sprint',
         properties: {
-          meetingDate: new Date().toLocaleDateString('vi-VN'),
+          meetingDate: formatDateTime(new Date()),
           meetingTime: '14:00 - 15:30',
           meetingLocation: 'Phòng họp sáng tạo & Google Meet',
         },
@@ -433,196 +660,5 @@ export const SLASH_COMMANDS: SlashMenuItem[] = [
     iconName: 'CheckCheck',
     shortcut: 'todo',
     group: 'meeting',
-  },
-];
-
-export const TEMPLATES = [
-  {
-    id: 'tpl_personal_note',
-    title: 'Ghi chú cá nhân',
-    description: 'Ghi chép nhanh các suy nghĩ, ý tưởng và danh sách việc cần giải quyết trong ngày.',
-    type: 'note' as const,
-    space: 'personal' as const,
-    icon: '📝',
-    tags: ['Cá nhân', 'Ý tưởng', 'Ghi chú nhanh'],
-    createBlocks: (): Block[] => [
-      { id: 'b_t1_1', type: 'h1', content: 'Ý tưởng & Ghi chép hôm nay' },
-      { id: 'b_t1_3', type: 'h2', content: '1. Nội dung cốt lõi' },
-      { id: 'b_t1_4', type: 'paragraph', content: 'Bắt đầu gõ nội dung hoặc gõ / để chèn các tiện ích...' },
-      { id: 'b_t1_5', type: 'h2', content: '2. Việc cần làm trong ngày' },
-      { id: 'b_t1_6', type: 'checklist', content: 'Kiểm tra hộp thư và phản hồi các yêu cầu gấp', properties: { checked: false } },
-      { id: 'b_t1_7', type: 'checklist', content: 'Đồng bộ tài liệu với nhóm sản phẩm', properties: { checked: false } },
-    ],
-  },
-  {
-    id: 'tpl_meeting_minutes',
-    title: 'Biên bản cuộc họp',
-    description: 'Biên bản chuẩn gồm thời gian, người tham dự, nội dung, kết luận và việc cần làm.',
-    type: 'meeting' as const,
-    space: 'company' as const,
-    icon: '📋',
-    tags: ['Biên bản họp', 'Nội bộ', 'Theo dõi'],
-    createBlocks: (): Block[] => [
-      {
-        id: 'b_t2_1',
-        type: 'meeting_info',
-        content: 'Chủ đề: Cuộc họp định kỳ thảo luận tiến độ công việc',
-        properties: {
-          meetingDate: new Date().toLocaleDateString('vi-VN'),
-          meetingTime: '10:00 - 11:30',
-          meetingLocation: 'Phòng họp chính & Online',
-          meetingLink: 'https://meet.google.com/internal-sync',
-        },
-      },
-      {
-        id: 'b_t2_2',
-        type: 'meeting_attendees',
-        content: 'Thành phần tham dự',
-        properties: {
-          attendees: [
-            { name: 'Nguyễn Văn Minh', role: 'Chủ trì cuộc họp', status: 'present' },
-            { name: 'Trần Thị Thu Hà', role: 'Thành viên tham dự', status: 'present' },
-            { name: 'Phạm Quỳnh Anh', role: 'Thư ký cuộc họp', status: 'present' },
-          ],
-        },
-      },
-      { id: 'b_t2_3', type: 'h2', content: '1. Chương trình cuộc họp' },
-      {
-        id: 'b_t2_4',
-        type: 'meeting_agenda',
-        content: 'Nội dung chi tiết',
-        properties: {
-          agenda: [
-            { id: 'ag_tpl_1', title: 'Báo cáo tổng kết tuần vừa qua', duration: '15 phút', speaker: 'Quỳnh Anh' },
-            { id: 'ag_tpl_2', title: 'Thảo luận các vướng mắc và giải pháp tháo gỡ', duration: '30 phút', speaker: 'Cả nhóm' },
-          ],
-        },
-      },
-      { id: 'b_t2_5', type: 'h2', content: '2. Kết luận cuộc họp' },
-      {
-        id: 'b_t2_6',
-        type: 'callout',
-        content: 'Các bên thống nhất giải pháp và kế hoạch triển khai cho tuần tới mà không có ý kiến phản đối.',
-        properties: { calloutType: 'success' },
-      },
-      { id: 'b_t2_7', type: 'h2', content: '3. Đầu việc phân công (Action Items)' },
-      {
-        id: 'b_t2_8',
-        type: 'meeting_action_items',
-        content: 'Nhiệm vụ cụ thể sau cuộc họp',
-        properties: {
-          actionItems: [
-            {
-              id: 'act_tpl_1',
-              task: 'Soạn thảo tài liệu hướng dẫn và gửi cho các bên liên quan',
-              assignee: 'Phạm Quỳnh Anh',
-              dueDate: 'Hết ngày mai',
-              completed: false,
-              priority: 'high',
-            },
-            {
-              id: 'act_tpl_2',
-              task: 'Cập nhật lại trạng thái trên hệ thống quản lý dự án',
-              assignee: 'Trần Thị Thu Hà',
-              dueDate: 'Cuối tuần',
-              completed: false,
-              priority: 'medium',
-            },
-          ],
-        },
-      },
-    ],
-  },
-  {
-    id: 'tpl_work_plan',
-    title: 'Kế hoạch công việc',
-    description: 'Bản kế hoạch hành động chi tiết theo mục tiêu, bảng theo dõi và các mốc thời gian.',
-    type: 'plan' as const,
-    space: 'company' as const,
-    icon: '🎯',
-    tags: ['Kế hoạch', 'Dự án', 'Mục tiêu'],
-    createBlocks: (): Block[] => [
-      { id: 'b_t3_1', type: 'h1', content: 'Kế hoạch triển khai dự án' },
-      { id: 'b_t3_2', type: 'callout', content: 'Bản kế hoạch tổng thể nhằm đạt được mục tiêu quý với sự phối hợp liên phòng ban.', properties: { calloutType: 'info' } },
-      { id: 'b_t3_3', type: 'h2', content: '1. Bảng phân kỳ giai đoạn' },
-      {
-        id: 'b_t3_4',
-        type: 'table',
-        content: 'Tiến độ phân kỳ',
-        properties: {
-          tableData: {
-            headers: ['Giai đoạn', 'Nội dung triển khai', 'Thời gian', 'Người phụ trách', 'Trạng thái'],
-            rows: [
-              ['Giai đoạn 1', 'Nghiên cứu & Khảo sát yêu cầu', 'Tuần 1 - 2', 'Minh Nguyễn', 'Hoàn tất'],
-              ['Giai đoạn 2', 'Thiết kế nguyên mẫu & Kiểm thử', 'Tuần 3 - 4', 'Nam Lê', 'Đang làm'],
-              ['Giai đoạn 3', 'Phát hành chính thức & Đào tạo', 'Tuần 5', 'Quỳnh Anh', 'Chờ xử lý'],
-            ],
-          },
-        },
-      },
-      { id: 'b_t3_5', type: 'h2', content: '2. Các tiêu chí nghiệm thu' },
-      { id: 'b_t3_6', type: 'checklist', content: 'Hoàn thiện tài liệu kiến trúc', properties: { checked: true } },
-      { id: 'b_t3_7', type: 'checklist', content: 'Đạt kiểm thử bảo mật & an toàn dữ liệu', properties: { checked: false } },
-    ],
-  },
-  {
-    id: 'tpl_weekly_plan',
-    title: 'Kế hoạch tuần',
-    description: 'Xác định mục tiêu tuần, sắp xếp công việc và tổng kết kết quả thực hiện.',
-    type: 'plan' as const,
-    space: 'personal' as const,
-    icon: '📅',
-    tags: ['Kế hoạch', 'Công việc', 'Theo tuần'],
-    createBlocks: (): Block[] => [
-      { id: 'b_week_1', type: 'h1', content: 'Kế hoạch tuần' },
-      { id: 'b_week_2', type: 'paragraph', content: 'Tuần: … / … / … đến … / … / …' },
-      { id: 'b_week_3', type: 'h2', content: 'Mục tiêu tuần này' },
-      { id: 'b_week_4', type: 'checklist', content: 'Mục tiêu ưu tiên 1', properties: { checked: false } },
-      { id: 'b_week_5', type: 'checklist', content: 'Mục tiêu ưu tiên 2', properties: { checked: false } },
-      { id: 'b_week_6', type: 'h2', content: 'Công việc chính' },
-      { id: 'b_week_7', type: 'table', content: '', properties: { tableData: {
-        headers: ['Ngày', 'Công việc', 'Kết quả mong đợi', 'Trạng thái'],
-        rows: [
-          ['Thứ Hai', '', '', 'Chưa bắt đầu'],
-          ['Thứ Ba', '', '', 'Chưa bắt đầu'],
-          ['Thứ Tư', '', '', 'Chưa bắt đầu'],
-          ['Thứ Năm', '', '', 'Chưa bắt đầu'],
-          ['Thứ Sáu', '', '', 'Chưa bắt đầu'],
-        ],
-      } } },
-      { id: 'b_week_8', type: 'h2', content: 'Vướng mắc và hỗ trợ cần thiết' },
-      { id: 'b_week_9', type: 'paragraph', content: '' },
-      { id: 'b_week_10', type: 'h2', content: 'Tổng kết cuối tuần' },
-      { id: 'b_week_11', type: 'bullet', content: 'Kết quả đạt được:' },
-      { id: 'b_week_12', type: 'bullet', content: 'Việc cần chuyển sang tuần sau:' },
-      { id: 'b_week_13', type: 'bullet', content: 'Điều cần cải thiện:' },
-    ],
-  },
-  {
-    id: 'tpl_internal_doc',
-    title: 'Tài liệu nội bộ',
-    description: 'Tài liệu hướng dẫn, quy trình vận hành và cẩm nang chia sẻ cho toàn thể công ty.',
-    type: 'internal_doc' as const,
-    space: 'company' as const,
-    icon: '📚',
-    tags: ['Tài liệu công ty', 'Quy trình', 'Hướng dẫn'],
-    createBlocks: (): Block[] => [
-      { id: 'b_t4_1', type: 'h1', content: 'Cẩm nang & Quy trình vận hành chuẩn (SOP)' },
-      { id: 'b_t4_2', type: 'paragraph', content: 'Tài liệu này quy định các bước chuẩn hóa nhằm nâng cao hiệu suất làm việc nhóm và bảo toàn tri thức tổ chức.' },
-      { id: 'b_t4_3', type: 'divider', content: '' },
-      { id: 'b_t4_4', type: 'h2', content: '1. Quy định chung' },
-      { id: 'b_t4_5', type: 'bullet', content: 'Mọi tài liệu quan trọng phải được lưu trữ đúng thư mục phòng ban tương ứng.' },
-      { id: 'b_t4_6', type: 'bullet', content: 'Tài liệu phải được gắn thẻ (tag) rõ ràng để thuận tiện cho việc tra cứu trên Thư viện.' },
-      { id: 'b_t4_7', type: 'h2', content: '2. Các câu hỏi thường gặp (FAQ)' },
-      {
-        id: 'b_t4_8',
-        type: 'toggle',
-        content: 'Làm thế nào để yêu cầu cấp quyền Chỉnh sửa cho tài liệu?',
-        properties: {
-          open: false,
-          caption: 'Nhấn vào nút Chia sẻ ở góc trên bên phải của tài liệu và chọn người dùng cần cấp quyền.',
-        },
-      },
-    ],
   },
 ];

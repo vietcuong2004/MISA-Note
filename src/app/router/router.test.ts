@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ViewState } from '../../types';
-import { BrowserNavigation, BrowserRouter } from './browserRouter';
+import { BrowserNavigation, BrowserRouter, resetLocationAfterReload } from './browserRouter';
 import { documentUrl, pathForView, viewForLocation } from './routes';
 
 const pages: [ViewState, string][] = [
@@ -56,6 +56,21 @@ test('direct navigation and reload preserve each requested page', () => {
     assert.deepEqual(viewForLocation(router.getSnapshot()), view);
     const reloaded = new TestBrowser(tab.location.href).router();
     assert.deepEqual(viewForLocation(reloaded.getSnapshot()), view);
+    assert.equal(tab.entries.length, 1);
+  }
+});
+
+test('page startup returns to private only on refresh and replaces the current history entry', () => {
+  for (const type of ['reload', 'navigate', 'back_forward'] as const) {
+    const tab = new TestBrowser('/documents/temporary-note?mode=edit#section');
+    resetLocationAfterReload({ history: tab.history, performance: {
+      getEntriesByType: () => [{ type } as PerformanceNavigationTiming],
+    } });
+    assert.equal(tab.location.pathname, type === 'reload' ? '/private' : '/documents/temporary-note');
+    if (type === 'reload') {
+      assert.equal(tab.location.search, '');
+      assert.equal(tab.location.hash, '');
+    }
     assert.equal(tab.entries.length, 1);
   }
 });

@@ -26,6 +26,7 @@ import {
   CheckSquare,
   Users,
   Palette,
+  PanelLeft,
 } from 'lucide-react';
 import { CURRENT_USER } from '../../data/mockData';
 import { ThemeId } from '../../app/theme/themes';
@@ -34,6 +35,8 @@ import { ThemePicker } from './ThemePicker';
 interface HeaderProps {
   theme: ThemeId;
   onThemeChange: (theme: ThemeId) => void;
+  sidebarVariant: 1 | 2;
+  onSidebarVariantChange: (variant: 1 | 2) => void;
   onOpenSearch: () => void;
   onOpenChat: () => void;
   onNavigateHome?: () => void;
@@ -42,6 +45,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   theme,
   onThemeChange,
+  sidebarVariant,
+  onSidebarVariantChange,
   onOpenSearch,
   onOpenChat,
   onNavigateHome
@@ -653,7 +658,27 @@ export const Header: React.FC<HeaderProps> = ({
                         <span className="flex items-center gap-3"><Palette className="w-4 h-4 text-gray-500" /><span>Giao diện</span></span>
                         <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showAppearance ? 'rotate-180' : ''}`} />
                       </button>
-                      {showAppearance && <ThemePicker theme={theme} onChange={onThemeChange} />}
+                      {showAppearance && <>
+                        <ThemePicker theme={theme} onChange={onThemeChange} />
+                        <div role="radiogroup" aria-label="Kiểu thanh bên" className="mx-3 mb-2 border-t border-[var(--ui-border)] pt-2 space-y-1">
+                          {([1, 2] as const).map(variant => <button key={variant} type="button" role="radio"
+                            aria-label={`Sidebar${variant}`} aria-checked={sidebarVariant === variant}
+                            tabIndex={sidebarVariant === variant ? 0 : -1}
+                            onClick={() => onSidebarVariantChange(variant)}
+                            onKeyDown={event => {
+                              if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                              event.preventDefault();
+                              const next = event.key === 'Home' ? 1 : event.key === 'End' ? 2 : variant === 1 ? 2 : 1;
+                              onSidebarVariantChange(next);
+                              event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[aria-label="Sidebar${next}"]`)?.focus();
+                            }}
+                            className={`flex w-full items-center gap-2.5 rounded-lg border p-2 text-left text-xs text-[var(--ui-text)] transition-colors ${sidebarVariant === variant ? 'border-[var(--ui-accent)] bg-[var(--ui-selected)]' : 'border-transparent hover:bg-[var(--ui-hover)]'}`}>
+                            <PanelLeft className="h-4 w-4 text-[var(--ui-muted)]" />
+                            <span className="flex-1">Sidebar{variant}</span>
+                            {sidebarVariant === variant && <Check className="h-4 w-4 text-[var(--ui-accent)]" />}
+                          </button>)}
+                        </div>
+                      </>}
 
                       {/* Language Switcher */}
                       <div className="misa-menuaccount-menu-item flex items-center justify-between px-4 py-2 text-xs text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors">

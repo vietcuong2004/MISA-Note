@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import { LinkedTextarea, shiftInlineLinks } from './LinkedTextarea';
 import { TableBlock } from './TableBlock';
 import { LinkBlock } from './LinkBlock';
@@ -103,16 +104,23 @@ export const BlockItem: React.FC<BlockItemProps> = ({
     return () => window.document.removeEventListener('mousedown', handleClickOutside);
   }, [showMenu]);
 
-  const adjustHeight = () => {
-    if (textRef.current) {
-      textRef.current.style.height = 'auto';
-      textRef.current.style.height = `${textRef.current.scrollHeight}px`;
-    }
-  };
-
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const input = textRef.current;
+    if (!input) return;
+    const adjustHeight = () => {
+      input.style.height = 'auto';
+      input.style.height = `${input.scrollHeight}px`;
+    };
     adjustHeight();
-  }, [block.content]);
+    let previousWidth = input.getBoundingClientRect().width;
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== undefined && width !== previousWidth) { previousWidth = width; adjustHeight(); }
+    }) : undefined;
+    observer?.observe(input);
+    window.addEventListener('resize', adjustHeight);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', adjustHeight); };
+  }, [block.content, block.type, block.properties?.fontSize, block.properties?.fontFamily, block.properties?.bold, block.properties?.italic]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -373,7 +381,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 <input
                   type="text"
                   disabled={isReadOnly}
-                  value={props.meetingDate || 'Hôm nay'}
+                  value={isReadOnly ? formatDateTime(props.meetingDate) : props.meetingDate || formatDateTime(new Date())}
                   onChange={(e) =>
                     onUpdate(block.id, block.content, { ...props, meetingDate: e.target.value })
                   }
@@ -612,7 +620,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                       👤 {act.assignee}
                     </span>
                     <span className="text-[var(--ui-tertiary)] bg-[var(--ui-hover)] px-2.5 py-0.5 rounded-md border border-[var(--ui-border)] font-medium font-mono tabular-nums">
-                      ⏰ {act.dueDate}
+                      ⏰ {formatDateTime(act.dueDate)}
                     </span>
                   </div>
                 </div>

@@ -11,6 +11,8 @@ import {
 } from '../../utils/dnd';
 
 interface Props {
+  navigateWithoutExpand?: boolean;
+  showNameTooltips?: boolean;
   folders: Folder[];
   documents: Document[];
   space: SpaceType;
@@ -187,7 +189,7 @@ export function FolderTree(props: Props) {
             {/* Folder Header Row */}
             <div
               data-selected={selected}
-              onClick={() => props.onToggle(folder.id)}
+              onClick={() => props.navigateWithoutExpand ? props.onNavigate({ type: 'folder', folderId: folder.id }) : props.onToggle(folder.id)}
               draggable={props.newFolderId !== folder.id}
               onDragStart={handleFolderDragStart}
               onDragEnd={handleFolderDragEnd}
@@ -262,19 +264,20 @@ export function FolderTree(props: Props) {
                   <>
                     <span
                       role="button"
+                      title={props.showNameTooltips ? folder.name : undefined}
                       tabIndex={0}
                       className="truncate font-medium text-xs text-left cursor-grab active:cursor-grabbing select-none flex-1 min-w-0 hover:text-[var(--ui-primary)]"
                       aria-current={props.view.type === 'folder' && props.view.folderId === folder.id ? 'page' : undefined}
                       onClick={(event) => {
                         event.stopPropagation();
-                        if (!open) props.onToggle(folder.id);
+                        if (!open && !props.navigateWithoutExpand) props.onToggle(folder.id);
                         props.onNavigate({ type: 'folder', folderId: folder.id });
                       }}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
                           event.stopPropagation();
-                          if (!open) props.onToggle(folder.id);
+                          if (!open && !props.navigateWithoutExpand) props.onToggle(folder.id);
                           props.onNavigate({ type: 'folder', folderId: folder.id });
                         }
                       }}

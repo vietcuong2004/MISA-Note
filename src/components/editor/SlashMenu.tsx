@@ -34,7 +34,7 @@ function matchCommand(item: SlashCommand, query: string): number {
   if (words.some(word => word.startsWith(query))) return 2;
   if (title.includes(query)) return 3;
   if (type.startsWith(query)) return 4;
-  return query.split(/\s+/).every(word => haystack.includes(word)) ? 5 : -1;
+  return query.split(/\s+/).every(word => haystack.split(/\s+/).some(token => token.startsWith(word))) ? 5 : -1;
 }
 
 const icons: Partial<Record<BlockType, typeof Type>> = {
@@ -93,12 +93,12 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
   useEffect(() => { setSelectedIndex(0); }, [query]);
   useLayoutEffect(() => {
     const placeMenu = () => {
-      const maxHeight = Math.max(64, Math.min(448, window.innerHeight * 0.4, window.innerHeight - 68));
+      const maxHeight = Math.max(64, Math.min(560, window.innerHeight * 0.6, window.innerHeight - 68));
       const height = Math.min(containerRef.current?.scrollHeight || maxHeight, maxHeight);
       const anchorTop = position?.top ?? 160;
       const top = window.innerHeight - anchorTop - 12 >= height ? anchorTop : anchorTop - height - 32;
       setLayout({ top: Math.max(56, Math.min(top, window.innerHeight - height - 12)),
-        left: Math.max(12, Math.min(position?.left ?? 320, window.innerWidth - 336)), maxHeight });
+        left: Math.max(12, Math.min(position?.left ?? 320, window.innerWidth - 396)), maxHeight });
     };
     placeMenu();
     window.addEventListener('resize', placeMenu);
@@ -146,10 +146,10 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     const index = selectableItems.indexOf(item);
     const Icon = item.category === 'Nội tuyến' || item.properties?.mention || item.properties?.utilityKind?.startsWith('Nhắc đến') ? AtSign : icons[item.type] || Type;
     return <button key={item.id} type="button" role="option" aria-selected={index === selectedIndex}
-      id={`slash-${item.id}`} tabIndex={-1} title={item.title} disabled={item.disabled} aria-disabled={!!item.disabled}
+      id={`slash-${item.id}`} tabIndex={-1} title={item.title} aria-keyshortcuts={item.shortcut} disabled={item.disabled} aria-disabled={!!item.disabled}
       onMouseDown={event => event.preventDefault()} onClick={() => selectItem(item)}
       onMouseMove={() => { if (!item.disabled && index !== selectedIndex) setSelectedIndex(index); }}
-      className={`w-full min-h-8 flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-sm ${item.disabled
+      className={`w-full min-h-14 flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm ${item.disabled
         ? 'opacity-50 cursor-not-allowed'
         : `cursor-pointer ${index === selectedIndex ? 'bg-[var(--ui-hover)] ring-1 ring-inset ring-[var(--ui-accent)]' : 'hover:bg-[var(--ui-hover)]'}`}`}>
       {item.color ? <span aria-hidden="true" className="w-5 h-5 shrink-0 rounded-md border flex items-center justify-center text-xs"
@@ -158,16 +158,16 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
           backgroundColor: item.color.target === 'backgroundColor' ? item.color.swatch || item.color.value || 'transparent' : undefined,
           borderColor: item.color.border || item.color.value || 'var(--ui-border)',
         }}>{item.color.target === 'textColor' ? 'A' : ''}</span>
-        : <Icon className="w-5 h-5 shrink-0 text-[var(--ui-muted)]" strokeWidth={1.6} />}
-      <span className="flex-1 min-w-0 leading-5">{item.title}
-        {item.subtitle && <span className="text-[var(--ui-tertiary)]"> · {item.subtitle}</span>}</span>
+        : <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[var(--ui-hover)]"><Icon className="h-5 w-5 text-[var(--ui-muted)]" strokeWidth={1.6} /></span>}
+      <span className="flex-1 min-w-0 leading-5"><span className="block text-sm font-medium">{item.title}</span>
+        {item.subtitle && <span className="mt-0.5 block text-[11px] leading-4 text-[var(--ui-muted)]">{item.subtitle}</span>}</span>
       {item.badge && <span className="text-[11px] px-1.5 rounded-full bg-[#EBF5FF] text-[var(--ui-accent)] shrink-0">{item.badge}</span>}
-      {item.shortcut && <span className="text-xs text-[var(--ui-tertiary)] shrink-0">{item.shortcut}</span>}
+      {item.shortcut && <kbd className="shrink-0 whitespace-nowrap rounded-full bg-[var(--ui-hover)] px-1.5 py-0.5 font-sans text-[9px] font-semibold uppercase tracking-wide text-[var(--ui-muted)]">{item.shortcut}</kbd>}
     </button>;
   };
 
   return createPortal(<div ref={containerRef} role="dialog" aria-label="Chèn tiện ích nhanh"
-    className="fixed z-50 w-[324px] max-w-[calc(100vw-24px)] flex flex-col bg-[var(--ui-surface)] rounded-xl border border-[var(--ui-border)] shadow-2xl overflow-hidden"
+    className="fixed z-50 w-[384px] max-w-[calc(100vw-24px)] flex flex-col bg-[var(--ui-surface)] rounded-xl border border-[var(--ui-border)] shadow-2xl overflow-hidden"
     style={{ top: layout.top, left: layout.left, maxHeight: layout.maxHeight }}>
     <div role="listbox" aria-label="Tiện ích nhanh" aria-activedescendant={selectableItems[selectedIndex] ? `slash-${selectableItems[selectedIndex].id}` : undefined}
       className="min-h-0 overflow-y-auto overscroll-contain p-1.5">

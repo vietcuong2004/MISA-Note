@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import React, { useState } from 'react';
 import { X, Send, Folder, Check, Star } from 'lucide-react';
 import { TEAM_MEMBERS } from '../../data/mockData';
@@ -41,7 +42,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       sender: 'Hà Trần (Lead Dev)',
       avatar: 'H',
       text: 'Chào cả nhóm, mình vừa cập nhật phần kiến trúc block editor theo chuẩn iOS rồi nhé!',
-      time: '10:14',
+      time: new Date(new Date().setHours(10, 14, 0, 0)).toISOString(),
       isMe: false,
     },
     {
@@ -49,7 +50,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       sender: 'Quỳnh Anh (PM)',
       avatar: 'Q',
       text: 'Tuyệt vời Hà ơi, biên bản họp vừa rồi đã phân công xong, mọi người kiểm tra lại action items trong tài liệu nhé.',
-      time: '10:18',
+      time: new Date(new Date().setHours(10, 18, 0, 0)).toISOString(),
       isMe: false,
     },
   ]);
@@ -71,7 +72,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
       sender: 'Nguyễn Văn Minh (Bạn)',
       avatar: 'M',
       text: inputText.trim(),
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toISOString(),
       isMe: true,
     };
 
@@ -82,7 +83,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
   const handleSaveToFavorites = () => {
     const chatTitle = documentTitle ? `Thảo luận: ${documentTitle}` : 'Đoạn chat thảo luận nhóm';
-    const textLines = messages.map((m) => `${m.sender} (${m.time}): ${m.text}`);
+    const textLines = messages.map((m) => `${m.sender} (${formatDateTime(m.time)}): ${m.text}`);
     onSaveAsDocument?.(chatTitle, null, 'personal', textLines, true);
     onToast('Đã lưu đoạn chat vào mục Yêu thích');
     onClose();
@@ -90,7 +91,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
 
   const handleExecuteSave = (folder: FolderType | null, space: SpaceType) => {
     const chatTitle = documentTitle ? `Thảo luận: ${documentTitle}` : 'Đoạn chat thảo luận nhóm';
-    const textLines = messages.map((m) => `${m.sender} (${m.time}): ${m.text}`);
+    const textLines = messages.map((m) => `${m.sender} (${formatDateTime(m.time)}): ${m.text}`);
     onSaveAsDocument?.(chatTitle, folder?.id || null, space, textLines);
     const locName = folder ? `thư mục "${folder.name}"` : 'thư mục gốc';
     onToast(`Đã lưu đoạn chat vào ${locName}`);
@@ -204,7 +205,7 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({
               <div className="flex items-center gap-2 text-[10px] text-[var(--ui-tertiary)] px-1 font-mono">
                 <span>{msg.sender}</span>
                 <span>·</span>
-                <span>{msg.time}</span>
+                <span>{formatDateTime(msg.time)}</span>
               </div>
               <div
                 className={`max-w-[80%] rounded-[18px] px-4 py-2.5 text-xs leading-relaxed ${

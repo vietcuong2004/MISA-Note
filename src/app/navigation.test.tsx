@@ -1,5 +1,6 @@
 import { memoryStorage } from '../utils/memoryStorage';
 import { clearAttachments } from '../utils/attachments';
+import { layoutConfig } from './layoutConfig';
 import React, { act } from 'react';
 import { before, after, afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,6 +16,8 @@ let createRoot: typeof import('react-dom/client')['createRoot'];
 let getStoredDocuments: typeof import('../utils/storage')['getStoredDocuments'];
 
 before(async () => {
+  // Existing scenarios continue to verify that the original sidebar is intact.
+  layoutConfig.useSidebar2 = false;
   dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', { url: 'http://localhost:3000/private', pretendToBeVisual: true });
   for (const key of ['window', 'document', 'navigator', 'localStorage', 'Node', 'HTMLElement', 'HTMLInputElement', 'HTMLTextAreaElement', 'Event', 'MouseEvent', 'KeyboardEvent']) {
     Object.defineProperty(globalThis, key, { configurable: true, value: (dom.window as unknown as Record<string, unknown>)[key] });
@@ -46,6 +49,229 @@ async function click(element: Element | null | undefined) {
 }
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
+
+test('favorite production minutes opens in personal space and company notes have no favorite action', async () => {
+  layoutConfig.useSidebar2 = true;
+  try {
+    await mount('/private');
+    const favorites = document.querySelector('[aria-label="Danh sách yêu thích"]')!;
+    assert.equal(favorites.querySelector('[data-sidebar-document="doc_odt_meeting_20261026"]'), null);
+    await click(favorites.querySelector('[data-sidebar-document="doc_personal_production_meeting"]'));
+    assert.equal(window.location.pathname, '/documents/doc_personal_production_meeting');
+    assert.equal(document.querySelector('[aria-label="Không gian tài liệu"]')?.getAttribute('data-space'), 'personal');
+    assert(getStoredDocuments().find(doc => doc.id === 'doc_personal_production_meeting')?.isPrivate);
+    await mount('/documents/doc_odt_meeting_20261026');
+    const main = document.querySelector('main')!;
+    assert.equal(main.querySelector('[title="Thêm vào yêu thích"]'), null);
+    await click(main.querySelector('[title="Tùy chọn khác"]'));
+    assert(!main.querySelector('[aria-label="Thao tác tài liệu"]')?.textContent?.includes('Yêu thích'));
+  } finally { layoutConfig.useSidebar2 = false; }
+});
+
+test('slash command shortcuts preserve text and insert media after nonempty blocks', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find(doc => !doc.isTrash)!;
+  saveStoredDocuments([{ ...base, id: 'shortcuts-note', blocks: [{ id: 'shortcut-block', type: 'paragraph', content: 'Giữ nguyên nội dung' }] }]);
+  await mount('/documents/shortcuts-note');
+  const input = () => document.querySelector<HTMLTextAreaElement>('[data-block-id="shortcut-block"] textarea')!;
+  const editable = input();
+  Object.defineProperty(editable, 'scrollHeight', { configurable: true, get: () => editable.classList.contains('text-2xl') ? 64 : 24 });
+  const press = async (code: string, key: string, shift = false) => {
+    await act(async () => {
+      input().focus();
+      input().dispatchEvent(new window.KeyboardEvent('keydown', { key, code, ctrlKey: true, altKey: !shift, shiftKey: shift, bubbles: true, cancelable: true }));
+    });
+  };
+  await press('Digit1', '1');
+  assert.equal(input().value, 'Giữ nguyên nội dung');
+  assert(input().classList.contains('text-2xl'));
+  assert.equal(input().style.height, '64px', 'Changing block type must recalculate height even when text stays unchanged');
+  await press('Digit7', '&', true);
+  assert(document.querySelector('[data-list-kind="numbered"]'));
+  assert.equal(input().value, 'Giữ nguyên nội dung');
+  await press('KeyI', 'i');
+  assert(document.querySelector('[aria-label="Chọn hình ảnh"]'));
+  assert.equal(input().value, 'Giữ nguyên nội dung');
+  await mount('/private');
+  const saved = getStoredDocuments().find(doc => doc.id === 'shortcuts-note')!;
+  assert.equal(saved.blocks[0].type, 'numbered');
+  assert.equal(saved.blocks[1].type, 'image');
+});
+
+test('library tabs preserve the sidebar workspace in both sidebar variants', async () => {
+  try {
+    for (const newSidebar of [false, true]) {
+      layoutConfig.useSidebar2 = newSidebar;
+      await mount('/private');
+      const workspace = () => newSidebar ? document.querySelector('[role="combobox"][aria-label="Không gian tài liệu"]')?.getAttribute('data-space')
+        : document.querySelector('[role="tab"][aria-selected="true"]')?.id.replace('space-tab-', '');
+      const openLibrary = async () => click(document.querySelector('aside button[title="Thư viện"]'));
+      await openLibrary();
+      await click(button('Công ty', document.querySelector('main')!));
+      assert.equal(window.location.pathname, '/library/company');
+      assert.equal(workspace(), 'personal');
+      if (newSidebar) {
+        await click(document.querySelector('[role="combobox"][aria-label="Không gian tài liệu"]'));
+        await click(document.querySelector('[role="option"][data-space="company"]'));
+      } else await click(document.getElementById('space-tab-company'));
+      assert.equal(workspace(), 'company');
+      await openLibrary();
+      for (const label of ['Của tôi', 'Công ty', 'Được chia sẻ', 'Cuộc họp', 'Tất cả']) {
+        await click(button(label, document.querySelector('main')!));
+        assert.equal(workspace(), 'company');
+      }
+    }
+  } finally { layoutConfig.useSidebar2 = false; }
+});
+
+test('favorites uses folder explorer layout and removes documents when unstarred', async () => {
+  await mount('/favorites');
+  const main = document.querySelector('main')!;
+  assert.equal(heading(), 'Yêu thích');
+  assert(main.querySelector('[aria-label="Đường dẫn thư mục"]'));
+  assert(main.querySelector('[data-folder-mode="structure"]'));
+  assert(main.querySelector('[data-folder-document="doc_personal_production_meeting"]'));
+  assert.equal(main.querySelector('[data-folder-document="doc_week_plan"]'), null);
+  assert(main.querySelector('[data-folder-entry="fld_work"]'));
+  assert.equal(main.querySelector('[data-folder-entry="fld_projects"]'), null);
+  for (const [label, mode] of [['Lưới', 'grid'], ['Danh sách', 'list'], ['Structure', 'structure']]) {
+    await click(main.querySelector(`[aria-label="Dạng ${label}"]`));
+    assert(main.querySelector(`[data-folder-mode="${mode}"]`));
+  }
+  await click(main.querySelector('[data-folder-document] button[aria-label^="Tùy chọn tài liệu"]'));
+  await click(button('Xóa khỏi mục Yêu thích'));
+  assert(!getStoredDocuments().find(doc => doc.id === 'doc_personal_production_meeting')?.isFavorite);
+  assert(main.textContent?.includes('Chưa có tài liệu nào được gắn sao yêu thích.'));
+});
+
+test('account appearance menu switches sidebar variants without changing the current document', async () => {
+  await mount('/documents/doc_odt_meeting_20261026');
+  await click(document.querySelector('[aria-label="Tài khoản cá nhân"]'));
+  await click(button('Giao diện', document.getElementById('account-dropdown')!));
+  await click(document.querySelector('[role="radio"][aria-label="Sidebar2"]'));
+  assert.equal(document.querySelectorAll('aside').length, 1);
+  assert.equal(document.querySelector('aside')?.getAttribute('data-sidebar-version'), '2');
+  assert.equal(window.location.pathname, '/documents/doc_odt_meeting_20261026');
+  assert.equal(document.querySelector('[aria-label="Sidebar2"]')?.getAttribute('aria-checked'), 'true');
+  await click(document.querySelector('[role="radio"][aria-label="Sidebar1"]'));
+  assert.equal(document.querySelectorAll('aside').length, 1);
+  assert.equal(document.querySelector('aside')?.getAttribute('data-sidebar-version'), null);
+  assert(document.querySelector('[id="space-tab-company"]'));
+  assert.equal(window.location.pathname, '/documents/doc_odt_meeting_20261026');
+  assert.equal(memoryStorage.getItem('misa_sidebar_variant'), '1');
+});
+
+test('Sidebar2 switches workspaces, preserves folder actions and keeps only one sidebar mounted', async () => {
+  layoutConfig.useSidebar2 = true;
+  try {
+    const { getStoredFolders, saveStoredFolders } = await import('../utils/storage');
+    const initialFolders = getStoredFolders();
+    const parent = initialFolders.find(folder => folder.id === 'fld_work')!;
+    saveStoredFolders([...initialFolders,
+      { ...parent, id: 'nested-default', name: 'Thư mục con', parentId: parent.id },
+      { ...parent, id: 'deep-default', name: 'Thư mục cháu', parentId: 'nested-default' },
+    ]);
+    await mount('/private');
+    let sidebar = document.querySelector('aside')!;
+    assert.equal(document.querySelectorAll('aside').length, 1);
+    assert.equal(sidebar.dataset.sidebarVersion, '2');
+    assert.equal(sidebar.querySelector('[role="tablist"]'), null);
+    assert.equal(sidebar.querySelector('[id^="space-tab-"]'), null);
+    let select = sidebar.querySelector<HTMLButtonElement>('[aria-label="Không gian tài liệu"]')!;
+    await click(select);
+    assert.deepEqual(Array.from(sidebar.querySelectorAll('[role="option"]')).map(option => option.getAttribute('data-space')), ['personal', 'company']);
+    assert.equal(sidebar.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('data-space'), 'personal');
+    await act(async () => sidebar.querySelector('[role="listbox"]')!.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    assert.equal(sidebar.querySelector('[role="listbox"]'), null);
+    assert.equal(select.dataset.space, 'personal');
+    const headerRow = select.parentElement!.parentElement!;
+    assert.equal(sidebar.style.width, '280px');
+    assert.equal(headerRow.lastElementChild?.getAttribute('title'), 'Thu gọn thanh bên');
+    const createButton = sidebar.querySelector<HTMLButtonElement>('button[title="Tạo mới"]')!;
+    const aiButton = sidebar.querySelector<HTMLButtonElement>('button[title="Hỏi AI"]')!;
+    assert.equal(headerRow.children[0], select.parentElement);
+    const actionRow = createButton.parentElement!.parentElement!;
+    assert.notEqual(actionRow, headerRow);
+    assert.equal(actionRow.children[0], createButton.parentElement);
+    assert.equal(actionRow.children[1], aiButton.parentElement);
+    assert.equal(actionRow.lastElementChild?.getAttribute('title'), 'Thao tác nhanh khác');
+    const resize = async (from: number, to: number) => {
+      const handle = sidebar.querySelector('[title^="Kéo sang trái/phải"]')!;
+      await act(async () => handle.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, clientX: from })));
+      await act(async () => document.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: to })));
+      await act(async () => document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true })));
+    };
+    await resize(280, 500);
+    assert.equal(createButton.querySelector('span')?.classList.contains('sr-only'), false);
+    assert.equal(aiButton.querySelector('span')?.classList.contains('sr-only'), false);
+    await resize(500, 200);
+    assert.equal(createButton.querySelector('span')?.classList.contains('sr-only'), true);
+    assert.equal(aiButton.querySelector('span')?.classList.contains('sr-only'), true);
+    assert.equal(select.parentElement!.querySelector('[aria-hidden="true"] span'), null);
+    assert.equal(select.title, 'Ghi chép của tôi');
+    assert(!sidebar.textContent?.includes('Gần đây'));
+    assert(sidebar.textContent?.includes('YÊU THÍCH'));
+    const favoriteToggle = sidebar.querySelector('[aria-label="Thu gọn hoặc mở mục yêu thích"]')!;
+    await click(favoriteToggle);
+    assert.equal(sidebar.querySelector('[aria-label="Danh sách yêu thích"]'), null);
+    await click(favoriteToggle);
+    assert(sidebar.querySelector('[aria-label="Danh sách yêu thích"]'));
+    assert(sidebar.textContent?.includes('TÀI LIỆU CỦA TÔI'));
+    assert(sidebar.querySelector('[data-folder-id="deep-default"]'));
+    assert.equal(sidebar.querySelector('[aria-label="Thu gọn thư mục Thư mục con"]')?.getAttribute('aria-expanded'), 'true');
+    assert.equal(sidebar.querySelector('[aria-label="Mở thư mục Thư mục cháu"]')?.getAttribute('aria-expanded'), 'false');
+    assert.equal(sidebar.querySelector('[aria-label="Mở thư mục Cá nhân"]')?.getAttribute('aria-expanded'), 'false');
+    const favorites = sidebar.querySelector('[aria-label="Danh sách yêu thích"]')!;
+    assert(favorites.querySelector('[data-sidebar-document="doc_personal_production_meeting"]'));
+    assert.equal(favorites.querySelector('[data-sidebar-document="doc_personal_meeting_minutes"]'), null);
+    assert(favorites.classList.contains('max-h-[178px]'));
+    assert(favorites.classList.contains('overflow-y-auto'));
+    assert(sidebar.querySelector('[data-space-panel="personal"]'));
+    assert.equal(sidebar.querySelector('[data-space-panel="company"]'), null);
+    assert(!select.closest('[data-sidebar2-scroll]'));
+    const choose = async (space: string) => {
+      await click(select);
+      await click(sidebar.querySelector(`[role="option"][data-space="${space}"]`));
+    };
+    assert(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'));
+    await click(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'));
+    await click(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]'));
+    assert.equal(window.location.pathname, '/folders/fld_work');
+    assert(sidebar.querySelector('[aria-label="Mở thư mục Công việc"]'), 'Folder title navigation must not expand children');
+    await click(sidebar.querySelector('[aria-label="Mở thư mục Công việc"]'));
+    assert.equal(window.location.pathname, '/folders/fld_work');
+    assert(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'));
+    await click(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]'));
+    assert(sidebar.querySelector('[aria-label="Thu gọn thư mục Công việc"]'), 'Title navigation must not collapse an expanded folder');
+    assert.equal(sidebar.querySelector('[data-folder-id="fld_work"] span[role="button"]')?.getAttribute('title'), 'Công việc');
+    await choose('company');
+    assert.equal(window.location.pathname, '/company');
+    assert.equal(heading(), 'Tài liệu công ty');
+    assert.equal(sidebar.querySelector('[data-space-panel="personal"]'), null);
+    assert(!sidebar.textContent?.includes('Gần đây') && !sidebar.textContent?.includes('YÊU THÍCH'));
+    assert(sidebar.querySelector('[data-folder-id="fld_projects"]'));
+    assert(sidebar.querySelector('[aria-label="Mở thư mục Dự án"]'));
+    await click(sidebar.querySelector('[aria-label="Mở thư mục Dự án"]'));
+    assert(sidebar.querySelector(`[aria-label="Tùy chọn ${getStoredDocuments().find(doc => doc.id === 'doc_odt_meeting_20261026')!.title}"]`));
+    await click(sidebar.querySelector('[title="Tạo tài liệu công ty mới"]'));
+    await click(button('Tạo tài liệu', sidebar));
+    const created = getStoredDocuments().find(doc => window.location.pathname === `/documents/${doc.id}`)!;
+    assert.equal(created.space, 'company');
+    assert.equal(created.folderId, null);
+    await choose('personal');
+    assert.equal(window.location.pathname, '/private');
+    assert.equal(heading(), 'Ghi chép của tôi');
+    await click(sidebar.querySelector('[title="Thu gọn thanh bên"]'));
+    assert.equal(document.querySelectorAll('aside').length, 1);
+    await click(document.querySelector('aside [title="Mở rộng thanh bên"]'));
+    sidebar = document.querySelector('aside')!;
+    select = sidebar.querySelector<HTMLButtonElement>('[aria-label="Không gian tài liệu"]')!;
+    assert.equal(select.dataset.space, 'personal');
+    await mount('/documents/doc_odt_meeting_20261026');
+    assert.equal(document.querySelector<HTMLButtonElement>('aside [role="combobox"]')?.dataset.space, 'company');
+    assert.equal(document.querySelector('aside [data-space-panel="personal"]'), null);
+  } finally { layoutConfig.useSidebar2 = false; }
+});
 
 test('link dialog saves display text and renders a plain underlined hyperlink', async () => {
   const { LinkBlock } = await import('../components/editor/LinkBlock');
@@ -939,7 +1165,7 @@ test('note rename uses the folder-style dialog and only saves on confirmation', 
   await mount('/library/private');
   const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
   const openRename = async () => {
-    const trigger = Array.from(document.querySelectorAll('aside button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}`);
+    const trigger = Array.from(document.querySelectorAll('aside button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}` && item.closest('[data-sidebar-document]')?.getAttribute('data-sidebar-document') === doc.id);
     await click(trigger);
     await click(Array.from(document.querySelectorAll('aside button')).find(item => Array.from(item.querySelectorAll('span')).some(span => span.textContent === 'Đổi tên')));
     return document.querySelector('[role="dialog"][aria-label="Đặt lại tên ghi chú"]')!;
@@ -995,7 +1221,7 @@ test('share menu copies the current document URL and reports clipboard failures 
     writeText: async (value: string) => { copied = value; },
   } });
   const aside = document.querySelector('aside')!;
-  const trigger = Array.from(aside.querySelectorAll('button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}`)!;
+  const trigger = Array.from(aside.querySelectorAll('button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}` && item.closest('[data-sidebar-document]')?.getAttribute('data-sidebar-document') === doc.id)!;
   await click(trigger);
   await click(button('Chia sẻ', aside));
   let dialog = document.querySelector('[role="dialog"][aria-label="Chia sẻ tài liệu"]')!;
@@ -1371,7 +1597,7 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
 });
 
 test('clicking tab Của tôi highlights it and plus creates a note inside Chưa phân loại', async () => {
-  await mount('/library/company');
+  await mount('/company');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(document.getElementById('space-tab-personal'));
   assert.equal(document.getElementById('space-tab-personal')?.getAttribute('aria-selected'), 'true');

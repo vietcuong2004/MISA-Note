@@ -2,7 +2,7 @@ import { BlockProperties, BlockType } from '../../types';
 
 export interface SlashCommand {
   id: string; type: BlockType; title: string; category: string;
-  subtitle?: string; shortcut?: string; badge?: string; properties?: BlockProperties;
+  subtitle?: string; shortcut?: string; shortcutCode?: string; badge?: string; properties?: BlockProperties;
   disabled?: boolean;
   color?: { target: 'textColor' | 'backgroundColor'; value: string; swatch?: string; border?: string };
 }
@@ -20,7 +20,7 @@ const colors = [
   { id: 'red', name: 'đỏ', text: '#D44C47', background: '#FDEBEC', swatch: '#F7B4B1', border: '#D44C47' },
 ];
 
-export const SLASH_COMMANDS: SlashCommand[] = [
+const BASE_COMMANDS: SlashCommand[] = [
   {"id": "command_0", "type": "meeting_info", "title": "Ghi chép cuộc họp với AI", "category": "Đang phát triển", "badge": "Đang phát triển", "disabled": true, "properties": {"commandTitle": "Ghi chép cuộc họp với AI"}},
   {"id": "command_2", "type": "paragraph", "title": "Văn bản", "category": "Nội dung cơ bản", "properties": {"commandTitle": "Văn bản"}},
   {"id": "command_3", "type": "h1", "title": "Đề mục 1", "category": "Nội dung cơ bản", "properties": {"commandTitle": "Đề mục 1"}, "shortcut": "#"},
@@ -50,3 +50,35 @@ export const SLASH_COMMANDS: SlashCommand[] = [
     color: { target: 'backgroundColor', value: color.background, swatch: color.swatch, border: color.border },
   })),
 ];
+
+const commandPresentation: Record<string, { subtitle: string; shortcut?: string; shortcutCode?: string }> = {
+  paragraph: { subtitle: 'Đoạn văn bản thông thường', shortcut: 'Ctrl+Alt+0', shortcutCode: 'Digit0' },
+  h1: { subtitle: 'Tiêu đề cấp cao nhất', shortcut: 'Ctrl+Alt+1', shortcutCode: 'Digit1' },
+  h2: { subtitle: 'Tiêu đề cho các phần chính', shortcut: 'Ctrl+Alt+2', shortcutCode: 'Digit2' },
+  h3: { subtitle: 'Tiêu đề phụ và các mục nhỏ', shortcut: 'Ctrl+Alt+3', shortcutCode: 'Digit3' },
+  h4: { subtitle: 'Tiêu đề cho nội dung chi tiết', shortcut: 'Ctrl+Alt+4', shortcutCode: 'Digit4' },
+  bullet: { subtitle: 'Danh sách không đánh số', shortcut: 'Ctrl+Shift+8', shortcutCode: 'Digit8' },
+  numbered: { subtitle: 'Danh sách có đánh số', shortcut: 'Ctrl+Shift+7', shortcutCode: 'Digit7' },
+  checklist: { subtitle: 'Theo dõi và đánh dấu việc cần làm', shortcut: 'Ctrl+Shift+9', shortcutCode: 'Digit9' },
+  callout: { subtitle: 'Làm nổi bật ghi chú quan trọng', shortcut: 'Ctrl+Alt+C', shortcutCode: 'KeyC' },
+  table: { subtitle: 'Sắp xếp dữ liệu theo hàng và cột', shortcut: 'Ctrl+Alt+T', shortcutCode: 'KeyT' },
+  image: { subtitle: 'Tải ảnh lên hoặc nhập liên kết ảnh', shortcut: 'Ctrl+Alt+I', shortcutCode: 'KeyI' },
+  video: { subtitle: 'Thêm video từ tệp hoặc liên kết', shortcut: 'Ctrl+Alt+V', shortcutCode: 'KeyV' },
+  audio: { subtitle: 'Tải tệp âm thanh từ máy tính', shortcut: 'Ctrl+Alt+A', shortcutCode: 'KeyA' },
+  file: { subtitle: 'Đính kèm tệp từ máy tính', shortcut: 'Ctrl+Alt+F', shortcutCode: 'KeyF' },
+  link: { subtitle: 'Chèn chữ có liên kết đến trang web', shortcut: 'Ctrl+Alt+K', shortcutCode: 'KeyK' },
+};
+
+export const SLASH_COMMANDS: SlashCommand[] = BASE_COMMANDS.map(command => {
+  if (command.color) return { ...command, subtitle: command.color.target === 'textColor' ? 'Đổi màu chữ của khối đang chọn' : 'Đổi màu nền của khối đang chọn' };
+  if (command.id === 'command_57') return { ...command, subtitle: 'Chọn một người trong danh bạ', shortcut: 'Ctrl+Alt+M', shortcutCode: 'KeyM' };
+  if (command.id === 'mention_group') return { ...command, subtitle: 'Chọn nhóm để đề cập trong tài liệu', shortcut: 'Ctrl+Alt+G', shortcutCode: 'KeyG' };
+  return { ...command, ...commandPresentation[command.type], category: /^h[1-4]$/.test(command.type) ? 'Tiêu đề' : command.category };
+});
+
+export function commandForShortcut(event: { code: string; key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; shiftKey: boolean }): SlashCommand | undefined {
+  if (!event.ctrlKey && !event.metaKey) return;
+  const code = event.code || (/^[0-9]$/.test(event.key) ? `Digit${event.key}` : `Key${event.key.toUpperCase()}`);
+  return SLASH_COMMANDS.find(command => !command.disabled && command.shortcutCode === code &&
+    (command.shortcut?.includes('Shift') ? event.shiftKey && !event.altKey : event.altKey && !event.shiftKey));
+}

@@ -23,6 +23,8 @@ import {
 } from '../utils/storage';
 import { TEMPLATES, CURRENT_USER } from '../data/mockData';
 import { Sidebar } from '../components/layout/Sidebar';
+import { Sidebar2 } from '../components/layout/Sidebar2';
+import { layoutConfig, SIDEBAR2_DEFAULT_WIDTH } from './layoutConfig';
 import { Header } from '../components/layout/Header';
 import { ToastContainer, ToastMessage } from '../components/Toast';
 import { FolderModal } from '../components/modals/FolderModal';
@@ -38,6 +40,11 @@ import { useAppRouter } from './router/useAppRouter';
 import { useTheme } from './theme/useTheme';
 
 export default function App() {
+  const [useSidebar2, setUseSidebar2] = useState(() => {
+    const saved = memoryStorage.getItem('misa_sidebar_variant');
+    return saved ? saved === '2' : layoutConfig.useSidebar2;
+  });
+  const ActiveSidebar = useSidebar2 ? Sidebar2 : Sidebar;
   const [documents, setDocuments] = useState<Document[]>(getStoredDocuments);
   const [folders, setFolders] = useState<Folder[]>(getStoredFolders);
   const { view: viewState, navigate } = useAppRouter();
@@ -55,7 +62,7 @@ export default function App() {
         }
       }
     } catch (e) {}
-    return 280;
+    return useSidebar2 ? SIDEBAR2_DEFAULT_WIDTH : 280;
   });
 
   // Modals
@@ -164,6 +171,7 @@ export default function App() {
   };
 
   const handleToggleFavorite = (docId: string) => {
+    if (documents.find(doc => doc.id === docId)?.space !== 'personal') return;
     const newDocs = toggleDocumentFavorite(docId);
     setDocuments(newDocs);
     const target = newDocs.find((d) => d.id === docId);
@@ -415,6 +423,12 @@ export default function App() {
       <Header
         theme={theme}
         onThemeChange={setTheme}
+        sidebarVariant={useSidebar2 ? 2 : 1}
+        onSidebarVariantChange={variant => {
+          memoryStorage.setItem('misa_sidebar_variant', String(variant));
+          setUseSidebar2(variant === 2);
+          setSidebarWidth(variant === 2 ? SIDEBAR2_DEFAULT_WIDTH : 280);
+        }}
         onOpenSearch={() => setIsSpotlightOpen(true)}
         onOpenChat={() => setChatModalOpen(true)}
         onNavigateHome={() => navigate({ type: 'private' })}
@@ -423,7 +437,7 @@ export default function App() {
       {/* Main Workspace below header */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar matching screenshot */}
-      <Sidebar
+      <ActiveSidebar
         documents={documents}
         folders={folders}
         viewState={viewState}
@@ -518,7 +532,7 @@ export default function App() {
         onToast={addToast}
       />
       {folderToDelete && <DeleteFolderDialog folder={folderToDelete}
-        destination={getFolderPath(folderToDelete.parentId, folders) || (folderToDelete.space === 'personal' ? 'Ghi chú của tôi / Thư mục gốc' : 'Tài liệu công ty / Thư mục gốc')}
+        destination={getFolderPath(folderToDelete.parentId, folders) || (folderToDelete.space === 'personal' ? 'Ghi chép của tôi / Thư mục gốc' : 'Tài liệu công ty / Thư mục gốc')}
         noteCount={documents.filter(doc => doc.folderId === folderToDelete.id).length}
         childCount={folders.filter(folder => folder.parentId === folderToDelete.id).length}
         onClose={() => setFolderToDelete(null)} onConfirm={handleConfirmDeleteFolder} />}

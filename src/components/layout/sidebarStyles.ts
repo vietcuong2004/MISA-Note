@@ -1,0 +1,1 @@
+export const SIDEBAR_HEADER_BUTTON_CLASS = 'flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] text-xs font-semibold text-[var(--ui-text)] shadow-2xs outline-none transition-colors hover:bg-[var(--ui-hover)] focus-visible:ring-2 focus-visible:ring-[var(--ui-accent)] cursor-pointer';

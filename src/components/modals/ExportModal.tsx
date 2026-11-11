@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import React, { useState } from 'react';
 import { X, Download, Copy, Printer, Check } from 'lucide-react';
 import { Document } from '../../types';
@@ -26,7 +27,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (document.tags.length > 0) {
       md += `*Thẻ: ${document.tags.join(', ')}*\n`;
     }
-    md += `*Thời gian cập nhật: ${new Date(document.updatedAt).toLocaleString('vi-VN')}*\n\n---\n\n`;
+    md += `*Thời gian cập nhật: ${formatDateTime(document.updatedAt)}*\n\n---\n\n`;
 
     document.blocks.forEach((block) => {
       if (['bullet', 'numbered', 'checklist'].includes(block.type) && block.properties?.listItems?.length) {
@@ -76,7 +77,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           break;
         case 'meeting_info':
           md += `### 📅 Thông tin cuộc họp\n`;
-          md += `- **Thời gian:** ${block.properties?.meetingDate || ''} ${block.properties?.meetingTime || ''}\n`;
+          md += `- **Thời gian:** ${formatDateTime(block.properties?.meetingDate)} ${block.properties?.meetingTime || ''}\n`;
           md += `- **Địa điểm:** ${block.properties?.meetingLocation || ''}\n`;
           if (block.properties?.meetingLink) md += `- **Link họp:** ${block.properties.meetingLink}\n`;
           md += `\n`;
@@ -98,7 +99,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         case 'meeting_action_items':
           md += `### ✅ Việc cần làm (Action Items)\n`;
           block.properties?.actionItems?.forEach((item) => {
-            md += `- [${item.completed ? 'x' : ' '}] **${item.task}** | Phụ trách: ${item.assignee} | Hạn: ${item.dueDate}\n`;
+            md += `- [${item.completed ? 'x' : ' '}] **${item.task}** | Phụ trách: ${item.assignee} | Hạn: ${formatDateTime(item.dueDate)}\n`;
           });
           md += `\n`;
           break;

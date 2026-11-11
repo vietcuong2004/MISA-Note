@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import React from 'react';
 import { Clock, FileText, GripVertical, Star } from 'lucide-react';
 import { Document } from '../../types';
@@ -91,7 +92,7 @@ export function DocumentListPage({
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-[11px] text-[var(--ui-tertiary)]">
-                    {new Date(doc.updatedAt).toLocaleDateString('vi-VN')}
+                    {formatDateTime(doc.updatedAt)}
                   </span>
                 </div>
               </div>

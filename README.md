@@ -28,7 +28,7 @@ The app uses Vite + React and the browser History API. `src/main.tsx` loads
 
 | URL | Page |
 | --- | --- |
-| `/private` | Ghi chú của tôi |
+| `/private` | Ghi chép của tôi |
 | `/company` | Tài liệu công ty |
 | `/templates` | Mẫu ghi chú |
 | `/unclassified` | Chưa phân loại (notes without a folder) |

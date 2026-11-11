@@ -115,6 +115,6 @@ test('document links open the specified editor; missing entities render a recove
   const editor = render('/documents/PERSONAL_ROOT_NOTE');
   assert(editor.includes('PERSONAL_ROOT_NOTE') && editor.includes('textarea'));
   for (const path of ['/documents/missing', '/documents/TRASHED_NOTE', '/folders/missing', '/not-a-page']) {
-    assert(render(path).includes('Về ghi chú của tôi'));
+    assert(render(path).includes('Về Ghi chép của tôi'));
   }
 });

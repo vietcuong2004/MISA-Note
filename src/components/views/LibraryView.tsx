@@ -1,3 +1,4 @@
+import { formatDateTime } from '../../utils/dateTime';
 import { FolderActions } from '../layout/FolderActions';
 import { RenameDialog } from '../modals/RenameDialog';
 import { DocumentLinkShare } from '../modals/DocumentLinkShare';
@@ -282,22 +283,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       });
   }, [activeDocs, activeTab, selectedType, selectedFolderId, selectedAuthor, searchQuery, sortBy, trashMode]);
 
-  // Relative time formatter matching image_59ef5bd1.png: "14 phút trước", "1 giờ trước", "Hôm qua", "2 ngày trước"
-  const getRelativeTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMins < 1) return 'Vừa xong';
-    if (diffMins < 60) return `${diffMins} phút trước`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return 'Hôm qua';
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-  };
+  const displayDateTime = formatDateTime;
 
   // Helper for Location string (Vị trí) displaying slash path format, e.g. "Công ty / Dự án" or "Của tôi / Công việc"
   const getLocationString = (doc: Document) => {
@@ -470,7 +456,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               </span>
             )}
             {/* Favorite Star Button */}
-            {!trashMode && <button
+            {!trashMode && doc.space === 'personal' && <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -509,7 +495,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
         {/* Cập nhật */}
         <td className="py-2.5 px-3 text-[var(--ui-tertiary)] whitespace-nowrap">
-          {getRelativeTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}
+          {displayDateTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}
         </td>
 
         {/* More actions: ··· */}
@@ -1421,7 +1407,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Loại</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-48">Vị trí</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Người tạo</th>
-                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-44">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
                   <th className="py-2.5 px-2 w-10 text-center">···</th>
                 </tr>
               </thead>
@@ -1449,7 +1435,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Loại</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-48">Vị trí</th>
                   <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">Người tạo</th>
-                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-32">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
+                  <th className="py-2.5 px-3 font-medium text-[var(--ui-tertiary)] w-44">{trashMode ? 'Ngày xóa' : 'Cập nhật'}</th>
                   <th className="py-2.5 px-2 w-10 text-center">···</th>
                 </tr>
               </thead>
@@ -1495,7 +1481,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 </div>
                 <div className="pt-2 border-t border-[#F2F2F7] flex items-center justify-between text-[11px] text-[var(--ui-tertiary)]">
                   <span>{getAuthorDisplay(doc)}</span>
-                  <span>{getRelativeTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}</span>
+                  <span>{displayDateTime(trashMode ? doc.deletedAt || doc.updatedAt : doc.updatedAt)}</span>
                 </div>
               </div>
               );
@@ -1523,9 +1509,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         position={rowMenuPos}
         onShare={() => { if (activeRowDoc) setShareDocument(activeRowDoc); }}
         onClose={() => setActiveRowDoc(null)}
-        onToggleFavorite={() => {
-          if (activeRowDoc) onToggleFavorite(activeRowDoc.id);
-        }}
+        onToggleFavorite={activeRowDoc?.space === 'personal' ? () => onToggleFavorite(activeRowDoc.id) : undefined}
         onRename={() => {
           if (activeRowDoc) {
             setRenamingDocId(activeRowDoc.id);
