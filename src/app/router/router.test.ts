@@ -97,7 +97,7 @@ test('home, old shared links and aliases use replaceState instead of extra histo
     assert.equal(router.getSnapshot(), path);
     assert.equal(tab.entries.length, 1);
   }
-  for (const [old, path] of [['/', '/library/private'], ['/Notes/', '/library/private'], ['/templates/', '/templates'],
+  for (const [old, path] of [['/', '/private'], ['/Notes/', '/private'], ['/templates/', '/templates'],
     ['/#doc=doc_old', '/documents/doc_old'], ['/recent/', '/recent']]) {
     const tab = new TestBrowser(old); const router = tab.router(); router.canonicalize();
     assert.equal(router.getSnapshot(), path); assert.equal(tab.entries.length, 1);

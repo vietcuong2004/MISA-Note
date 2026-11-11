@@ -19,7 +19,6 @@ import {
   FileText,
   Upload,
   ChevronsLeft,
-  PanelLeftOpen,
   Edit2,
   BookOpen,
   ArrowRight,
@@ -33,6 +32,7 @@ import { MoveFolderModal } from '../modals/MoveFolderModal';
 import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import { FolderTree } from './FolderTree';
 import { SpaceCreateMenu } from './SpaceCreateMenu';
+import { CollapsedSidebar } from './CollapsedSidebar';
 import { getFolderAncestors, getFolderPath } from '../../utils/folders';
 import {
   canDropFolderInto,
@@ -692,127 +692,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   if (collapsed) {
-    return (
-      <aside className="app-sidebar w-[64px] h-full bg-[var(--ui-sidebar)] border-r border-[var(--ui-border)] flex flex-col items-center py-4 justify-between transition-all shrink-0 select-none">
-        <div className="flex flex-col items-center gap-3 w-full px-2">
-          {/* Expand Button */}
-          <button
-            onClick={onToggleCollapse}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Mở rộng thanh bên"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-          </button>
-
-          <div className="w-8 h-[1px] bg-[var(--ui-border)] my-1" />
-
-          {/* Quick Note icon */}
-          <button
-            onClick={() => {
-              setRecentExpanded(true);
-              createUnclassifiedDocument('personal');
-            }}
-            className="w-10 h-10 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center ios-interactive shadow-xs"
-            title="Tạo mới"
-          >
-            <SquarePen className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Quick Ask AI icon */}
-          <button
-            onClick={onOpenOneAI}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Hỏi AI"
-          >
-            <Sparkles className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Search Spotlight */}
-          <button
-            onClick={onOpenSpotlight}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-muted)] hover:text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Tìm kiếm (Ctrl+K)"
-          >
-            <Search className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          <button
-            onClick={() => onNavigate({ type: 'recent' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'recent'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title="Gần đây"
-          >
-            <Clock className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Yêu thích */}
-          <button
-            onClick={() => onNavigate({ type: 'favorite' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'favorite'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title="Yêu thích"
-          >
-            <Star className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Mẫu */}
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'templates' })}
-            title="Mẫu"
-            aria-label="Mẫu"
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'templates'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Thư viện */}
-          <button
-            onClick={() => onNavigate({ type: 'library' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'library'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title="Thư viện"
-          >
-            <BookOpen className="w-4 h-4 stroke-[1.75]" />
-          </button>
-        </div>
-
-        {/* Bottom Rail Actions */}
-        <div className="flex flex-col items-center gap-3 w-full px-2">
-
-          {/* Thùng rác icon */}
-          <button
-            onClick={() => onNavigate({ type: 'trash' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive relative ${
-              viewState.type === 'trash'
-                ? 'theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
-                : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-selected)]'
-            }`}
-            title="Thùng rác"
-          >
-            <Trash2 className="w-4 h-4 stroke-[1.75]" />
-            {trashDocs.length > 0 && (
-              <span className="absolute top-1 right-1 px-1 min-w-[14px] h-[14px] text-[9px] font-bold text-white theme-primary bg-[var(--ui-primary)] rounded-full flex items-center justify-center border border-white">
-                {trashDocs.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </aside>
-    );
+    return <CollapsedSidebar onExpand={onToggleCollapse} />;
   }
 
   // Expanded Sidebar matching user design

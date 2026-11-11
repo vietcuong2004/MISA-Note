@@ -1,6 +1,7 @@
 import { SIDEBAR_HEADER_BUTTON_CLASS } from './sidebarStyles';
 import { SIDEBAR2_DEFAULT_WIDTH } from '../../app/layoutConfig';
 import { WorkspacePicker } from './WorkspacePicker';
+import { CollapsedSidebar } from './CollapsedSidebar';
 import { memoryStorage } from '../../utils/memoryStorage';
 import { RenameDialog } from '../modals/RenameDialog';
 import { DocumentLinkShare } from '../modals/DocumentLinkShare';
@@ -21,7 +22,6 @@ import {
   FileText,
   Upload,
   ChevronsLeft,
-  PanelLeftOpen,
   Edit2,
   BookOpen,
   ArrowRight,
@@ -673,117 +673,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   );
 
   if (collapsed) {
-    return (
-      <aside data-sidebar-version="2" className="app-sidebar w-[64px] h-full bg-[var(--ui-sidebar)] border-r border-[var(--ui-border)] flex flex-col items-center py-4 justify-between transition-all shrink-0 select-none">
-        <div className="flex flex-col items-center gap-3 w-full px-2">
-          {/* Expand Button */}
-          <button
-            onClick={onToggleCollapse}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Mở rộng thanh bên"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-          </button>
-
-          <div className="w-8 h-[1px] bg-[var(--ui-border)] my-1" />
-
-          {/* Quick Note icon */}
-          <button
-            onClick={() => {
-              createUnclassifiedDocument(spaceTab);
-            }}
-            className="w-10 h-10 rounded-xl theme-primary bg-[var(--ui-primary)] text-white flex items-center justify-center ios-interactive shadow-xs"
-            title="Tạo mới"
-          >
-            <SquarePen className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Quick Ask AI icon */}
-          <button
-            onClick={onOpenOneAI}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Hỏi AI"
-          >
-            <Sparkles className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Search Spotlight */}
-          <button
-            onClick={onOpenSpotlight}
-            className="w-10 h-10 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-muted)] hover:text-[var(--ui-text)] ios-interactive shadow-2xs"
-            title="Tìm kiếm (Ctrl+K)"
-          >
-            <Search className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {spaceTab === 'personal' && <>
-          {/* Yêu thích */}
-          <button
-            onClick={() => onNavigate({ type: 'favorite' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'favorite'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title="Yêu thích"
-          >
-            <Star className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          </>}
-
-          {/* Mẫu */}
-          <button
-            type="button"
-            onClick={() => onNavigate({ type: 'templates' })}
-            title="Mẫu"
-            aria-label="Mẫu"
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'templates'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4 stroke-[1.75]" />
-          </button>
-
-          {/* Thư viện */}
-          <button
-            onClick={() => onNavigate({ type: 'library' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive ${
-              viewState.type === 'library'
-                ? 'bg-[var(--ui-selected)] text-[var(--ui-text)] font-bold'
-                : 'text-[var(--ui-muted)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title="Thư viện"
-          >
-            <BookOpen className="w-4 h-4 stroke-[1.75]" />
-          </button>
-        </div>
-
-        {/* Bottom Rail Actions */}
-        <div className="flex flex-col items-center gap-3 w-full px-2">
-
-          {/* Thùng rác icon */}
-          <button
-            onClick={() => onNavigate({ type: 'trash' })}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ios-interactive relative ${
-              viewState.type === 'trash'
-                ? 'theme-primary bg-[var(--ui-primary)] text-white shadow-xs'
-                : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-selected)]'
-            }`}
-            title="Thùng rác"
-          >
-            <Trash2 className="w-4 h-4 stroke-[1.75]" />
-            {trashDocs.length > 0 && (
-              <span className="absolute top-1 right-1 px-1 min-w-[14px] h-[14px] text-[9px] font-bold text-white theme-primary bg-[var(--ui-primary)] rounded-full flex items-center justify-center border border-white">
-                {trashDocs.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </aside>
-    );
+    return <CollapsedSidebar version="2" onExpand={onToggleCollapse} />;
   }
 
   // Expanded Sidebar matching user design
@@ -796,8 +686,8 @@ export const Sidebar2: React.FC<SidebarProps> = ({
     >
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Two header rows: workspace and collapse, then create, AI and quick actions. */}
-        <div className={`shrink-0 pt-3 pb-2 relative ${isIconOnlySpace ? 'px-1' : 'px-2'}`} ref={menuRef}>
-          <div className={`flex items-center ${isIconOnlySpace ? 'gap-0.5' : 'gap-1'}`}>
+        <div className="shrink-0 p-2 relative" ref={menuRef}>
+          <div className="flex items-center gap-2">
             <WorkspacePicker space={spaceTab} iconOnly={isIconOnlySpace}
               onChange={space => { setSpaceTab(space); setShowQuickActionMenu(false); closeDocMenu(); onNavigate({ type: 'space_root', space }); }} />
 
@@ -813,19 +703,19 @@ export const Sidebar2: React.FC<SidebarProps> = ({
           </div>
           <div className="mt-2 flex items-center gap-1.5">
             {/* Tạo mới button */}
-            <div className="relative shrink-0">
+            <div className="relative flex-1 min-w-0">
               <button
                 type="button"
                 onClick={() => {
-                      createUnclassifiedDocument(spaceTab);
+                  createUnclassifiedDocument(spaceTab);
                 }}
                 onMouseEnter={() => setShowCreateTooltip(true)}
                 onMouseLeave={() => setShowCreateTooltip(false)}
-                className={`flex items-center justify-center gap-1.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer h-9 ${isNarrowHeader ? 'w-9 px-0' : 'w-auto py-2 px-2.5'}`}
+                className={`w-full flex items-center justify-center gap-1.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer h-9 ${isNarrowHeader ? 'px-0' : 'px-3'}`}
                 title="Tạo mới"
               >
                 <SquarePen className="w-4 h-4 stroke-[2] shrink-0" />
-                <span className={isNarrowHeader ? "sr-only" : "whitespace-nowrap"}>Tạo mới</span>
+                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo mới</span>
               </button>
 
               {/* Tooltip on hover when narrow */}
@@ -838,17 +728,17 @@ export const Sidebar2: React.FC<SidebarProps> = ({
             </div>
 
             {/* Hỏi AI button with tooltip */}
-            <div className="relative shrink-0">
+            <div className="relative flex-1 min-w-0">
               <button
                 type="button"
                 onClick={onOpenOneAI}
                 onMouseEnter={() => setShowAITooltip(true)}
                 onMouseLeave={() => setShowAITooltip(false)}
-                className={`flex items-center justify-center gap-1.5 rounded-xl bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] font-semibold text-xs transition-colors ios-interactive cursor-pointer h-9 ${isNarrowHeader ? 'w-9 px-0' : 'w-auto py-2 px-2'}`}
+                className={`${SIDEBAR_HEADER_BUTTON_CLASS} w-full ${isNarrowHeader ? 'px-0' : 'px-3'}`}
                 title="Hỏi AI"
               >
                 <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
-                <span className={isNarrowHeader ? "sr-only" : "whitespace-nowrap"}>Hỏi AI</span>
+                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Hỏi AI</span>
               </button>
 
               {/* Tooltip positioned below the button so it is never obscured by the top header */}
@@ -881,7 +771,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
 
           {/* Floating Popover "Thao tác nhanh" matching screenshot */}
           {showQuickActionMenu && (
-            <div id="quick-action-dialog" role="dialog" aria-label="Thao tác nhanh" className="absolute right-2 top-full mt-1 z-50 w-52 max-w-[calc(100%_-_24px)] max-h-[calc(100dvh-120px)] overflow-y-auto bg-[var(--ui-surface)] rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-2 animate-in fade-in zoom-in-95 duration-100 space-y-0.5">
+            <div id="quick-action-dialog" role="dialog" aria-label="Thao tác nhanh" className="absolute right-2 top-full mt-1 z-50 w-52 max-w-[calc(100%_-_16px)] max-h-[calc(100dvh-120px)] overflow-y-auto bg-[var(--ui-surface)] rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-2 animate-in fade-in zoom-in-95 duration-100 space-y-0.5">
               <div className="px-3.5 py-1 flex items-center justify-between text-[11px] font-semibold text-[var(--ui-tertiary)]">
                 <span>Thao tác nhanh</span>
                 <button type="button" autoFocus aria-label="Đóng thao tác nhanh" title="Đóng thao tác nhanh"

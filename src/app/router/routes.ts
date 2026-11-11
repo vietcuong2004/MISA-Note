@@ -23,7 +23,7 @@ export function viewForLocation(location: string): ViewState {
   const path = url.pathname.replace(/\/+$/, '') || '/';
   const legacyDocument = new URLSearchParams(url.hash.slice(1)).get('doc');
   if ((path === '/' || path === '/Notes') && legacyDocument) return { type: 'document', documentId: legacyDocument };
-  if (path === '/' || path === '/Notes') return { type: 'private' };
+  if (path === '/' || path === '/Notes') return { type: 'space_root', space: 'personal' };
   const aliases: Record<string, ViewState> = {
     '/library': { type: 'library' }, '/private': { type: 'space_root', space: 'personal' }, '/company': { type: 'space_root', space: 'company' },
     '/shared': { type: 'shared' }, '/meetings': { type: 'meeting_notes' },

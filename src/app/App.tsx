@@ -431,7 +431,7 @@ export default function App() {
         }}
         onOpenSearch={() => setIsSpotlightOpen(true)}
         onOpenChat={() => setChatModalOpen(true)}
-        onNavigateHome={() => navigate({ type: 'private' })}
+        onNavigateHome={() => navigate({ type: 'space_root', space: 'personal' })}
       />
 
       {/* Main Workspace below header */}

@@ -185,16 +185,35 @@ test('Sidebar2 switches workspaces, preserves folder actions and keeps only one 
     assert.equal(sidebar.querySelector('[role="listbox"]'), null);
     assert.equal(select.dataset.space, 'personal');
     const headerRow = select.parentElement!.parentElement!;
+    const headerContainer = headerRow.parentElement!;
     assert.equal(sidebar.style.width, '280px');
+    assert(headerContainer.className.includes('p-2'));
+    assert(headerContainer.className.includes('shrink-0'));
+    assert(headerRow.className.includes('gap-2'));
+    assert(select.parentElement!.className.includes('flex-1'));
+    assert(select.parentElement!.className.includes('min-w-0'));
+    assert(!select.parentElement!.className.includes('w-48'));
+    assert(!select.parentElement!.className.includes('mr-auto'));
     assert.equal(headerRow.lastElementChild?.getAttribute('title'), 'Thu gọn thanh bên');
+    assert(headerRow.lastElementChild?.className.includes('shrink-0'));
+    assert(headerRow.lastElementChild?.className.includes('w-9'));
     const createButton = sidebar.querySelector<HTMLButtonElement>('button[title="Tạo mới"]')!;
     const aiButton = sidebar.querySelector<HTMLButtonElement>('button[title="Hỏi AI"]')!;
     assert.equal(headerRow.children[0], select.parentElement);
     const actionRow = createButton.parentElement!.parentElement!;
     assert.notEqual(actionRow, headerRow);
+    assert(actionRow.className.includes('mt-2'));
+    assert(actionRow.className.includes('gap-1.5'));
+    assert(createButton.parentElement!.className.includes('flex-1'));
+    assert(aiButton.parentElement!.className.includes('flex-1'));
+    assert(createButton.className.includes('w-full'));
+    assert(aiButton.className.includes('w-full'));
+    assert(createButton.className.includes('px-3'));
+    assert(aiButton.className.includes('px-3'));
     assert.equal(actionRow.children[0], createButton.parentElement);
     assert.equal(actionRow.children[1], aiButton.parentElement);
     assert.equal(actionRow.lastElementChild?.getAttribute('title'), 'Thao tác nhanh khác');
+    assert(actionRow.lastElementChild?.className.includes('w-9'));
     const resize = async (from: number, to: number) => {
       const handle = sidebar.querySelector('[title^="Kéo sang trái/phải"]')!;
       await act(async () => handle.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, clientX: from })));
@@ -263,6 +282,8 @@ test('Sidebar2 switches workspaces, preserves folder actions and keeps only one 
     assert.equal(heading(), 'Ghi chép của tôi');
     await click(sidebar.querySelector('[title="Thu gọn thanh bên"]'));
     assert.equal(document.querySelectorAll('aside').length, 1);
+    assert.equal(document.querySelectorAll('aside button').length, 1);
+    assert(document.querySelector('aside button[title="Mở rộng thanh bên"] .lucide-chevrons-right'));
     await click(document.querySelector('aside [title="Mở rộng thanh bên"]'));
     sidebar = document.querySelector('aside')!;
     select = sidebar.querySelector<HTMLButtonElement>('[aria-label="Không gian tài liệu"]')!;
@@ -271,6 +292,17 @@ test('Sidebar2 switches workspaces, preserves folder actions and keeps only one 
     assert.equal(document.querySelector<HTMLButtonElement>('aside [role="combobox"]')?.dataset.space, 'company');
     assert.equal(document.querySelector('aside [data-space-panel="personal"]'), null);
   } finally { layoutConfig.useSidebar2 = false; }
+});
+
+test('collapsing Sidebar leaves only the expand chevron button', async () => {
+  await mount('/private');
+  await click(document.querySelector('aside [title="Thu gọn thanh bên"]'));
+  assert.equal(document.querySelectorAll('aside').length, 1);
+  assert.equal(document.querySelectorAll('aside button').length, 1);
+  assert.equal(document.querySelector('aside')?.textContent, '');
+  assert(document.querySelector('aside button[title="Mở rộng thanh bên"] .lucide-chevrons-right'));
+  await click(document.querySelector('aside [title="Mở rộng thanh bên"]'));
+  assert(document.querySelector('aside [title="Thu gọn thanh bên"]'));
 });
 
 test('link dialog saves display text and renders a plain underlined hyperlink', async () => {
@@ -1386,7 +1418,7 @@ test('direct links and reloads open templates, private/company lists, folders an
   await mount('/documents/missing'); assert.equal(heading(), 'Tài liệu không khả dụng');
   await mount('/folders/missing'); assert.equal(heading(), 'Không tìm thấy thư mục');
   await mount('/no-such-page'); assert.equal(heading(), 'Không tìm thấy trang');
-  await mount('/'); assert.equal(window.location.pathname, '/library/private');
+  await mount('/'); assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Ghi chép của tôi');
 });
 
 test('new notes use the space and folder of the current page', async () => {

@@ -37,8 +37,8 @@ export function AppPages({ view, onNavigate, onUseTemplate, editor, trash, ...wo
     case 'meeting_notes': return <MeetingsPage {...workspace} />;
     case 'shared': return <SharedPage {...workspace} />;
     case 'folder': return <FolderPage key={view.folderId} {...workspace} folderId={view.folderId} onNavigate={onNavigate} />;
-    case 'document': return <DocumentPage {...workspace} documentId={view.documentId} editor={editor} onGoHome={() => onNavigate({ type: 'private' })} />;
+    case 'document': return <DocumentPage {...workspace} documentId={view.documentId} editor={editor} onGoHome={() => onNavigate({ type: 'space_root', space: 'personal' })} />;
     case 'trash': return <TrashPage {...trash} folders={workspace.folders} documents={workspace.documents} />;
-    case 'not_found': return <NotFoundPage onGoHome={() => onNavigate({ type: 'private' })} />;
+    case 'not_found': return <NotFoundPage onGoHome={() => onNavigate({ type: 'space_root', space: 'personal' })} />;
   }
 }

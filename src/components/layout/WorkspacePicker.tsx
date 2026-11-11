@@ -25,18 +25,18 @@ export function WorkspacePicker({ space, iconOnly, onChange }: { space: SpaceTyp
   useEffect(() => setOpen(false), [space]);
   const close = () => { setOpen(false); trigger.current?.focus(); };
 
-  return <div ref={root} className={`relative mr-auto h-9 ${iconOnly ? 'w-9 shrink-0' : 'w-48 min-w-0 max-w-[calc(100%_-_40px)]'}`}>
+  return <div ref={root} className="relative h-9 flex-1 min-w-0">
     <button ref={trigger} type="button" role="combobox" aria-label="Không gian tài liệu" aria-haspopup="listbox"
       aria-expanded={open} aria-controls={id} aria-valuetext={current.label} data-space={space} title={current.label}
       onClick={() => setOpen(value => !value)} onKeyDown={event => {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setOpen(true); }
         if (event.key === 'Escape') close();
       }}
-      className={`${SIDEBAR_HEADER_BUTTON_CLASS} w-full ${iconOnly ? 'justify-center' : 'px-1.5'}`}>
+      className={`${SIDEBAR_HEADER_BUTTON_CLASS} w-full ${iconOnly ? 'justify-center px-1.5' : 'pl-1.5 pr-2.5 gap-2'}`}>
       <span aria-hidden="true" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--ui-hover)]">
         <current.Icon className={`h-4 w-4 ${space === 'personal' ? 'text-amber-500' : 'text-slate-500'}`} />
       </span>
-      {!iconOnly && <><span className="min-w-0 flex-1 truncate text-left">{current.label}</span><ChevronDown className="h-3 w-3 shrink-0 text-[var(--ui-muted)]" /></>}
+      {!iconOnly && <><span className="min-w-0 flex-1 truncate text-left">{current.label}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--ui-muted)]" /></>}
     </button>
     {open && <div ref={menu} id={id} role="listbox" aria-label="Chọn không gian tài liệu"
       className="absolute left-0 top-full z-50 mt-1.5 w-64 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] py-1 shadow-xl"
