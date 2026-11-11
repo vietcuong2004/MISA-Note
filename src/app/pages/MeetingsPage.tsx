@@ -4,5 +4,5 @@ import { DocumentPageProps } from './pageTypes';
 
 export function MeetingsPage({ documents, folders, actions }: DocumentPageProps) {
   return <LibraryView {...actions}
-    documents={documents.filter(doc => doc.type === 'meeting')} folders={folders} showTabs={true} activeTab="meeting" defaultSpace="company" />;
+    documents={documents} folders={folders} showTabs={true} activeTab="meeting" />;
 }

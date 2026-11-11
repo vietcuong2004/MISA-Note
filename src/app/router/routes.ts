@@ -3,7 +3,7 @@ import { ViewState } from '../../types';
 const pagePaths = {
   private: '/library/private', company: '/library/company', templates: '/templates',
   recent: '/recent', favorite: '/favorites', library: '/library/all',
-  trash: '/trash', meeting_notes: '/library/meetings', shared: '/library/shared',
+  trash: '/trash', meeting_notes: '/library/recents', shared: '/library/shared',
 } as const;
 
 export function pathForView(view: ViewState): string {
@@ -26,6 +26,7 @@ export function viewForLocation(location: string): ViewState {
   if (path === '/' || path === '/Notes') return { type: 'space_root', space: 'personal' };
   const aliases: Record<string, ViewState> = {
     '/library': { type: 'library' }, '/private': { type: 'space_root', space: 'personal' }, '/company': { type: 'space_root', space: 'company' },
+    '/library/meetings': { type: 'meeting_notes' }, '/libary/recents': { type: 'meeting_notes' },
     '/shared': { type: 'shared' }, '/meetings': { type: 'meeting_notes' },
   };
   if (aliases[path]) return aliases[path];

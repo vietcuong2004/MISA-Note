@@ -55,6 +55,24 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
   const [layout, setLayout] = useState({ top: 56, left: 16, maxHeight: 360 });
   const containerRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const previewHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keepPreviewOpen = () => {
+    if (previewHideTimer.current !== null) clearTimeout(previewHideTimer.current);
+    previewHideTimer.current = null;
+  };
+  const leavePreviewArea = (event: React.MouseEvent) => {
+    keepPreviewOpen();
+    const target = event.relatedTarget;
+    const activeItem = containerRef.current?.querySelector('[aria-selected="true"]');
+    if (target instanceof Node && (previewRef.current?.contains(target) || activeItem?.contains(target))) return;
+    // Allow the pointer to cross the gap between the item and its preview.
+    previewHideTimer.current = setTimeout(() => {
+      setHoveredItemId(null);
+      previewHideTimer.current = null;
+    }, 180);
+  };
+  useEffect(() => () => keepPreviewOpen(), []);
+
   const [previewLayout, setPreviewLayout] = useState<{ top: number; left: number; width: number } | null>(null);
   const mentionsOnly = query.startsWith('@');
   const cleanQuery = normalizeCommandQuery(mentionsOnly ? query.slice(1) : query);
@@ -167,6 +185,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
       if (event.key === 'Escape') { onClose(); return; }
       if (!selectableItems.length) return;
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        keepPreviewOpen();
         const direction = event.key === 'ArrowDown' ? 1 : -1;
         const nextIndex = (selectedIndex + direction + selectableItems.length) % selectableItems.length;
         setSelectedIndex(nextIndex);
@@ -207,8 +226,8 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     return <button key={item.id} type="button" role="option" aria-selected={index === selectedIndex}
       id={`slash-${item.id}`} tabIndex={-1} aria-label={item.title} data-slash-command-title={item.title} aria-keyshortcuts={item.shortcut} disabled={item.disabled} aria-disabled={!!item.disabled}
       onMouseDown={event => event.preventDefault()} onClick={() => selectItem(item)}
-      onMouseMove={() => { if (!item.disabled) { setHoveredItemId(item.id); if (index !== selectedIndex) setSelectedIndex(index); } }}
-      onMouseLeave={() => setHoveredItemId(null)}
+      onMouseMove={() => { if (!item.disabled) { keepPreviewOpen(); setHoveredItemId(item.id); if (index !== selectedIndex) setSelectedIndex(index); } }}
+      onMouseLeave={leavePreviewArea}
       className={`w-full min-h-14 flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm ${item.disabled
         ? 'opacity-50 cursor-not-allowed'
         : `cursor-pointer ${index === selectedIndex ? 'bg-[var(--ui-hover)] ring-1 ring-inset ring-[var(--ui-accent)]' : 'hover:bg-[var(--ui-hover)]'}`}`}>
@@ -243,6 +262,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
   </div>
   {previewItem && previewLayout && <div ref={previewRef} role="region" aria-label={`Xem trước ${previewItem.title}`}
     data-slash-preview={previewItem.templateId || previewItem.type} style={previewLayout}
+    onMouseEnter={keepPreviewOpen} onMouseLeave={leavePreviewArea}
     className="fixed z-50 flex max-h-[calc(100dvh-24px)] flex-col rounded-lg bg-[#262626] p-2 shadow-xl [&>[data-command-preview-content]]:max-h-64">
     <SlashCommandPreview command={previewItem} />
   </div>}</>, document.body);

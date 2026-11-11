@@ -101,7 +101,20 @@ test('slash previews follow hover and arrow selection without inserting content'
   assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
   assert.equal(input.value, '/');
   const imageItem = document.querySelector('[data-slash-command-title="Hình ảnh"]')!;
-  await act(async () => imageItem.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })));
+  await act(async () => {
+    imageItem.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    preview.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true, relatedTarget: document.body }));
+    await new Promise(resolve => setTimeout(resolve, 220));
+  });
+  assert(document.querySelector('[data-slash-preview]'), 'Preview stays open when crossing the gap to scroll its content');
+  await act(async () => {
+    preview.querySelector('[data-command-preview-content]')!.dispatchEvent(new window.Event('scroll', { bubbles: true }));
+  });
+  assert(document.querySelector('[data-slash-preview]'));
+  await act(async () => {
+    preview.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+    await new Promise(resolve => setTimeout(resolve, 220));
+  });
   assert.equal(document.querySelector('[data-slash-preview]'), null);
   assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
 });
@@ -255,7 +268,7 @@ test('library tabs preserve the sidebar workspace in both sidebar variants', asy
       } else await click(document.getElementById('space-tab-company'));
       assert.equal(workspace(), 'company');
       await openLibrary();
-      for (const label of ['Của tôi', 'Công ty', 'Được chia sẻ', 'Cuộc họp', 'Tất cả']) {
+      for (const label of ['Của tôi', 'Công ty', 'Được chia sẻ', 'Gần đây', 'Tất cả']) {
         await click(button(label, document.querySelector('main')!));
         assert.equal(workspace(), 'company');
       }
@@ -1540,8 +1553,40 @@ test('Back and Forward render the page stored in browser history', async () => {
   await goHistory('forward'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
 });
 
+test('library document types use workspace labels and filter by workspace', async () => {
+  await mount('/library/all');
+  const main = document.querySelector('main')!;
+  await click(main.querySelector('button[aria-label="Dạng danh sách"]'));
+  await click(button('Loại tài liệu', main));
+  assert(button('Ghi chú của tôi', main)?.querySelector('.lucide-lock-keyhole'));
+  assert(button('Tài liệu công ty', main)?.querySelector('.lucide-building-2'));
+  await click(button('Ghi chú của tôi', main));
+  const rows = () => Array.from(main.querySelectorAll('tbody tr'));
+  assert(rows().length > 0);
+  assert(rows().every(row => row.querySelectorAll('td')[2]?.textContent === 'Ghi chú của tôi'));
+  await click(button('Ghi chú của tôi', main));
+  await click(button('Tài liệu công ty', main));
+  assert(rows().length > 0);
+  assert(rows().every(row => row.querySelectorAll('td')[2]?.textContent === 'Tài liệu công ty'));
+  assert(rows().every(row => row.querySelectorAll('td')[2]?.querySelectorAll('svg').length === 1), 'Each document type has one icon');
+});
+
+test('shared and recents library tabs disable tree mode and allow list and grid', async () => {
+  for (const path of ['/library/shared', '/library/recents']) {
+    await mount(path);
+    const main = document.querySelector('main')!;
+    const tree = main.querySelector<HTMLButtonElement>('button[aria-label="Dạng cây thư mục"]')!;
+    assert(tree.disabled);
+    assert(main.querySelector('table'));
+    await click(main.querySelector('button[title="Dạng lưới"]'));
+    assert(!main.querySelector('table'));
+    await click(main.querySelector('button[title="Dạng danh sách"]'));
+    assert(main.querySelector('table'));
+  }
+});
+
 test('all library navigation tabs, sidebar lists and folder names have working routes', async () => {
-  for (const [label, path] of [['Của tôi', '/library/private'], ['Công ty', '/library/company'], ['Được chia sẻ', '/library/shared'], ['Cuộc họp', '/library/meetings'], ['Mẫu', '/templates']]) {
+  for (const [label, path] of [['Của tôi', '/library/private'], ['Công ty', '/library/company'], ['Được chia sẻ', '/library/shared'], ['Gần đây', '/library/recents'], ['Mẫu', '/templates']]) {
     await mount('/library/all');
     await click(button(label, document.querySelector('main')!));
     assert.equal(window.location.pathname, path);

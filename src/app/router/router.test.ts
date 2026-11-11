@@ -12,7 +12,7 @@ const pages: [ViewState, string][] = [
   [{ type: 'unclassified' }, '/unclassified'],
   [{ type: 'unclassified', space: 'personal' }, '/library/private/unclassified'],
   [{ type: 'unclassified', space: 'company' }, '/library/company/unclassified'],
-  [{ type: 'trash' }, '/trash'], [{ type: 'meeting_notes' }, '/library/meetings'],
+  [{ type: 'trash' }, '/trash'], [{ type: 'meeting_notes' }, '/library/recents'],
   [{ type: 'shared' }, '/library/shared'],
   [{ type: 'document', documentId: 'doc_01' }, '/documents/doc_01'],
   [{ type: 'folder', folderId: 'fld_01' }, '/folders/fld_01'],
@@ -92,7 +92,7 @@ test('click navigation, Back, Forward and duplicate clicks keep URL and page syn
 });
 
 test('home, old shared links and aliases use replaceState instead of extra history', () => {
-  for (const [old, path] of [['/library', '/library/all'], ['/private', '/private'], ['/company', '/company'], ['/shared', '/library/shared'], ['/meetings', '/library/meetings']]) {
+  for (const [old, path] of [['/library', '/library/all'], ['/private', '/private'], ['/company', '/company'], ['/shared', '/library/shared'], ['/meetings', '/library/recents']]) {
     const tab = new TestBrowser(old); const router = tab.router(); router.canonicalize();
     assert.equal(router.getSnapshot(), path);
     assert.equal(tab.entries.length, 1);

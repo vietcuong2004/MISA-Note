@@ -101,7 +101,7 @@ test('folder, favorites, unclassified, meetings and trash URLs select the correc
   const folder = render('/folders/fld_work'); assert(folder.includes('PERSONAL_FOLDER_NOTE')); assert(!folder.includes('PERSONAL_ROOT_NOTE'));
   const favorites = render('/favorites'); assert(favorites.includes('PERSONAL_ROOT_NOTE')); assert(!favorites.includes('COMPANY_ROOT_NOTE'));
   const roots = render('/unclassified'); assert(roots.includes('PERSONAL_ROOT_NOTE')); assert(!roots.includes('PERSONAL_FOLDER_NOTE')); assert(!roots.includes('TRASHED_NOTE'));
-  const meetings = render('/library/meetings'); assert(meetings.includes('COMPANY_MEETING_NOTE')); assert(!meetings.includes('COMPANY_ROOT_NOTE'));
+  const recents = render('/library/recents'); assert(recents.includes('COMPANY_MEETING_NOTE')); assert(recents.includes('COMPANY_ROOT_NOTE')); assert(recents.includes('PERSONAL_ROOT_NOTE'));
   const trash = render('/trash'); assert(trash.includes('TRASHED_NOTE')); assert(!trash.includes('PERSONAL_ROOT_NOTE'));
 });
 

@@ -12,8 +12,7 @@ import {
   Plus,
   ChevronDown,
   FileText,
-  Calendar,
-  LayoutGrid,
+  LockKeyhole,
   User,
   Building2,
   Users,
@@ -127,7 +126,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       onNavigatePage(pageRoute);
     }
   };
-  const [viewMode, setViewMode] = useState<'tree' | 'list' | 'grid'>('tree');
+  const treeDisabled = activeTab === 'shared' || activeTab === 'meeting';
+  const [preferredViewMode, setViewMode] = useState<'tree' | 'list' | 'grid'>('tree');
+  const viewMode = treeDisabled && preferredViewMode === 'tree' ? 'list' : preferredViewMode;
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -233,19 +234,13 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           if (doc.space !== 'company') return false;
         } else if (activeTab === 'shared') {
           if (!doc.tags.includes('Được chia sẻ') && doc.space !== 'company') return false;
-        } else if (activeTab === 'meeting') {
-          if (doc.type !== 'meeting') return false;
+
         } else if (activeTab === 'template') {
           if (!doc.tags.includes('Mẫu') && doc.type !== 'plan') return false;
         }
 
         // 2. Dropdown type filter
-        if (selectedType !== 'all') {
-          if (selectedType === 'note' && doc.type !== 'note') return false;
-          if (selectedType === 'meeting' && doc.type !== 'meeting') return false;
-          if (selectedType === 'internal_doc' && doc.type !== 'internal_doc') return false;
-          if (selectedType === 'template' && !doc.tags.includes('Mẫu')) return false;
-        }
+        if (selectedType !== 'all' && doc.space !== selectedType) return false;
 
         // 3. Dropdown folder filter
         if (selectedFolderId !== 'all') {
@@ -301,38 +296,17 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
     return 'Công ty';
   };
 
-  // Helper for Type Badge pill matching screenshot: [📄 Ghi chú], [📅 Cuộc họp], [📄 Tài liệu], [⊞ Mẫu]
+  const typeOptions = [
+    { id: 'personal', label: 'Ghi chú của tôi', Icon: LockKeyhole, iconColor: 'text-amber-500' },
+    { id: 'company', label: 'Tài liệu công ty', Icon: Building2, iconColor: 'text-slate-500' },
+  ] as const;
+  const selectedTypeOption = typeOptions.find(item => item.id === selectedType);
   const getTypeBadge = (doc: Document) => {
-    if (doc.tags.includes('Mẫu') || (doc.type === 'plan' && doc.title.toLowerCase().includes('mẫu'))) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EAEAEC] text-[var(--ui-text)]">
-          <LayoutGrid className="w-3 h-3 stroke-[1.75]" />
-          <span>Mẫu</span>
-        </span>
-      );
-    }
-    if (doc.type === 'meeting' || doc.tags.includes('Cuộc họp')) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EAEAEC] text-[var(--ui-text)]">
-          <Calendar className="w-3 h-3 stroke-[1.75]" />
-          <span>Cuộc họp</span>
-        </span>
-      );
-    }
-    if (doc.type === 'internal_doc' || doc.space === 'company') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EAEAEC] text-[var(--ui-text)]">
-          <FileText className="w-3 h-3 stroke-[1.75]" />
-          <span>Tài liệu</span>
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EAEAEC] text-[var(--ui-text)]">
-        <FileText className="w-3 h-3 stroke-[1.75]" />
-        <span>Ghi chú</span>
-      </span>
-    );
+    const item = typeOptions.find(item => item.id === doc.space)!;
+    return <span className="inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#EAEAEC] text-[var(--ui-text)]">
+      <item.Icon className={`w-3.5 h-3.5 shrink-0 ${item.iconColor}`} />
+      <span>{item.label}</span>
+    </span>;
   };
 
   // Helper for author name matching screenshot: "Bạn", "Minh Anh", "Hoàng Nam", "Thu Hà"
@@ -872,7 +846,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       onDropCapture={event => { if (trashMode) { event.preventDefault(); event.stopPropagation(); } }}>
       {/* Fixed Common Header Section matching image_b4c254f2.png & image_36885ad9.png */}
       <div className="shrink-0 bg-[var(--ui-surface)] border-b border-[var(--ui-border)] z-20">
-        <div className="max-w-6xl w-full mx-auto px-6 md:px-10 pt-6 pb-3.5 space-y-4">
+        <div className="w-full px-[5%] pt-6 pb-3.5 space-y-4">
           {/* Top Header Row matching image_59ef5bd1.png */}
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1014,7 +988,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <span>Được chia sẻ</span>
           </button>
 
-          {/* 5. Cuộc họp */}
+          {/* 5. Gần đây */}
           <button
             type="button"
             onClick={() => handleTabClick('meeting', 'meeting_notes')}
@@ -1024,8 +998,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 : 'text-[var(--ui-muted)] hover:text-[var(--ui-text)]'
             }`}
           >
-            <Calendar className="w-4 h-4 stroke-[1.75]" />
-            <span>Cuộc họp</span>
+            <Clock className="w-4 h-4 stroke-[1.75]" />
+            <span>Gần đây</span>
           </button>
 
           {/* Hidden button preserved for test compatibility without showing in UI */}
@@ -1067,29 +1041,16 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                     : 'border-[var(--ui-border)] text-[var(--ui-text-secondary)] hover:bg-[var(--ui-hover)]'
                 }`}
               >
+                {selectedTypeOption && <selectedTypeOption.Icon className={`w-3.5 h-3.5 ${selectedTypeOption.iconColor}`} />}
                 <span>
-                  {selectedType === 'all'
-                    ? 'Loại tài liệu'
-                    : selectedType === 'note'
-                    ? 'Ghi chú'
-                    : selectedType === 'meeting'
-                    ? 'Cuộc họp'
-                    : selectedType === 'internal_doc'
-                    ? 'Tài liệu'
-                    : 'Mẫu'}
+                  {selectedTypeOption?.label || 'Loại tài liệu'}
                 </span>
                 <ChevronDown className="w-3 h-3 stroke-[2] text-[var(--ui-tertiary)]" />
               </button>
 
               {showTypeMenu && (
                 <div className="absolute left-0 top-9 z-40 w-44 bg-[var(--ui-surface)] rounded-2xl border border-[var(--ui-border)] shadow-xl py-1 text-xs text-[var(--ui-text)] animate-in zoom-in-95 duration-100">
-                  {[
-                    { id: 'all', label: 'Tất cả loại' },
-                    { id: 'note', label: 'Ghi chú' },
-                    { id: 'meeting', label: 'Cuộc họp' },
-                    { id: 'internal_doc', label: 'Tài liệu' },
-                    { id: 'template', label: 'Mẫu' },
-                  ].map((item) => (
+                  {[{ id: 'all', label: 'Tất cả loại', Icon: null, iconColor: '' }, ...typeOptions].map((item) => (
                     <button
                       key={item.id}
                       type="button"
@@ -1101,7 +1062,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                         selectedType === item.id ? 'font-semibold text-[var(--ui-text)]' : 'text-[var(--ui-text-secondary)]'
                       }`}
                     >
-                      <span>{item.label}</span>
+                      <span className="flex items-center gap-2">{item.Icon && <item.Icon className={`w-3.5 h-3.5 ${item.iconColor}`} />}{item.label}</span>
                       {selectedType === item.id && <span className="text-[10px]">✓</span>}
                     </button>
                   ))}
@@ -1279,8 +1240,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
             <div className="inline-flex items-center p-0.5 bg-[var(--ui-hover)] border border-[var(--ui-border)] rounded-xl">
               <button
                 type="button"
+                disabled={treeDisabled}
                 onClick={() => setViewMode('tree')}
-                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                   viewMode === 'tree'
                     ? 'bg-[var(--ui-surface)] text-[var(--ui-text)] shadow-2xs font-semibold'
                     : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
@@ -1355,7 +1317,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     {/* Scrollable Document List Area */}
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <div className="max-w-6xl w-full mx-auto px-6 md:px-10 py-5 space-y-4">
+      <div className="w-full px-[5%] py-5 space-y-4">
         {/* Batch actions bar when items are checked */}
         {selectedDocIds.size > 0 && (
           <div className="p-2.5 px-4 rounded-xl theme-primary bg-[var(--ui-primary)] text-white text-xs flex items-center justify-between animate-in fade-in duration-100">
