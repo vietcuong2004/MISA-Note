@@ -6,19 +6,39 @@ import { listLevel, listNumbers } from '../../utils/listLevels';
 
 type Item = NonNullable<BlockProperties['listItems']>[number];
 
-export function ListBlock({ block, readOnly, autoFocus, onChange }: {
+export function ListBlock({ block, readOnly, autoFocus, onChange, onBackspaceFirstItem }: {
   block: Block; readOnly: boolean; autoFocus: boolean;
   onChange: (content: string, properties: BlockProperties) => void;
+  onBackspaceFirstItem?: () => void;
 }) {
   const items: Item[] = block.properties?.listItems?.length ? block.properties.listItems
     : [{ id: `${block.id}-item`, content: block.content, checked: !!block.properties?.checked }];
+  const containerRef = useRef<HTMLDivElement>(null);
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
   const [focus, setFocus] = useState<{ id: string; offset: number } | null>(null);
   const save = (next: Item[]) => onChange(next.map(item => item.content).join('\n'), { ...block.properties, listItems: next });
 
   useLayoutEffect(() => {
-    inputs.current.forEach(input => { input.style.height = 'auto'; input.style.height = `${input.scrollHeight}px`; });
-  }, [block.content, block.properties?.listItems]);
+    const adjustHeights = () => {
+      inputs.current.forEach(input => { input.style.height = 'auto'; input.style.height = `${input.scrollHeight}px`; });
+    };
+    adjustHeights();
+    const container = containerRef.current;
+    let previousWidth = container?.getBoundingClientRect().width;
+    const observer = container && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== undefined && width !== previousWidth) {
+        previousWidth = width;
+        adjustHeights();
+      }
+    }) : undefined;
+    if (container) observer?.observe(container);
+    window.addEventListener('resize', adjustHeights);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', adjustHeights);
+    };
+  }, [block.content, block.properties?.listItems, block.properties?.fontSize, block.properties?.fontFamily, block.properties?.bold, block.properties?.italic]);
   useLayoutEffect(() => {
     if (!autoFocus || readOnly) return;
     const first = inputs.current.values().next().value;
@@ -33,7 +53,7 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
 
   const Tag = block.type === 'numbered' ? 'ol' : 'ul';
   const numbers = listNumbers(items);
-  return <div data-list-kind={block.type} className="w-full">
+  return <div ref={containerRef} data-list-kind={block.type} className="w-full">
     <Tag className="m-0 list-none p-0 space-y-1">
       {items.map((item, index) => <li key={item.id} className="flex items-start gap-2" data-list-item={item.id}
         data-level={listLevel(item)} style={{ marginLeft: `${(listLevel(item) - 1) * 24}px` }}>
@@ -65,12 +85,17 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
               const updated = [...items];
               updated.splice(index, 1, { ...item, content: item.content.slice(0, start), inlineLinks: (item.inlineLinks || []).filter(link => link.end <= start) }, next);
               save(updated); setFocus({ id: next.id, offset: 0 });
-            } else if (event.key === 'Backspace' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0 && index > 0) {
-              event.preventDefault(); event.stopPropagation();
-              const previous = items[index - 1];
-              const updated = [...items];
-              updated.splice(index - 1, 2, { ...previous, content: previous.content + item.content, inlineLinks: [...(previous.inlineLinks || []), ...(item.inlineLinks || []).map(link => ({ ...link, start: link.start + previous.content.length, end: link.end + previous.content.length }))] });
-              save(updated); setFocus({ id: previous.id, offset: previous.content.length });
+            } else if (event.key === 'Backspace' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0) {
+              if (index > 0) {
+                event.preventDefault(); event.stopPropagation();
+                const previous = items[index - 1];
+                const updated = [...items];
+                updated.splice(index - 1, 2, { ...previous, content: previous.content + item.content, inlineLinks: [...(previous.inlineLinks || []), ...(item.inlineLinks || []).map(link => ({ ...link, start: link.start + previous.content.length, end: link.end + previous.content.length }))] });
+                save(updated); setFocus({ id: previous.id, offset: previous.content.length });
+              } else if (onBackspaceFirstItem) {
+                event.preventDefault(); event.stopPropagation();
+                onBackspaceFirstItem();
+              }
             }
           }} />
       </li>)}

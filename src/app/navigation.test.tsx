@@ -186,7 +186,7 @@ test('Sidebar2 switches workspaces, preserves folder actions and keeps only one 
     assert.equal(select.dataset.space, 'personal');
     const headerRow = select.parentElement!.parentElement!;
     const headerContainer = headerRow.parentElement!;
-    assert.equal(sidebar.style.width, '280px');
+    assert.equal(sidebar.style.width, '320px');
     assert(headerContainer.className.includes('p-2'));
     assert(headerContainer.className.includes('shrink-0'));
     assert(headerRow.className.includes('gap-2'));
@@ -197,35 +197,45 @@ test('Sidebar2 switches workspaces, preserves folder actions and keeps only one 
     assert.equal(headerRow.lastElementChild?.getAttribute('title'), 'Thu gọn thanh bên');
     assert(headerRow.lastElementChild?.className.includes('shrink-0'));
     assert(headerRow.lastElementChild?.className.includes('w-9'));
-    const createButton = sidebar.querySelector<HTMLButtonElement>('button[title="Tạo mới"]')!;
-    const aiButton = sidebar.querySelector<HTMLButtonElement>('button[title="Hỏi AI"]')!;
+    const createButton = sidebar.querySelector<HTMLButtonElement>('button[title="Tạo tài liệu"]')!;
+    const folderButton = sidebar.querySelector<HTMLButtonElement>('button[title="Tạo thư mục"]')!;
+    assert.equal(createButton.textContent?.trim(), 'Tạo tài liệu');
+    assert.equal(folderButton.textContent?.trim(), 'Tạo thư mục');
+    assert.equal(sidebar.querySelector('button[title="Hỏi AI"]'), null);
     assert.equal(headerRow.children[0], select.parentElement);
     const actionRow = createButton.parentElement!.parentElement!;
     assert.notEqual(actionRow, headerRow);
     assert(actionRow.className.includes('mt-2'));
     assert(actionRow.className.includes('gap-1.5'));
     assert(createButton.parentElement!.className.includes('flex-1'));
-    assert(aiButton.parentElement!.className.includes('flex-1'));
+    assert(folderButton.parentElement!.className.includes('flex-1'));
     assert(createButton.className.includes('w-full'));
-    assert(aiButton.className.includes('w-full'));
+    assert(folderButton.className.includes('w-full'));
     assert(createButton.className.includes('px-3'));
-    assert(aiButton.className.includes('px-3'));
+    assert(folderButton.className.includes('px-3'));
     assert.equal(actionRow.children[0], createButton.parentElement);
-    assert.equal(actionRow.children[1], aiButton.parentElement);
+    assert.equal(actionRow.children[1], folderButton.parentElement);
     assert.equal(actionRow.lastElementChild?.getAttribute('title'), 'Thao tác nhanh khác');
     assert(actionRow.lastElementChild?.className.includes('w-9'));
+    await click(actionRow.lastElementChild);
+    const quickMenu = sidebar.querySelector('#quick-action-dialog')!;
+    assert.deepEqual(
+      Array.from(quickMenu.querySelectorAll('button:not([aria-label="Đóng thao tác nhanh"])')).map((btn) => btn.textContent?.trim()),
+      ['Ghi chú cá nhân', 'Biên bản cuộc họp', 'Kế hoạch công việc', 'Kế hoạch tuần', 'Tài liệu nội bộ']
+    );
+    await click(quickMenu.querySelector('button[aria-label="Đóng thao tác nhanh"]'));
     const resize = async (from: number, to: number) => {
       const handle = sidebar.querySelector('[title^="Kéo sang trái/phải"]')!;
       await act(async () => handle.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, clientX: from })));
       await act(async () => document.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: to })));
       await act(async () => document.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true })));
     };
-    await resize(280, 500);
+    await resize(320, 500);
     assert.equal(createButton.querySelector('span')?.classList.contains('sr-only'), false);
-    assert.equal(aiButton.querySelector('span')?.classList.contains('sr-only'), false);
+    assert.equal(folderButton.querySelector('span')?.classList.contains('sr-only'), false);
     await resize(500, 200);
     assert.equal(createButton.querySelector('span')?.classList.contains('sr-only'), true);
-    assert.equal(aiButton.querySelector('span')?.classList.contains('sr-only'), true);
+    assert.equal(folderButton.querySelector('span')?.classList.contains('sr-only'), true);
     assert.equal(select.parentElement!.querySelector('[aria-hidden="true"] span'), null);
     assert.equal(select.title, 'Ghi chép của tôi');
     assert(!sidebar.textContent?.includes('Gần đây'));
@@ -346,24 +356,53 @@ test('ODT sample renders links inside list text and keeps them aligned after edi
 });
 
 test('editor width toggle switches between reading and wide content without changing text', async () => {
-  const doc = getStoredDocuments().find(item => !item.isTrash)!;
-  await mount(`/documents/${doc.id}`);
-  const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="Xem toàn màn hình"]')!;
-  const content = document.querySelector<HTMLElement>('[data-content-width]')!;
-  const initialText = document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value;
-  assert.equal(toggle.textContent, 'Vừa đọc');
-  assert(content.firstElementChild?.classList.contains('max-w-2xl'));
-  assert(content.firstElementChild?.classList.contains('mx-auto'));
-  await click(toggle);
-  assert.equal(toggle.getAttribute('aria-pressed'), 'true');
-  assert.equal(toggle.textContent, 'Xem toàn màn hình');
-  assert(content.classList.contains('px-[5%]'));
-  assert(!content.firstElementChild?.classList.contains('max-w-2xl'));
-  assert.equal(document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value, initialText);
-  await click(toggle);
-  assert.equal(toggle.textContent, 'Vừa đọc');
-  assert(content.firstElementChild?.classList.contains('max-w-2xl'));
-  assert(content.firstElementChild?.classList.contains('mx-auto'));
+  const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
+  const origPrint = window.print;
+  let printCalls = 0;
+  Object.defineProperty(window, 'print', {
+    configurable: true,
+    writable: true,
+    value: () => {
+      printCalls += 1;
+    },
+  });
+
+  try {
+    await mount(`/documents/${doc.id}`);
+    const headerActions = document.querySelector<HTMLElement>('[data-doc-header-actions]')!;
+    assert(headerActions);
+    const orderedButtons = Array.from(headerActions.querySelectorAll<HTMLButtonElement>('button')).map(
+      (btn) => btn.textContent?.trim() || btn.getAttribute('title') || ''
+    );
+    assert.deepEqual(orderedButtons, ['Xem toàn màn hình', 'Chia sẻ', 'In', 'Tùy chọn khác']);
+    assert.equal(button('Đã yêu thích', headerActions), undefined);
+    assert.equal(button('Yêu thích', headerActions), undefined);
+
+    const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="Xem toàn màn hình"]')!;
+    const content = document.querySelector<HTMLElement>('[data-content-width]')!;
+    const initialText = document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value;
+    assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+    assert.equal(toggle.textContent, 'Xem toàn màn hình');
+    assert(content.classList.contains('px-[5%]'));
+    assert(!content.firstElementChild?.classList.contains('max-w-2xl'));
+
+    await click(toggle);
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+    assert.equal(toggle.textContent, 'Vừa đọc');
+    assert(content.firstElementChild?.classList.contains('max-w-2xl'));
+    assert(content.firstElementChild?.classList.contains('mx-auto'));
+    assert.equal(document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value, initialText);
+
+    await click(toggle);
+    assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+    assert.equal(toggle.textContent, 'Xem toàn màn hình');
+    assert(!content.firstElementChild?.classList.contains('max-w-2xl'));
+
+    await click(button('In', headerActions));
+    assert.equal(printCalls, 1, 'Clicking In must trigger browser native print/PDF export');
+  } finally {
+    Object.defineProperty(window, 'print', { configurable: true, writable: true, value: origPrint });
+  }
 });
 
 test('library folder tree starts collapsed and expands on demand', async () => {
@@ -1366,10 +1405,9 @@ test('all library navigation tabs, sidebar lists and folder names have working r
   await click(document.getElementById('space-tab-company'));
   await click(button('TÀI LIỆU CÔNG TY'));
   assert.equal(window.location.pathname, '/company');
-  for (const [label, path] of [['Gần đây', '/recent'], ['Yêu thích', '/favorites']]) {
-    await click(Array.from(document.querySelectorAll('aside span')).find(element => element.textContent === label));
-    assert.equal(window.location.pathname, path); assert.equal(heading(), label);
-  }
+  assert(!document.querySelector('aside')!.textContent?.includes('Gần đây'));
+  await click(Array.from(document.querySelectorAll('aside span')).find(element => element.textContent === 'Yêu thích'));
+  assert.equal(window.location.pathname, '/favorites'); assert.equal(heading(), 'Yêu thích');
   await click(document.querySelector('aside button[aria-label="Thùng rác"]'));
   assert.equal(window.location.pathname, '/trash');
 });
@@ -1527,7 +1565,7 @@ test('folder plus creates nested folders, rename keeps ancestry, and confirmed d
   await mount('/library/private');
   const initialNoteCount = getStoredDocuments().length;
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
-  await click(button('Tạo thư mục', document.querySelector('aside')!));
+  await click(button('Tạo thư mục', document.querySelector('[role="menu"]')!));
   assert.equal(document.querySelector('[role="dialog"]'), null);
   assert(getStoredFolders().some(folder => folder.name === 'Thư mục mới' && folder.parentId === 'fld_work'));
   await nameNewFolder('Sprint A');
@@ -1536,7 +1574,7 @@ test('folder plus creates nested folders, rename keeps ancestry, and confirmed d
   assert.equal(getStoredDocuments().length, initialNoteCount);
   assert(document.querySelector(`[data-folder-id="fld_work"] [data-folder-id="${child.id}"]`));
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Sprint A"]'));
-  await click(button('Tạo thư mục', document.querySelector('aside')!));
+  await click(button('Tạo thư mục', document.querySelector('[role="menu"]')!));
   await nameNewFolder('Tasks');
   const grandchild = getStoredFolders().find(folder => folder.name === 'Tasks')!;
   assert.equal(grandchild.parentId, child.id);
@@ -1596,14 +1634,14 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   const { getStoredFolders } = await import('../utils/storage');
   await mount('/library/private');
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
-  await click(button('Tạo thư mục', document.querySelector('aside')!));
+  await click(button('Tạo thư mục', document.querySelector('[role="menu"]')!));
   const firstInput = document.querySelector('input[aria-label="Tên thư mục mới"]') as HTMLInputElement;
   assert.equal(firstInput, document.activeElement);
   assert.equal(firstInput.value, 'Thư mục mới');
   await act(async () => { firstInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert(getStoredFolders().some(folder => folder.parentId === 'fld_work' && folder.name === 'Thư mục mới'));
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
-  await click(button('Tạo thư mục', document.querySelector('aside')!));
+  await click(button('Tạo thư mục', document.querySelector('[role="menu"]')!));
   const secondInput = document.querySelector('input[aria-label="Tên thư mục mới"]') as HTMLInputElement;
   assert.equal(secondInput.value, 'Thư mục mới 2');
   await act(async () => { secondInput.blur(); });
@@ -1678,11 +1716,8 @@ test('both sidebars omit unclassified folders and place new notes at the top abo
     } finally { layoutConfig.useSidebar2 = false; }
   }
   await mount('/library/private');
-  const recentRow = Array.from(document.querySelectorAll('aside span')).find(el => el.textContent === 'Gần đây')!;
-  assert(recentRow);
-  await click(recentRow);
-  assert.equal(window.location.pathname, '/recent');
-  assert.equal(heading(), 'Gần đây');
+  assert(!document.querySelector('aside')!.textContent?.includes('Gần đây'));
+  assert.equal(document.querySelector('aside [aria-label="Danh sách gần đây"]'), null);
 });
 
 test('selecting text in block editor renders EditTextDialog with side-by-side submenu and closing on unselect', async () => {
@@ -1867,9 +1902,29 @@ test('scrolling to bottom of block editor automatically adds bottom whitespace a
 test('creating a new document focuses its title and pressing Enter saves immediately and moves to content', async () => {
   const existing = getStoredDocuments().find(doc => !doc.isTrash)!;
   await mount(`/documents/${existing.id}`);
+  assert.equal(document.querySelector<HTMLElement>('aside')!.style.width, '320px');
   assert.notEqual(document.activeElement, document.querySelector('textarea[placeholder="Tiêu đề trang..."]'));
 
-  await click(document.querySelector('aside button[title="Tạo mới"]'));
+  assert.equal(document.querySelector('aside button[title="Hỏi AI"]'), null);
+  assert.equal(document.querySelector('aside button[title="Tạo thư mục"]')?.textContent?.trim(), 'Tạo thư mục');
+
+  await click(document.querySelector('aside button[title="Thao tác nhanh khác"]'));
+  const sidebarQuickMenu = document.querySelector('#quick-action-dialog')!;
+  assert.deepEqual(
+    Array.from(sidebarQuickMenu.querySelectorAll('button:not([aria-label="Đóng thao tác nhanh"])')).map((btn) => btn.textContent?.trim()),
+    ['Ghi chú cá nhân', 'Biên bản cuộc họp', 'Kế hoạch công việc', 'Kế hoạch tuần', 'Tài liệu nội bộ']
+  );
+  await click(button('Kế hoạch tuần', sidebarQuickMenu));
+  assert.equal(document.querySelector('#quick-action-dialog'), null);
+  assert(getStoredDocuments().some((doc) => doc.title === 'Kế hoạch tuần'));
+
+  // Creating folder directly from top header button "Tạo thư mục"
+  const { getStoredFolders } = await import('../utils/storage');
+  const folderCountBefore = getStoredFolders().length;
+  await click(document.querySelector('aside button[title="Tạo thư mục"]'));
+  assert.equal(getStoredFolders().length, folderCountBefore + 1);
+
+  await click(document.querySelector('aside button[title="Tạo tài liệu"]'));
   const titleInput = document.querySelector<HTMLTextAreaElement>('textarea[placeholder="Tiêu đề trang..."]')!;
   assert.equal(document.activeElement, titleInput);
   assert.equal(titleInput.selectionStart, 0);
@@ -1935,10 +1990,1116 @@ test('sidebar footer buttons render icons only with hover tooltips in both sideb
         assert.equal(tooltip?.textContent, label);
         assert(tooltip?.className.includes('opacity-0'));
         assert(tooltip?.className.includes('group-hover/footer-item:opacity-100'));
+        assert(!tooltip?.className.includes('group-focus-within'), 'Tooltip must hide when unhovered even if clicked button keeps focus');
         await click(btn);
         assert.equal(window.location.pathname, path);
       }
+
+      const trashWrapper = sidebar.querySelector('button[aria-label="Thùng rác"]')!.parentElement!;
+      const quickNoteBtn = sidebar.querySelector<HTMLButtonElement>('button[aria-label="Quick Note"]')!;
+      assert(quickNoteBtn, 'Expected Quick Note footer button');
+      assert.equal(trashWrapper.nextElementSibling, quickNoteBtn.parentElement, 'Quick Note should sit right after Thùng rác');
+      assert.equal(quickNoteBtn.getAttribute('title'), null);
+      assert(quickNoteBtn.querySelector('.lucide-pencil'));
+      assert.equal(quickNoteBtn.querySelector('.sr-only')?.textContent, 'Quick Note');
+      const quickNoteTooltip = quickNoteBtn.parentElement?.querySelector('[role="tooltip"]');
+      assert(quickNoteTooltip?.textContent?.includes('Quick Note'));
+      assert(quickNoteTooltip?.textContent?.includes('Ctrl + /'));
+      assert(quickNoteTooltip?.className.includes('opacity-0'));
+      assert(quickNoteTooltip?.className.includes('group-hover/footer-item:opacity-100'));
+      assert(!quickNoteTooltip?.className.includes('group-focus-within'));
     } finally { layoutConfig.useSidebar2 = false; }
   }
 });
+
+test('Quick Note defaults to editor, avoids saving empty drafts, and switches cleanly between editor and recent notes', async () => {
+  const { getStoredQuickNotes } = await import('../utils/quickNotes');
+  const typeValue = async (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const proto = el instanceof window.HTMLTextAreaElement
+      ? window.HTMLTextAreaElement.prototype
+      : window.HTMLInputElement.prototype;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(el, value);
+      el.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+
+  for (const useNewSidebar of [false, true]) {
+    memoryStorage.clear();
+    layoutConfig.useSidebar2 = useNewSidebar;
+    try {
+      await mount('/private');
+      await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+      let modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+      assert(modal, 'Quick Note modal should open');
+      assert.equal(modal.dataset.quickNoteView, 'editor', 'Must open directly into level 2 Note Editor');
+      assert.equal(getStoredQuickNotes().length, 0, 'Must not save an empty record on open');
+
+      // Back to Recent Notes without typing -> still zero records + empty state + Level 1 layout checks.
+      await click(modal.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+      modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+      assert.equal(modal.dataset.quickNoteView, 'recent');
+      assert.equal(getStoredQuickNotes().length, 0);
+      assert(modal.textContent?.includes('Ghi chú nhanh'));
+      assert(modal.textContent?.includes('Chưa có ghi chú nhanh nào'));
+      assert(button('Tạo mới', modal));
+      // No close X button in level 1 header; uses fixed bottom footer ("Đóng menu" / "esc").
+      assert.equal(modal.querySelector('button[aria-label="Đóng ghi chú nhanh"]'), null);
+      const closeFooter = button('Đóng menu', modal) || Array.from(modal.querySelectorAll('button')).find(el => el.textContent?.includes('Đóng menu'))!;
+      assert(closeFooter);
+      assert(closeFooter.textContent?.includes('esc'));
+
+      // Escape in Recent Notes closes Quick Note.
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      assert.equal(document.querySelector('[data-quick-note-modal]'), null);
+
+      // Ctrl + / opens directly into Editor even after previous view was Recent Notes.
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: '/', code: 'Slash', ctrlKey: true, bubbles: true, cancelable: true }));
+      });
+      modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+      assert.equal(modal.dataset.quickNoteView, 'editor');
+
+      // Type Note 1 and test toolbar + Escape priority inside Editor.
+      const firstBlockTextarea = () => document.querySelector<HTMLTextAreaElement>('[data-quick-note-modal] [data-block-id] textarea')!;
+      assert.equal(document.activeElement, firstBlockTextarea(), 'Empty editor must focus the content input ready for immediate typing');
+      await typeValue(firstBlockTextarea(), 'Ghi chú đầu tiên');
+
+      // Escape in Editor opens/closes slash menu without closing modal or wiping text.
+      await typeValue(firstBlockTextarea(), '/');
+      assert(document.querySelector('[role="dialog"][aria-label="Chèn tiện ích nhanh"]'));
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      assert.equal(document.querySelector('[role="dialog"][aria-label="Chèn tiện ích nhanh"]'), null);
+      assert(document.querySelector('[data-quick-note-modal]'), 'Escape in Editor must not close modal');
+      await typeValue(firstBlockTextarea(), 'Ghi chú đầu tiên');
+
+      // Press Escape with no inner popover open -> flushes safely without discarding content.
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      assert(document.querySelector('[data-quick-note-modal]'));
+      assert.equal(getStoredQuickNotes().length, 1);
+
+      // Go back via < -> Note 1 appears selected in Recent Notes.
+      await click(modal.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+      assert.equal(modal.dataset.quickNoteView, 'recent');
+      const note1 = getStoredQuickNotes()[0];
+      assert.equal(modal.querySelector(`[data-quick-note-item="${note1.id}"]`)?.getAttribute('data-selected'), 'true');
+
+      // Click "Tạo mới" -> empty Editor without overwriting Note 1.
+      await click(button('Tạo mới', modal));
+      assert.equal(modal.dataset.quickNoteView, 'editor');
+      const titleInput = modal.querySelector<HTMLInputElement>('input[aria-label="Tiêu đề ghi chú nhanh"]')!;
+      assert.equal(titleInput.value, '');
+      assert.equal(firstBlockTextarea().value, '');
+      assert.equal(getStoredQuickNotes()[0].blocks[0].content, 'Ghi chú đầu tiên');
+
+      await typeValue(titleInput, 'Kế hoạch tuần 46');
+      await typeValue(firstBlockTextarea(), 'Cập nhật lô hàng');
+      // Convert active block using toolbar Checklist & Text formatting & Color.
+      await click(modal.querySelector('button[aria-label="Danh sách việc cần làm"]'));
+      assert(modal.querySelector('[data-list-kind="checklist"]'));
+      await click(modal.querySelector('button[aria-label="Định dạng văn bản"]'));
+      await click(modal.querySelector('button[aria-label="Đậm"]'));
+      await click(modal.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+
+      assert.equal(getStoredQuickNotes().length, 2, 'Two distinct quick notes should be saved');
+
+      // Search filters by title and content; empty search state works; clear restores all.
+      const searchInput = modal.querySelector<HTMLInputElement>('input[placeholder="Tìm ghi chú..."]')!;
+      await typeValue(searchInput, 'lô hàng');
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 230)); });
+      assert.equal(modal.querySelectorAll('[data-quick-note-item]').length, 1);
+      assert(modal.textContent?.includes('Kế hoạch tuần 46'));
+
+      await typeValue(searchInput, 'từ khóa không khớp');
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 230)); });
+      assert(modal.textContent?.includes('Không tìm thấy ghi chú phù hợp'));
+      await click(modal.querySelector('button[aria-label="Xóa tìm kiếm"]'));
+
+      // Clicking (...) on Note 1 must NOT open Editor; Pin option must be absent; test Escape & Rename.
+      const menuBtn = modal.querySelector(`button[aria-label="Tùy chọn ghi chú Ghi chú đầu tiên"]`)!;
+      await click(menuBtn);
+      assert.equal(modal.dataset.quickNoteView, 'recent', 'Clicking item (...) button must not open editor');
+      assert.equal(button('Ghim ghi chú'), undefined, 'Pin option must be removed from item menu');
+      assert.equal(button('Bỏ ghim'), undefined, 'Unpin option must be removed from item menu');
+      assert(button('Sao chép nội dung'), 'Copy formatted option should appear in item menu');
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      });
+      assert(document.querySelector('[data-quick-note-modal]'), 'Escape from item menu must only close the menu');
+
+      // Rename Note 1 (and check RenameDialog Escape doesn't close QuickNoteModal).
+      await click(modal.querySelector(`button[aria-label="Tùy chọn ghi chú Ghi chú đầu tiên"]`));
+      await click(button('Đổi tên'));
+      const renameInput = document.querySelector<HTMLInputElement>('input[aria-label="Tên ghi chú"]')!;
+      assert(renameInput);
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+      assert.equal(document.querySelector('[role="dialog"][aria-label="Đặt lại tên ghi chú"]'), null);
+      assert(document.querySelector('[data-quick-note-modal]'), 'Closing RenameDialog must keep QuickNoteModal open');
+
+      await click(modal.querySelector(`button[aria-label="Tùy chọn ghi chú Ghi chú đầu tiên"]`));
+      await click(button('Đổi tên'));
+      await typeValue(document.querySelector<HTMLInputElement>('input[aria-label="Tên ghi chú"]')!, 'Ghi chú đã đổi tên');
+      await click(button('Lưu'));
+      assert.equal(getStoredQuickNotes().find(n => n.id === note1.id)?.title, 'Ghi chú đã đổi tên');
+
+      // Open Note 2 ("Kế hoạch tuần 46") -> loads correctly without creating duplicate records.
+      const note2 = getStoredQuickNotes().find(n => n.title === 'Kế hoạch tuần 46')!;
+      await click(modal.querySelector(`[data-quick-note-item="${note2.id}"]`));
+      assert.equal(modal.dataset.quickNoteView, 'editor');
+      assert.equal(modal.querySelector<HTMLInputElement>('input[aria-label="Tiêu đề ghi chú nhanh"]')?.value, 'Kế hoạch tuần 46');
+      assert(modal.querySelector('[data-list-kind="checklist"]'));
+      assert.equal(getStoredQuickNotes().length, 2);
+
+      // Maximize & restore without breaking dialog.
+      await click(modal.querySelector('button[aria-label="Phóng to"]'));
+      assert(modal.className.includes('max-w-[820px]'));
+      await click(modal.querySelector('button[aria-label="Thu nhỏ"]'));
+      assert(modal.className.includes('max-w-[460px]'));
+
+      // Promote Quick Note into workspace ("Lưu vào Ghi chép của tôi").
+      const docsBeforePromote = getStoredDocuments().length;
+      await click(modal.querySelector('button[aria-label="Tùy chọn ghi chú"]'));
+      await click(button('Lưu vào Ghi chép của tôi'));
+      assert.equal(getStoredDocuments().length, docsBeforePromote + 1);
+      assert(getStoredDocuments().some(doc => doc.space === 'personal' && doc.folderId === null && doc.title === 'Kế hoạch tuần 46'));
+
+      // Deleting the currently open note clears activeNoteId and goes cleanly back to Recent Notes.
+      await click(modal.querySelector('button[aria-label="Tùy chọn ghi chú"]'));
+      await click(button('Xóa ghi chú'));
+      assert.equal(modal.dataset.quickNoteView, 'recent');
+      assert.equal(getStoredQuickNotes().length, 1);
+
+      // Close via "Đóng menu", then Ctrl + / opens fresh blank Editor (not deleted Note 2).
+      await click(Array.from(modal.querySelectorAll('button')).find(el => el.textContent?.includes('Đóng menu'))!);
+      assert.equal(document.querySelector('[data-quick-note-modal]'), null);
+      await act(async () => {
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: '/', code: 'Slash', ctrlKey: true, bubbles: true, cancelable: true }));
+      });
+      modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+      assert.equal(modal.dataset.quickNoteView, 'editor');
+      assert.equal(modal.querySelector<HTMLInputElement>('input[aria-label="Tiêu đề ghi chú nhanh"]')?.value, '');
+    } finally { layoutConfig.useSidebar2 = false; }
+  }
+});
+
+test('Quick Note prevents autosave race conditions and preserves content on failed saves', async () => {
+  const { QuickNoteModal } = await import('../components/modals/QuickNoteModal');
+  const { createRoot: makeRoot } = await import('react-dom/client');
+
+  let stored: import('../types').QuickNote[] = [];
+  const pendingSaves: Array<{ note: import('../types').QuickNote; resolve: () => void; reject: (err: Error) => void }> = [];
+  let shouldReject = false;
+
+  const controlledSave = (note: import('../types').QuickNote) =>
+    new Promise<import('../types').QuickNote>((resolve, reject) => {
+      if (shouldReject) {
+        reject(new Error('Lỗi kết nối máy chủ'));
+        return;
+      }
+      pendingSaves.push({
+        note,
+        resolve: () => {
+          const idx = stored.findIndex(item => item.id === note.id);
+          if (idx >= 0) stored[idx] = note; else stored = [note, ...stored];
+          resolve(note);
+        },
+        reject,
+      });
+    });
+
+  if (root) await act(async () => root!.unmount());
+  const host = document.getElementById('root')!;
+  root = makeRoot(host);
+  await act(async () => {
+    root!.render(
+      <QuickNoteModal
+        isOpen={true}
+        onClose={() => {}}
+        loadNotes={async () => stored}
+        saveNote={controlledSave}
+        autosaveDelayMs={80}
+      />
+    );
+  });
+  // Allow async initial load to settle.
+  await act(async () => { await new Promise(r => setTimeout(r, 10)); });
+
+  const typeBlock = async (val: string) => {
+    const textarea = document.querySelector<HTMLTextAreaElement>('[data-quick-note-modal] [data-block-id] textarea')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(textarea, val);
+      textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  };
+
+  // Trigger save V1 (slow, unresolved), then rapidly edit V2 and flush.
+  await typeBlock('Phiên bản V1');
+  await act(async () => { await new Promise(r => setTimeout(r, 110)); });
+  assert.equal(pendingSaves.length, 1);
+
+  await typeBlock('Phiên bản V2');
+  const backBtn = document.querySelector<HTMLButtonElement>('[data-quick-note-modal] button[aria-label="Quay lại ghi chú gần đây"]')!;
+  await act(async () => {
+    backBtn.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+  });
+  assert.equal(pendingSaves.length, 2);
+
+  // Resolve newer V2 first, then reject stale V1 late -> V2 must survive with no error banner!
+  await act(async () => {
+    pendingSaves[1].resolve();
+    pendingSaves[0].reject(new Error('Stale V1 timeout'));
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  const modal = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  assert.equal(modal.dataset.quickNoteView, 'recent');
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].blocks[0].content, 'Phiên bản V2');
+  assert.equal(document.querySelector('[data-quick-note-modal] [role="alert"]'), null);
+
+  // Now simulate failing save -> must show error alert and preserve unsaved edits in Editor.
+  await click(button('Tạo mới', modal));
+  shouldReject = true;
+  await typeBlock('Nội dung quan trọng chưa lưu');
+  await click(document.querySelector('[data-quick-note-modal] button[aria-label="Quay lại ghi chú gần đây"]'));
+
+  const alert = document.querySelector('[data-quick-note-modal] [role="alert"]');
+  assert(alert?.textContent?.includes('Lỗi kết nối máy chủ'));
+  assert.equal(document.querySelector<HTMLElement>('[data-quick-note-modal]')?.dataset.quickNoteView, 'editor', 'Must stay in editor so unsaved text is not silently lost');
+  assert.equal(document.querySelector<HTMLTextAreaElement>('[data-quick-note-modal] [data-block-id] textarea')?.value, 'Nội dung quan trọng chưa lưu');
+
+  // Recover on Retry -> succeeds cleanly.
+  shouldReject = false;
+  await click(button('Thử lại', alert!));
+  await act(async () => {
+    while (pendingSaves.length > 2) pendingSaves.pop()!.resolve();
+  });
+  assert.equal(document.querySelector('[data-quick-note-modal] [role="alert"]'), null);
+  assert.equal(stored.length, 2);
+});
+
+test('Quick Note renders as a draggable non-modal dialog while underlying screens remain interactive', async () => {
+  memoryStorage.clear();
+  await mount('/documents/doc_week_plan');
+  await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+
+  const dialog = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  assert(dialog);
+  assert.equal(dialog.getAttribute('aria-modal'), 'false');
+  assert.equal(dialog.parentElement?.className.includes('inset-0'), false, 'Should not render a blocking full-screen backdrop');
+
+  const initialLeft = parseFloat(dialog.style.left);
+  const initialTop = parseFloat(dialog.style.top);
+  assert(Number.isFinite(initialLeft) && Number.isFinite(initialTop));
+
+  // Drag dialog header to reposition cleanly.
+  const handle = dialog.querySelector<HTMLElement>('[data-quick-note-drag-handle]')!;
+  await act(async () => {
+    handle.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 500, clientY: 300 }));
+  });
+  await act(async () => {
+    window.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 380, clientY: 220 }));
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+
+  const movedLeft = parseFloat(dialog.style.left);
+  const movedTop = parseFloat(dialog.style.top);
+  assert.equal(movedLeft, Math.max(8, initialLeft - 120));
+  assert.equal(movedTop, Math.max(8, initialTop - 80));
+
+  // Dragging starting on an interactive header button (<) must NOT drag the dialog.
+  const backBtn = dialog.querySelector<HTMLButtonElement>('button[aria-label="Quay lại ghi chú gần đây"]')!;
+  await act(async () => {
+    backBtn.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 100, clientY: 100 }));
+    window.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 250, clientY: 250 }));
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  assert.equal(parseFloat(dialog.style.left), movedLeft);
+
+  // Switch to level 1 recent view via < and verify dragged position stays unchanged.
+  await click(backBtn);
+  assert.equal(dialog.dataset.quickNoteView, 'recent');
+  assert.equal(parseFloat(dialog.style.left), movedLeft);
+  assert.equal(parseFloat(dialog.style.top), movedTop);
+
+  // Background screens underneath remain completely clickable and editable while Quick Note stays open!
+  const docTitleInput = document.querySelector<HTMLTextAreaElement>('main textarea[aria-label="Tiêu đề ghi chú"]')!;
+  await act(async () => {
+    docTitleInput.focus();
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(docTitleInput, 'Đã sửa ở nền');
+    docTitleInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(docTitleInput.value, 'Đã sửa ở nền');
+  assert(document.querySelector('[data-quick-note-modal]'), 'Interacting with main document must keep Quick Note open');
+
+  // Escape pressed while background workspace editor holds focus must NOT close floating Quick Note.
+  await act(async () => {
+    docTitleInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  });
+  assert(document.querySelector('[data-quick-note-modal]'));
+
+  // Clicking sidebar footer underneath navigates without closing Quick Note.
+  await click(document.querySelector('aside button[aria-label="Thư viện"]'));
+  assert.equal(window.location.pathname, '/library/all');
+  assert(document.querySelector('[data-quick-note-modal]'));
+});
+
+test('Quick Note removes Pin controls and preserves exact formatting when copying content to another document', async () => {
+  const { saveStoredDocuments, getStoredDocuments } = await import('../utils/storage');
+  const { saveStoredQuickNotes } = await import('../utils/quickNotes');
+  const { clearCopiedBlocksBridge } = await import('../utils/blockClipboard');
+  clearCopiedBlocksBridge();
+
+  const now = '2026-11-11T10:30:00.000Z';
+  const base = getStoredDocuments().find((doc) => !doc.isTrash && doc.space === 'personal') || getStoredDocuments().find((doc) => !doc.isTrash)!;
+  saveStoredDocuments([
+    {
+      ...base,
+      id: 'target-doc-1',
+      title: 'Tài liệu đích 1',
+      space: 'personal',
+      folderId: null,
+      isPrivate: true,
+      blocks: [{ id: 'target-empty-blk', type: 'paragraph', content: '' }],
+    },
+    {
+      ...base,
+      id: 'target-doc-2',
+      title: 'Tài liệu đích 2',
+      space: 'personal',
+      folderId: null,
+      isPrivate: true,
+      blocks: [{ id: 'target-existing-blk', type: 'paragraph', content: 'Đoạn mở đầu sẵn có' }],
+    },
+  ]);
+
+  saveStoredQuickNotes([
+    {
+      id: 'qn-formatted-1',
+      title: 'Ghi chú định dạng chuẩn',
+      icon: '📝',
+      createdAt: now,
+      updatedAt: now,
+      blocks: [
+        {
+          id: 'qf-h1',
+          type: 'h1',
+          content: 'Tiêu đề lớn màu xanh',
+          properties: { bold: true, textColor: '#1E3A8A' },
+        },
+        {
+          id: 'qf-styled',
+          type: 'paragraph',
+          content: 'Nhấn mạnh có nền vàng',
+          properties: {
+            italic: true,
+            underline: true,
+            backgroundColor: '#FEF3C7',
+            fontFamily: 'Serif',
+            fontSize: 18,
+          },
+        },
+        {
+          id: 'qf-check',
+          type: 'checklist',
+          content: 'Hoàn tất bàn giao',
+          properties: { checked: true },
+        },
+        {
+          id: 'qf-bullet',
+          type: 'bullet',
+          content: 'Gửi team QA',
+        },
+      ],
+    },
+  ]);
+
+  const origClipboardDesc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  const origClipboardItemDesc = Object.getOwnPropertyDescriptor(globalThis, 'ClipboardItem');
+
+  class FakeClipboardItem {
+    readonly items: Record<string, Blob>;
+    constructor(items: Record<string, Blob>) {
+      this.items = items;
+    }
+  }
+
+  let writtenHtml = '';
+  let writtenPlain = '';
+  let writeMode: 'rich' | 'text-only' | 'deny' = 'rich';
+
+  const makeDataTransfer = (initial: Record<string, string> = {}) => {
+    const map = new Map<string, string>(Object.entries(initial));
+    return {
+      getData: (type: string) => map.get(type) ?? '',
+      setData: (type: string, value: string) => {
+        map.set(type, value);
+      },
+    };
+  };
+
+  Object.defineProperty(globalThis, 'ClipboardItem', {
+    configurable: true,
+    writable: true,
+    value: FakeClipboardItem,
+  });
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      write: async (items: FakeClipboardItem[]) => {
+        if (writeMode === 'deny') {
+          throw new Error('NotAllowedError: Permission denied');
+        }
+        if (writeMode === 'text-only') {
+          throw new TypeError('ClipboardItem write unavailable');
+        }
+        const first = items[0];
+        writtenHtml = await first.items['text/html'].text();
+        writtenPlain = await first.items['text/plain'].text();
+      },
+      writeText: async (text: string) => {
+        if (writeMode === 'deny') {
+          throw new Error('Permission denied');
+        }
+        writtenPlain = text;
+      },
+    },
+  });
+
+  try {
+    await mount('/documents/target-doc-1');
+    await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+    const dialog = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+    assert(dialog);
+
+    // Zero Pin controls in Level 2 header, Level 1 items, or (...) menus.
+    assert.equal(dialog.querySelector('button[aria-label*="ghim"], button[aria-label*="Ghim"]'), null);
+    await click(dialog.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+    assert.equal(dialog.querySelector('[aria-label="Đã ghim"]'), null);
+
+    await click(dialog.querySelector('[data-quick-note-item="qn-formatted-1"]'));
+    assert.equal(dialog.dataset.quickNoteView, 'editor');
+    await click(dialog.querySelector('button[aria-label="Tùy chọn ghi chú"]'));
+    assert.equal(button('Ghim ghi chú'), undefined);
+    assert.equal(button('Bỏ ghim'), undefined);
+    assert(button('Sao chép nội dung'));
+    await click(dialog.querySelector('button[aria-label="Tùy chọn ghi chú"]'));
+
+    // Path 1: Toolbar copy ("Sao chép nội dung") -> paste into empty target-doc-1 replaces blank paragraph cleanly.
+    await click(dialog.querySelector('button[aria-label="Sao chép nội dung"]'));
+    assert(writtenHtml.includes('data-misa-blocks='), 'Expected embedded structured block payload in clipboard HTML');
+    assert(writtenPlain.includes('# Tiêu đề lớn màu xanh'));
+    assert(writtenPlain.includes('- [x] Hoàn tất bàn giao'));
+    assert(document.body.textContent?.includes('Đã sao chép nội dung giữ nguyên định dạng'));
+
+    const doc1Textarea = document.querySelector<HTMLTextAreaElement>(
+      '#document-editor-container [data-block-id="target-empty-blk"] textarea'
+    )!;
+    assert(doc1Textarea);
+    const richDt = makeDataTransfer({ 'text/html': writtenHtml, 'text/plain': writtenPlain });
+    const pasteEvent1 = new window.Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(pasteEvent1, 'clipboardData', { value: richDt });
+    await act(async () => {
+      doc1Textarea.focus();
+      doc1Textarea.dispatchEvent(pasteEvent1);
+    });
+    assert.equal(pasteEvent1.defaultPrevented, true, 'Rich paste must intercept default textarea paste');
+
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+    const savedDoc1 = getStoredDocuments().find((d) => d.id === 'target-doc-1')!;
+    assert.equal(savedDoc1.blocks.length, 4);
+    assert.equal(savedDoc1.blocks[0].type, 'h1');
+    assert.equal(savedDoc1.blocks[0].content, 'Tiêu đề lớn màu xanh');
+    assert.equal(savedDoc1.blocks[0].properties?.bold, true);
+    assert.equal(savedDoc1.blocks[0].properties?.textColor, '#1E3A8A');
+    assert.equal(savedDoc1.blocks[1].type, 'paragraph');
+    assert.equal(savedDoc1.blocks[1].properties?.italic, true);
+    assert.equal(savedDoc1.blocks[1].properties?.underline, true);
+    assert.equal(savedDoc1.blocks[1].properties?.backgroundColor, '#FEF3C7');
+    assert.equal(savedDoc1.blocks[1].properties?.fontFamily, 'Serif');
+    assert.equal(savedDoc1.blocks[1].properties?.fontSize, 18);
+    assert.equal(savedDoc1.blocks[2].type, 'checklist');
+    assert.equal(savedDoc1.blocks[2].properties?.checked, true);
+    assert.equal(savedDoc1.blocks[3].type, 'bullet');
+
+    // Path 2: writeText-only copy from Recent Notes (...) menu -> paste into target-doc-2 restores formatting via bridge.
+    writeMode = 'text-only';
+    writtenHtml = '';
+    writtenPlain = '';
+    await click(dialog.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+    await click(dialog.querySelector('button[aria-label="Tùy chọn ghi chú Ghi chú định dạng chuẩn"]'));
+    await click(button('Sao chép nội dung'));
+    assert(writtenPlain.includes('Nhấn mạnh có nền vàng'));
+
+    const sidebarDoc2 =
+      document.querySelector('[data-sidebar-document="target-doc-2"]') ||
+      button('Tài liệu đích 2', document.querySelector('aside')!);
+    await click(sidebarDoc2);
+    assert.equal(window.location.pathname, '/documents/target-doc-2');
+
+    const doc2Textarea = document.querySelector<HTMLTextAreaElement>(
+      '#document-editor-container [data-block-id="target-existing-blk"] textarea'
+    )!;
+    const plainBridgeDt = makeDataTransfer({ 'text/plain': writtenPlain });
+    const pasteEvent2 = new window.Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(pasteEvent2, 'clipboardData', { value: plainBridgeDt });
+    await act(async () => {
+      doc2Textarea.focus();
+      doc2Textarea.dispatchEvent(pasteEvent2);
+    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+    const savedDoc2 = getStoredDocuments().find((d) => d.id === 'target-doc-2')!;
+    assert.equal(savedDoc2.blocks.length, 5);
+    assert.equal(savedDoc2.blocks[0].content, 'Đoạn mở đầu sẵn có');
+    assert.equal(savedDoc2.blocks[1].type, 'h1');
+    assert.equal(savedDoc2.blocks[2].properties?.backgroundColor, '#FEF3C7');
+    assert.equal(savedDoc2.blocks[3].properties?.checked, true);
+
+    // Path 3: Ctrl+C (copy event) on formatted block in Quick Note -> paste slice keeps formatting in target-doc-2.
+    await click(dialog.querySelector('[data-quick-note-item="qn-formatted-1"]'));
+    const qStyledTextarea = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="qf-styled"] textarea')!;
+    const copyDt = makeDataTransfer();
+    const copyEvt = new window.Event('copy', { bubbles: true, cancelable: true });
+    Object.defineProperty(copyEvt, 'clipboardData', { value: copyDt });
+    await act(async () => {
+      qStyledTextarea.focus();
+      qStyledTextarea.setSelectionRange(0, 9);
+      qStyledTextarea.dispatchEvent(copyEvt);
+    });
+    assert.equal(copyEvt.defaultPrevented, true);
+    assert(copyDt.getData('text/html').includes('data-misa-blocks='));
+
+    const doc2LastTextarea = document.querySelector<HTMLTextAreaElement>(
+      `#document-editor-container [data-block-id="${savedDoc2.blocks[savedDoc2.blocks.length - 1].id}"] textarea`
+    )!;
+    const pasteSliceDt = makeDataTransfer({
+      'text/html': copyDt.getData('text/html'),
+      'text/plain': copyDt.getData('text/plain'),
+    });
+    const pasteEvt3 = new window.Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(pasteEvt3, 'clipboardData', { value: pasteSliceDt });
+    await act(async () => {
+      doc2LastTextarea.focus();
+      doc2LastTextarea.dispatchEvent(pasteEvt3);
+    });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+    const savedDoc2AfterSlice = getStoredDocuments().find((d) => d.id === 'target-doc-2')!;
+    const appendedSliceBlock = savedDoc2AfterSlice.blocks[savedDoc2AfterSlice.blocks.length - 1];
+    assert.equal(appendedSliceBlock.content, 'Nhấn mạnh');
+    assert.equal(appendedSliceBlock.properties?.italic, true);
+    assert.equal(appendedSliceBlock.properties?.underline, true);
+    assert.equal(appendedSliceBlock.properties?.backgroundColor, '#FEF3C7');
+
+    // Path 4: Clipboard permission error must report an error toast without false check state.
+    writeMode = 'deny';
+    await click(dialog.querySelector('button[aria-label="Sao chép nội dung"]'));
+    assert(document.body.textContent?.includes('từ chối quyền Clipboard'));
+    assert.equal(
+      dialog.querySelector('button[aria-label="Sao chép nội dung"]')?.getAttribute('title'),
+      'Sao chép nội dung giữ nguyên định dạng'
+    );
+  } finally {
+    clearCopiedBlocksBridge();
+    if (origClipboardDesc) Object.defineProperty(navigator, 'clipboard', origClipboardDesc);
+    else delete (navigator as unknown as { clipboard?: unknown }).clipboard;
+    if (origClipboardItemDesc) Object.defineProperty(globalThis, 'ClipboardItem', origClipboardItemDesc);
+    else delete (globalThis as unknown as { ClipboardItem?: unknown }).ClipboardItem;
+  }
+});
+
+test('Quick Note auto-centers on open and supports full multi-block selection highlight across lines', async () => {
+  const { saveStoredDocuments, getStoredDocuments } = await import('../utils/storage');
+  const { saveStoredQuickNotes } = await import('../utils/quickNotes');
+  const { clearCopiedBlocksBridge } = await import('../utils/blockClipboard');
+  clearCopiedBlocksBridge();
+
+  const now = '2026-11-11T12:15:00.000Z';
+  const base = getStoredDocuments().find((doc) => !doc.isTrash && doc.space === 'personal') || getStoredDocuments().find((doc) => !doc.isTrash)!;
+  saveStoredDocuments([
+    {
+      ...base,
+      id: 'multi-sel-doc',
+      title: 'Tài liệu bôi đen',
+      space: 'personal',
+      folderId: null,
+      isPrivate: true,
+      blocks: [
+        { id: 'ms-doc-1', type: 'h2', content: 'Tiêu đề tài liệu', properties: { bold: true } },
+        { id: 'ms-doc-2', type: 'paragraph', content: 'Dòng nội dung thứ hai' },
+        { id: 'ms-doc-3', type: 'checklist', content: 'Việc cần làm', properties: { checked: true } },
+      ],
+    },
+  ]);
+
+  saveStoredQuickNotes([
+    {
+      id: 'qn-multi-sel',
+      title: 'Ghi chú nhiều dòng',
+      icon: '📝',
+      createdAt: now,
+      updatedAt: now,
+      blocks: [
+        { id: 'qm-1', type: 'h1', content: 'Dòng 1 tiêu đề', properties: { bold: true, textColor: '#1E3A8A' } },
+        { id: 'qm-2', type: 'paragraph', content: 'Dòng 2 văn bản', properties: { italic: true } },
+        { id: 'qm-3', type: 'checklist', content: 'Dòng 3 checklist', properties: { checked: true } },
+        { id: 'qm-4', type: 'bullet', content: 'Dòng 4 gạch đầu dòng' },
+      ],
+    },
+  ]);
+
+  const makeDataTransfer = (initial: Record<string, string> = {}) => {
+    const map = new Map<string, string>(Object.entries(initial));
+    return {
+      getData: (type: string) => map.get(type) ?? '',
+      setData: (type: string, value: string) => {
+        map.set(type, value);
+      },
+    };
+  };
+
+  await mount('/documents/multi-sel-doc');
+  await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+  let dialog = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  assert(dialog);
+
+  // 1. Opening Quick Note auto-centers dialog in the middle of viewport.
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const width = parseFloat(dialog.style.width);
+  const height = parseFloat(dialog.style.height);
+  assert.equal(parseFloat(dialog.style.left), Math.max(8, Math.round((vw - width) / 2)));
+  assert.equal(parseFloat(dialog.style.top), Math.max(8, Math.round((vh - height) / 2)));
+
+  // Drag dialog away, close it, and reopen -> must auto-center again.
+  const handle = dialog.querySelector<HTMLElement>('[data-quick-note-drag-handle]')!;
+  await act(async () => {
+    handle.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 500, clientY: 300 }));
+  });
+  await act(async () => {
+    window.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 300, clientY: 200 }));
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  assert.notEqual(parseFloat(dialog.style.left), Math.max(8, Math.round((vw - width) / 2)));
+
+  await click(dialog.querySelector('button[aria-label="Đóng ghi chú nhanh"]'));
+  assert.equal(document.querySelector('[data-quick-note-modal]'), null);
+
+  await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+  dialog = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  assert(dialog);
+  assert.equal(parseFloat(dialog.style.left), Math.max(8, Math.round((vw - width) / 2)));
+  assert.equal(parseFloat(dialog.style.top), Math.max(8, Math.round((vh - height) / 2)));
+
+  // Load 4-block note from Recent Notes.
+  await click(dialog.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+  await click(dialog.querySelector('[data-quick-note-item="qn-multi-sel"]'));
+
+  // 2. Ctrl+A inside Quick Note highlights ALL 4 blocks ("hiệu ứng bôi đen toàn bộ") rather than 1 line,
+  // while editor body uses compact symmetric px-[5%] side padding without pl-14 / -ml-14 indentation.
+  const qEditorBody = dialog.querySelector<HTMLElement>('[data-quick-note-editor-body]')!;
+  assert(qEditorBody.className.includes('px-[5%]'));
+  const qContainer = dialog.querySelector<HTMLElement>('[data-has-multi-selection]') ?? dialog.querySelector<HTMLElement>('[tabindex="-1"]')!;
+  assert(!qContainer.className.includes('pl-14'));
+  assert(!dialog.querySelector('[data-block-id="qm-1"]')?.className.includes('-ml-14'));
+  const qFirstTextarea = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="qm-1"] textarea')!;
+  await act(async () => {
+    qFirstTextarea.focus();
+    qFirstTextarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'a', code: 'KeyA', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+  const selectedBlocksAfterCtrlA = dialog.querySelectorAll('[data-block-id][data-block-selected="true"]');
+  assert.equal(selectedBlocksAfterCtrlA.length, 4, 'Ctrl+A must select and highlight all 4 blocks');
+  assert.equal(dialog.querySelectorAll('[data-block-selection-highlight="true"]').length, 4);
+
+  // Copy highlighted blocks via native copy event -> paste replaces/inserts formatted blocks cleanly.
+  const copyDt = makeDataTransfer();
+  const copyEvt = new window.Event('copy', { bubbles: true, cancelable: true });
+  Object.defineProperty(copyEvt, 'clipboardData', { value: copyDt });
+  await act(async () => {
+    (document.activeElement as HTMLElement || qContainer).dispatchEvent(copyEvt);
+  });
+  assert.equal(copyEvt.defaultPrevented, true);
+  assert(copyDt.getData('text/plain').includes('Dòng 1 tiêu đề'));
+  assert(copyDt.getData('text/plain').includes('Dòng 4 gạch đầu dòng'));
+
+  // Escape clears multi-block highlight without closing Quick Note.
+  await act(async () => {
+    (document.activeElement as HTMLElement || qContainer).dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    );
+  });
+  assert.equal(dialog.querySelectorAll('[data-block-selected="true"]').length, 0);
+  assert(document.querySelector('[data-quick-note-modal]'));
+
+  // 3. Mouse drag across blocks selects contiguous range [qm-1..qm-3] with highlight effect.
+  // Also simulate browser layout rects + textarea mouse-capture where move target stays on q1 while clientY drags down to q3.
+  const blockEls = ['qm-1', 'qm-2', 'qm-3', 'qm-4'].map((id) => dialog.querySelector<HTMLElement>(`[data-block-id="${id}"]`)!);
+  blockEls.forEach((el, idx) => {
+    const top = idx * 32;
+    const bottom = top + 30;
+    Object.defineProperty(el, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top, bottom, left: 0, right: 300, width: 300, height: 30, x: 0, y: top, toJSON: () => ({}) }),
+    });
+  });
+
+  const q1 = dialog.querySelector<HTMLElement>('[data-block-id="qm-1"] textarea')!;
+  await act(async () => {
+    q1.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true, button: 0, clientX: 20, clientY: 12 }));
+  });
+  await act(async () => {
+    q1.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 25, clientY: 75 }));
+  });
+  await act(async () => {
+    window.dispatchEvent(new window.MouseEvent('mouseup', { bubbles: true }));
+  });
+  assert.deepEqual(
+    Array.from(dialog.querySelectorAll<HTMLElement>('[data-block-selected="true"]')).map((el) => el.dataset.blockId),
+    ['qm-1', 'qm-2', 'qm-3']
+  );
+
+  // Backspace deletes the 3 highlighted blocks, leaving only qm-4 cleanly.
+  await act(async () => {
+    (document.activeElement as HTMLElement || qContainer).dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+    );
+  });
+  assert.equal(dialog.querySelectorAll('[data-block-id]').length, 1);
+  assert(dialog.querySelector('[data-block-id="qm-4"]'));
+
+  // 4. Main document editor (#document-editor-container) also highlights all blocks on Ctrl+A and replaces them cleanly on Paste.
+  const docContainer = document.querySelector<HTMLElement>('#document-editor-container')!;
+  const docTextarea = docContainer.querySelector<HTMLTextAreaElement>('[data-block-id="ms-doc-1"] textarea')!;
+  await act(async () => {
+    docTextarea.focus();
+    docTextarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'a', code: 'KeyA', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+  assert.equal(docContainer.querySelectorAll('[data-block-id][data-block-selected="true"]').length, 3);
+
+  const pasteDt = makeDataTransfer({
+    'text/html': copyDt.getData('text/html'),
+    'text/plain': copyDt.getData('text/plain'),
+  });
+  const pasteEvt = new window.Event('paste', { bubbles: true, cancelable: true });
+  Object.defineProperty(pasteEvt, 'clipboardData', { value: pasteDt });
+  await act(async () => {
+    docContainer.dispatchEvent(pasteEvt);
+  });
+  assert.equal(pasteEvt.defaultPrevented, true);
+  assert.equal(docContainer.querySelectorAll('[data-block-selected="true"]').length, 0);
+
+  await act(async () => { await new Promise((resolve) => setTimeout(resolve, 650)); });
+  const updatedDoc = getStoredDocuments().find((d) => d.id === 'multi-sel-doc')!;
+  assert.equal(updatedDoc.blocks.length, 4, 'Pasting over selected doc blocks must replace them with the 4 formatted blocks');
+  assert.equal(updatedDoc.blocks[0].type, 'h1');
+  assert.equal(updatedDoc.blocks[0].properties?.textColor, '#1E3A8A');
+  assert.equal(updatedDoc.blocks[2].type, 'checklist');
+  assert.equal(updatedDoc.blocks[2].properties?.checked, true);
+});
+
+test('Backspace on empty line, line start, and empty list item deletes/merges onto end of previous block in both Quick Note and BlockEditor', async () => {
+  const { saveStoredDocuments, getStoredDocuments } = await import('../utils/storage');
+  const { saveStoredQuickNotes } = await import('../utils/quickNotes');
+
+  const now = '2026-11-11T13:50:00.000Z';
+  const base = getStoredDocuments().find((doc) => !doc.isTrash && doc.space === 'personal') || getStoredDocuments().find((doc) => !doc.isTrash)!;
+  saveStoredDocuments([
+    {
+      ...base,
+      id: 'backspace-doc',
+      title: 'Tài liệu Backspace',
+      space: 'personal',
+      folderId: null,
+      isPrivate: true,
+      blocks: [
+        { id: 'bs-doc-1', type: 'paragraph', content: 'Đoạn 1' },
+        { id: 'bs-doc-2', type: 'paragraph', content: '' },
+        { id: 'bs-doc-3', type: 'paragraph', content: 'tiếp theo' },
+      ],
+    },
+  ]);
+
+  saveStoredQuickNotes([
+    {
+      id: 'qn-backspace',
+      title: 'Quick Note Backspace',
+      icon: '📝',
+      createdAt: now,
+      updatedAt: now,
+      blocks: [
+        { id: 'bs-q-1', type: 'paragraph', content: 'hahah' },
+        { id: 'bs-q-2', type: 'paragraph', content: '' },
+        { id: 'bs-q-3', type: 'paragraph', content: 'hehe' },
+        {
+          id: 'bs-q-4',
+          type: 'bullet',
+          content: '',
+          properties: { listItems: [{ id: 'bs-q-4-item', content: '' }] },
+        },
+      ],
+    },
+  ]);
+
+  await mount('/documents/backspace-doc');
+
+  // 1. Main document (BlockEditor): Backspace on empty block 2 deletes it and places caret at END of block 1 ("Đoạn 1|").
+  const docInput2 = document.querySelector<HTMLTextAreaElement>('#document-editor-container [data-block-id="bs-doc-2"] textarea')!;
+  await act(async () => {
+    docInput2.focus();
+    docInput2.setSelectionRange(0, 0);
+    docInput2.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(document.querySelector('[data-block-id="bs-doc-2"]'), null);
+  const docInput1AfterEmpty = document.querySelector<HTMLTextAreaElement>('#document-editor-container [data-block-id="bs-doc-1"] textarea')!;
+  assert.equal(document.activeElement, docInput1AfterEmpty);
+  assert.equal(docInput1AfterEmpty.selectionStart, 'Đoạn 1'.length);
+  assert.equal(docInput1AfterEmpty.selectionEnd, 'Đoạn 1'.length);
+
+  // Backspace at offset 0 of non-empty block 3 ("tiếp theo") merges onto block 1 with caret at exact junction ("Đoạn 1|tiếp theo").
+  const docInput3 = document.querySelector<HTMLTextAreaElement>('#document-editor-container [data-block-id="bs-doc-3"] textarea')!;
+  await act(async () => {
+    docInput3.focus();
+    docInput3.setSelectionRange(0, 0);
+    docInput3.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(document.querySelector('[data-block-id="bs-doc-3"]'), null);
+  const docInput1Merged = document.querySelector<HTMLTextAreaElement>('#document-editor-container [data-block-id="bs-doc-1"] textarea')!;
+  assert.equal(docInput1Merged.value, 'Đoạn 1tiếp theo');
+  assert.equal(document.activeElement, docInput1Merged);
+  assert.equal(docInput1Merged.selectionStart, 'Đoạn 1'.length);
+
+  // 2. Quick Note: verify empty line Backspace, start-of-line merge Backspace, and empty first bullet exit + delete up.
+  await click(document.querySelector('aside button[aria-label="Quick Note"]'));
+  const dialog = document.querySelector<HTMLElement>('[data-quick-note-modal]')!;
+  await click(dialog.querySelector('button[aria-label="Quay lại ghi chú gần đây"]'));
+  await click(dialog.querySelector('[data-quick-note-item="qn-backspace"]'));
+
+  // 2a. Empty single bullet item -> 1st Backspace exits bullet to paragraph; 2nd Backspace moves up onto end of "hehe".
+  const qBulletInput = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-4"] textarea')!;
+  await act(async () => {
+    qBulletInput.focus();
+    qBulletInput.setSelectionRange(0, 0);
+    qBulletInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(dialog.querySelector('[data-block-id="bs-q-4"] [data-list-kind]'), null, 'First Backspace on empty bullet must exit list to paragraph');
+  const qExitedParaInput = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-4"] textarea')!;
+  assert.equal(document.activeElement, qExitedParaInput);
+  await act(async () => {
+    qExitedParaInput.setSelectionRange(0, 0);
+    qExitedParaInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(dialog.querySelector('[data-block-id="bs-q-4"]'), null);
+  const q3AfterBulletExit = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-3"] textarea')!;
+  assert.equal(document.activeElement, q3AfterBulletExit);
+  assert.equal(q3AfterBulletExit.selectionStart, 'hehe'.length);
+
+  // 2b. Empty line bs-q-2 -> Backspace deletes it and places caret at END of "hahah".
+  const qEmptyInput = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-2"] textarea')!;
+  await act(async () => {
+    qEmptyInput.focus();
+    qEmptyInput.setSelectionRange(0, 0);
+    qEmptyInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(dialog.querySelector('[data-block-id="bs-q-2"]'), null);
+  const q1AfterEmpty = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-1"] textarea')!;
+  assert.equal(document.activeElement, q1AfterEmpty);
+  assert.equal(q1AfterEmpty.selectionStart, 'hahah'.length);
+  assert.equal(q1AfterEmpty.selectionEnd, 'hahah'.length);
+
+  // 2c. Start-of-line Backspace on bs-q-3 ("hehe") merges it onto "hahah" with caret at offset 5.
+  const q3Input = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-3"] textarea')!;
+  await act(async () => {
+    q3Input.focus();
+    q3Input.setSelectionRange(0, 0);
+    q3Input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  });
+  assert.equal(dialog.querySelector('[data-block-id="bs-q-3"]'), null);
+  const q1Merged = dialog.querySelector<HTMLTextAreaElement>('[data-block-id="bs-q-1"] textarea')!;
+  assert.equal(q1Merged.value, 'hahahhehe');
+  assert.equal(document.activeElement, q1Merged);
+  assert.equal(q1Merged.selectionStart, 'hahah'.length);
+});
+
+test('SlashMenu flips upward or clamps height near bottom edge without clipping or overlapping active line', async () => {
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const base = getStoredDocuments().find((doc) => !doc.isTrash && doc.space === 'personal')!;
+  saveStoredDocuments([
+    {
+      ...base,
+      id: 'slash-bottom-doc',
+      title: 'Kiểm tra SlashMenu cuối trang',
+      blocks: [
+        { id: 'sb-1', type: 'paragraph', content: 'Nội dung phía trên' },
+        { id: 'sb-bottom', type: 'paragraph', content: '' },
+      ],
+    },
+  ]);
+
+  await mount('/documents/slash-bottom-doc');
+  const vh = window.innerHeight;
+  const bottomInput = document.querySelector<HTMLTextAreaElement>('#document-editor-container [data-block-id="sb-bottom"] textarea')!;
+
+  const triggerSlashAtRect = async (topPx: number, bottomPx: number, value: string) => {
+    Object.defineProperty(bottomInput, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ top: topPx, bottom: bottomPx, left: 280, right: 680, width: 400, height: bottomPx - topPx, x: 280, y: topPx, toJSON: () => ({}) }),
+    });
+    await act(async () => {
+      bottomInput.focus();
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(bottomInput, value);
+      bottomInput.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    return document.querySelector<HTMLElement>('[role="dialog"][aria-label="Chèn tiện ích nhanh"]')!;
+  };
+
+  // Case 1: "/" near very bottom (e.g. y=680..704 on 768px screen) -> flips strictly ABOVE active line and never clips below viewport.
+  const bottomLineTop = Math.max(400, vh - 88);
+  const bottomLineBottom = bottomLineTop + 24;
+  const menuBottom = await triggerSlashAtRect(bottomLineTop, bottomLineBottom, '/');
+  assert(menuBottom);
+  const top1 = parseFloat(menuBottom.style.top);
+  const maxH1 = parseFloat(menuBottom.style.maxHeight);
+  assert(top1 >= 12, `Expected menu top (${top1}) >= 12`);
+  assert(top1 + maxH1 <= bottomLineTop - 6, `Expected flipped menu bottom (${top1 + maxH1}) above line top (${bottomLineTop})`);
+  assert(menuBottom.querySelector('[role="listbox"]')?.className.includes('flex-1'));
+  assert(menuBottom.textContent?.includes('Đóng menu'));
+
+  // Clear slash before Case 2
+  await triggerSlashAtRect(bottomLineTop, bottomLineBottom, '');
+
+  // Case 2: "/" in lower half (e.g. vh - 320) -> never exceeds vh - 12 and never overlaps line rect.
+  const midBottomTop = Math.max(220, vh - 320);
+  const midBottom = midBottomTop + 24;
+  const menuMid = await triggerSlashAtRect(midBottomTop, midBottom, '/');
+  assert(menuMid);
+  const top2 = parseFloat(menuMid.style.top);
+  const maxH2 = parseFloat(menuMid.style.maxHeight);
+  assert(top2 >= 12);
+  assert(top2 + maxH2 <= vh - 12, `Expected menu bottom (${top2 + maxH2}) inside viewport (${vh - 12})`);
+  assert(
+    top2 >= midBottom + 6 || top2 + maxH2 <= midBottomTop - 6,
+    `Menu (${top2}..${top2 + maxH2}) must not overlap slash line (${midBottomTop}..${midBottom})`
+  );
+});
+
+test('QuickActionMenu creates templates inside the currently active workspace tab in both Sidebar variants', async () => {
+  for (const useNewSidebar of [false, true]) {
+    layoutConfig.useSidebar2 = useNewSidebar;
+    try {
+      await mount('/private');
+
+      // 1. In personal space ("Ghi chép của tôi"), even a company-default template ("Biên bản cuộc họp") must be created inside personal space at root.
+      await click(document.querySelector('aside button[title="Thao tác nhanh khác"]'));
+      const personalQuickMenu = document.querySelector('#quick-action-dialog')!;
+      await click(button('Biên bản cuộc họp', personalQuickMenu));
+      const personalDocId = decodeURIComponent(window.location.pathname.split('/').pop()!);
+      const personalDoc = getStoredDocuments().find((d) => d.id === personalDocId)!;
+      assert.equal(personalDoc.space, 'personal');
+      assert.equal(personalDoc.isPrivate, true);
+      assert.equal(personalDoc.folderId, null);
+
+      // 2. Switch to company space ("Tài liệu công ty") -> even a personal-default template ("Kế hoạch tuần") must be created inside company space at root.
+      if (useNewSidebar) {
+        await click(document.querySelector('[aria-label="Không gian tài liệu"]'));
+        await click(document.querySelector('[role="option"][data-space="company"]'));
+      } else {
+        await click(document.getElementById('space-tab-company'));
+      }
+
+      await click(document.querySelector('aside button[title="Thao tác nhanh khác"]'));
+      const companyQuickMenu = document.querySelector('#quick-action-dialog')!;
+      await click(button('Kế hoạch tuần', companyQuickMenu));
+      const companyDocId = decodeURIComponent(window.location.pathname.split('/').pop()!);
+      const companyDoc = getStoredDocuments().find((d) => d.id === companyDocId)!;
+      assert.equal(companyDoc.space, 'company');
+      assert.equal(companyDoc.isPrivate, false);
+      assert.equal(companyDoc.folderId, null);
+    } finally {
+      layoutConfig.useSidebar2 = false;
+    }
+  }
+});
+
+test('print layout renders normal-flow text mirrors, reflows linked text, recalculates list heights on resize, and hides screen-only controls', async () => {
+  await mount('/documents/doc_personal_production_meeting');
+
+  // 1. Document title and unlinked list/paragraph items have print:hidden textarea + hidden print:block mirror without conflicting display:block on screen
+  const titleSource = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Tiêu đề ghi chú"][data-print-source]')!;
+  const titleMirror = titleSource.nextElementSibling as HTMLElement;
+  assert(titleSource.classList.contains('print:hidden'));
+  assert.equal(titleMirror.getAttribute('data-print-mirror'), '');
+  assert(titleMirror.classList.contains('hidden'));
+  assert(titleMirror.classList.contains('print:block'));
+  assert.equal(titleMirror.textContent, 'Biên bản giao ban sản xuất');
+
+  const unlinkedItem = document.querySelector<HTMLElement>('[data-list-item="odt_meeting_11_item_1"]')!;
+  const unlinkedSource = unlinkedItem.querySelector<HTMLTextAreaElement>('textarea[data-print-source]')!;
+  const unlinkedMirror = unlinkedItem.querySelector<HTMLElement>('[data-print-mirror]')!;
+  assert(unlinkedSource.classList.contains('print:hidden'));
+  assert(unlinkedMirror.classList.contains('hidden'));
+  assert(unlinkedMirror.classList.contains('print:block'));
+  assert(!unlinkedMirror.classList.contains('block'), 'Unlinked list print mirror must not keep conflicting block class alongside hidden');
+  assert(unlinkedMirror.textContent?.includes('Vấn đề này rất nghiêm trọng'));
+
+  // 2. Linked items hide textarea in print and reset overlay div from absolute to static so multi-line print text never overlaps adjacent rows
+  const linkedItem = document.querySelector<HTMLElement>('[data-list-item="odt_meeting_08_item_2"]')!;
+  const linkedSource = linkedItem.querySelector<HTMLTextAreaElement>('textarea[data-print-source]')!;
+  const linkedOverlay = linkedItem.querySelector<HTMLElement>('[data-linked-text]')!;
+  assert(linkedSource.classList.contains('print:hidden'));
+  assert(linkedOverlay.classList.contains('print:static'));
+  assert(linkedOverlay.classList.contains('print:inset-auto'));
+  assert(linkedOverlay.classList.contains('print:h-auto'));
+  assert.equal(linkedOverlay.querySelector('a')?.textContent, 'tại đây');
+
+  // 3. ListBlock recalculates textarea heights when viewport/window resizes (e.g., width toggle / window resize)
+  let currentHeight = 24;
+  Object.defineProperty(linkedSource, 'scrollHeight', { configurable: true, get: () => currentHeight });
+  await act(async () => {
+    window.dispatchEvent(new window.Event('resize'));
+  });
+  assert.equal(linkedSource.style.height, '24px');
+  currentHeight = 48;
+  await act(async () => {
+    window.dispatchEvent(new window.Event('resize'));
+  });
+  assert.equal(linkedSource.style.height, '48px', 'ListBlock must recalculate item height on width/viewport resize');
+
+  // 4. Main top navbar (.main-header), floating '?' help button, bottom empty prompt, EmptyBlockRow, and block drag gutter are excluded from print
+  const mainHeader = document.querySelector<HTMLElement>('.main-header')!;
+  assert(mainHeader.classList.contains('no-print'), 'Main app header must carry no-print so it is not printed');
+  const helpButton = document.querySelector<HTMLElement>('main button[title="Trợ giúp"]')!;
+  assert(helpButton.closest('.no-print'), 'Floating ? help button must be hidden in print');
+  const boldMirrorParent = document.querySelector<HTMLElement>('[data-block-id*="odt_meeting_01"] [data-print-mirror]')!.parentElement!;
+  assert(boldMirrorParent.className.includes('[&_[data-print-mirror]]:[font-weight:inherit]'));
+  const exitRow = document.querySelector<HTMLElement>('[data-list-exit-for]');
+  assert(exitRow?.classList.contains('no-print'));
+  const firstBlockRow = document.querySelector<HTMLElement>('[data-block-id]')!;
+  assert(firstBlockRow.classList.contains('print:ml-0'));
+  assert(firstBlockRow.querySelector('button[title="Thêm khối bên dưới"]')?.closest('.no-print'));
+  const { saveStoredDocuments } = await import('../utils/storage');
+  const baseDoc = getStoredDocuments().find((d) => !d.isTrash)!;
+  saveStoredDocuments([{ ...baseDoc, id: 'print-hint-doc', blocks: [{ id: 'ph-1', type: 'paragraph', content: 'Đoạn kết' }] }]);
+  await mount('/documents/print-hint-doc');
+  const editorCanvas = document.querySelector<HTMLElement>('[data-content-width]')!;
+  assert(!editorCanvas.textContent?.includes('Đã lưu'), 'Editor canvas must not render "Đã lưu" status strip');
+  assert(!editorCanvas.textContent?.includes('Cập nhật '), 'Editor canvas must not render "Cập nhật ..." timestamp strip');
+  const bottomPrompt = Array.from(document.querySelectorAll('span')).find((s) => s.textContent?.includes('Gõ nội dung hoặc gõ / để mở tiện ích...'))!;
+  assert(bottomPrompt.closest('.no-print'));
+
+  // 5. Global print stylesheet enforces [data-print-mirror], [data-print-source], [data-linked-text], and .main-header print rules
+  const indexCss = readFileSync(new URL('../index.css', import.meta.url), 'utf8');
+  assert(indexCss.includes('[data-print-mirror]'));
+  assert(indexCss.includes('[data-print-source]'));
+  assert(indexCss.includes('.main-header'));
+  assert(indexCss.includes('position: static !important'));
+});
+
+
 

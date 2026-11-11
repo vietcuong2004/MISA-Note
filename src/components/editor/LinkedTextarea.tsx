@@ -11,10 +11,28 @@ export function shiftInlineLinks(links: InlineLink[] | undefined, before: string
     ? [{ ...link, start: link.start + delta, end: link.end + delta }] : []);
 }
 
+function formatMirrorText(text: string): string {
+  if (!text) return '\u00a0';
+  return text.endsWith('\n') ? `${text}\u00a0` : text;
+}
+
 export const LinkedTextarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement> & { links?: InlineLink[] }>(function LinkedTextarea({ links, ...props }, ref) {
   const text = String(props.value || '');
   const valid = (links || []).filter(link => link.start >= 0 && link.end > link.start && link.end <= text.length && /^https?:\/\//i.test(link.url)).sort((a, b) => a.start - b.start);
-  if (!valid.length) return <textarea {...props} ref={ref} />;
+  const displayClass = props.className || '';
+  if (!valid.length) {
+    const mirrorClass = displayClass.replace(/\b(?:block|inline-block|inline|hidden)\b/g, '').trim();
+    return <>
+      <textarea {...props} ref={ref} data-print-source="" className={`${displayClass} print:hidden`} />
+      <div
+        data-print-mirror=""
+        aria-hidden="true"
+        className={`hidden print:block whitespace-pre-wrap [overflow-wrap:anywhere] ${mirrorClass}`}
+      >
+        {formatMirrorText(text)}
+      </div>
+    </>;
+  }
   const parts: React.ReactNode[] = [];
   let cursor = 0;
   for (const link of valid) {
@@ -27,7 +45,11 @@ export const LinkedTextarea = forwardRef<HTMLTextAreaElement, React.TextareaHTML
   }
   parts.push(text.slice(cursor));
   return <div className="relative min-w-0 flex-1">
-    <textarea {...props} ref={ref} style={{ ...props.style, color: 'transparent', WebkitTextFillColor: 'transparent', caretColor: 'var(--ui-text)' }} />
-    <div data-linked-text className={`pointer-events-none absolute inset-0 whitespace-pre-wrap [overflow-wrap:anywhere] ${props.className || ''}`}>{parts}</div>
+    <textarea {...props} ref={ref} data-print-source=""
+      className={`${displayClass} [overflow-wrap:anywhere] print:hidden`}
+      style={{ ...props.style, color: 'transparent', WebkitTextFillColor: 'transparent', caretColor: 'var(--ui-text)' }} />
+    <div data-linked-text className={`pointer-events-none absolute inset-0 print:static print:inset-auto print:h-auto whitespace-pre-wrap [overflow-wrap:anywhere] ${displayClass}`}>
+      {parts}{text.endsWith('\n') ? '\u00a0' : null}
+    </div>
   </div>;
 });

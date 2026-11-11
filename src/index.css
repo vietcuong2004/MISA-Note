@@ -71,3 +71,44 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.28);
 }
+
+[data-print-mirror] {
+  display: none;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  [data-print-source] {
+    display: none !important;
+  }
+
+  [data-print-mirror] {
+    display: block !important;
+  }
+
+  [data-linked-text] {
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+  }
+
+  header,
+  .main-header,
+  aside,
+  [data-quick-note-modal],
+  [data-quick-note-bottom-spacer],
+  [data-editor-bottom-spacer],
+  [role="toolbar"],
+  [role="menu"],
+  [role="dialog"],
+  .no-print {
+    display: none !important;
+  }
+}

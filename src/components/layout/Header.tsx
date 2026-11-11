@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <div
       ref={headerRef}
-      className="main-header h-12 bg-[#1F59B6] text-white px-4 flex items-center justify-between shrink-0 z-40 select-none shadow-xs border-b border-[#1A4EA3] relative"
+      className="main-header no-print h-12 bg-[#1F59B6] text-white px-4 flex items-center justify-between shrink-0 z-40 select-none shadow-xs border-b border-[#1A4EA3] relative"
     >
       {/* 1. Logo & App Launcher */}
       <div id="logo" className="left flex items-center gap-3">

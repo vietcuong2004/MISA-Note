@@ -37,11 +37,16 @@ interface BlockItemProps {
   userRole: UserRole;
   isDragging?: boolean;
   isDragOver?: boolean;
+  isBlockSelected?: boolean;
+  compactGutter?: boolean;
   autoFocus?: boolean;
+  autoFocusPosition?: 'start' | 'end';
   openMenuInitially?: boolean;
   afterList?: boolean;
   onUpdate: (blockId: string, content: string, properties?: any) => void;
   onDelete: (blockId: string) => void;
+  onMergeWithPrevious?: (blockId: string) => void;
+  onExitListStart?: (blockId: string) => void;
   onDuplicate: (blockId: string) => void;
   onMoveUp: (blockId: string) => void;
   onMoveDown: (blockId: string) => void;
@@ -60,11 +65,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   userRole,
   isDragging = false,
   isDragOver = false,
+  isBlockSelected = false,
+  compactGutter = false,
   autoFocus = false,
+  autoFocusPosition = 'start',
   openMenuInitially = false,
   afterList = false,
   onUpdate,
   onDelete,
+  onMergeWithPrevious,
+  onExitListStart,
   onDuplicate,
   onMoveUp,
   onMoveDown,
@@ -88,9 +98,10 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   useLayoutEffect(() => {
     if (!autoFocus || isReadOnly) return;
     textRef.current?.focus();
-    textRef.current?.setSelectionRange(0, 0);
+    const cursorPos = autoFocusPosition === 'end' ? textRef.current?.value.length ?? 0 : 0;
+    textRef.current?.setSelectionRange(cursorPos, cursorPos);
     textRef.current?.scrollIntoView({ block: 'nearest' });
-  }, [autoFocus, isReadOnly]);
+  }, [autoFocus, autoFocusPosition, isReadOnly]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -135,15 +146,26 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.nativeEvent.isComposing) return;
+    if (e.nativeEvent.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       if (['paragraph', 'h1', 'h2', 'h3', 'h4', 'bullet', 'numbered', 'checklist'].includes(block.type)) {
         e.preventDefault();
         onAddBelow(index);
       }
-    } else if (e.key === 'Backspace' && block.content === '' && totalBlocks > 1) {
-      e.preventDefault();
-      onDelete(block.id);
+    } else if (e.key === 'Backspace') {
+      const start = e.currentTarget.selectionStart ?? 0;
+      const end = e.currentTarget.selectionEnd ?? 0;
+      if (start !== 0 || end !== 0) return;
+
+      if (e.currentTarget.value === '') {
+        if (totalBlocks > 1 || block.type !== 'paragraph') {
+          e.preventDefault();
+          onDelete(block.id);
+        }
+      } else if (index > 0 && onMergeWithPrevious) {
+        e.preventDefault();
+        onMergeWithPrevious(block.id);
+      }
     }
   };
 
@@ -211,6 +233,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'numbered':
       case 'checklist':
         return <ListBlock block={block} readOnly={isReadOnly} autoFocus={autoFocus}
+          onBackspaceFirstItem={onExitListStart ? () => onExitListStart(block.id) : undefined}
           onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
 
       case 'toggle':
@@ -233,6 +256,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 disabled={isReadOnly}
                 value={block.content}
                 onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
                 placeholder="Tiêu đề mục thu gọn..."
                 className={`w-full font-semibold text-[var(--ui-text)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] ${block.properties?.headingLevel === 1 ? 'text-2xl' : block.properties?.headingLevel === 2 ? 'text-xl' : block.properties?.headingLevel === 3 ? 'text-lg' : 'text-sm'}`}
               />
@@ -266,6 +290,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               disabled={isReadOnly}
               value={block.content}
               onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
               placeholder="Nhập trích dẫn..."
               className="w-full text-sm italic text-[var(--ui-text-secondary)] bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] leading-relaxed"
             />
@@ -292,6 +317,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 disabled={isReadOnly}
                 value={block.content}
                 onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
                 placeholder="Nội dung chú thích nổi bật..."
                 className="w-full text-xs font-medium bg-transparent resize-none focus:outline-none leading-relaxed text-[var(--ui-text)]"
               />
@@ -655,6 +681,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
   return (
     <div
       data-block-id={block.id}
+      data-block-selected={isBlockSelected ? 'true' : undefined}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -673,21 +700,37 @@ export const BlockItem: React.FC<BlockItemProps> = ({
           onDropBlock?.(sourceIndex, index);
         }
       }}
-      className={`group relative flex items-start gap-0.5 py-1.5 -ml-14 pl-1 pr-2 rounded-xl transition-all ${
-        isDragging ? 'opacity-30 bg-[var(--ui-hover)] border border-dashed border-[var(--ui-primary)]' : 'hover:bg-[var(--ui-hover)]/40'
+      className={`group relative flex items-start gap-0.5 py-1.5 ${
+        compactGutter ? 'px-0' : '-ml-14 pl-1 pr-2'
+      } print:ml-0 print:px-0 rounded-xl transition-all ${
+        isDragging
+          ? 'opacity-30 bg-[var(--ui-hover)] border border-dashed border-[var(--ui-primary)]'
+          : isBlockSelected
+            ? 'bg-[#0071e3]/10 print:bg-transparent'
+            : 'hover:bg-[var(--ui-hover)]/40 print:hover:bg-transparent'
       } ${isDragOver ? 'border-t-2 border-[var(--ui-primary)] -mt-0.5' : ''}`}
     >
-      {isReadOnly ? <div aria-hidden="true" className="w-[50px] shrink-0" /> : (
-        <div className="flex h-6 w-[50px] shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <button
-            type="button"
-            onClick={() => onAddBelow(index)}
-            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
-            title="Thêm khối bên dưới"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
-          </button>
-          <div className="relative flex h-6 w-6 shrink-0 items-center justify-center" ref={menuRef}>
+      {isReadOnly ? (
+        !compactGutter && <div aria-hidden="true" className="w-[50px] shrink-0 no-print" />
+      ) : (
+        <div
+          className={
+            compactGutter
+              ? 'no-print absolute -left-5 top-1.5 z-20 flex h-6 w-5 items-center justify-center opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity'
+              : 'no-print flex h-6 w-[50px] shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity'
+          }
+        >
+          {!compactGutter && (
+            <button
+              type="button"
+              onClick={() => onAddBelow(index)}
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-pointer"
+              title="Thêm khối bên dưới"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[1.75]" />
+            </button>
+          )}
+          <div className={`relative flex h-6 ${compactGutter ? 'w-5' : 'w-6'} shrink-0 items-center justify-center`} ref={menuRef}>
             <button
               type="button"
               draggable={!isReadOnly}
@@ -701,14 +744,14 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 onDragEndBlock?.();
               }}
               onClick={() => setShowMenu(!showMenu)}
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-grab active:cursor-grabbing"
+              className={`inline-flex ${compactGutter ? 'h-5 w-5 rounded-md' : 'h-6 w-6 rounded-lg'} shrink-0 items-center justify-center text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-border)] transition-colors cursor-grab active:cursor-grabbing`}
               title="Kéo để di chuyển hoặc bấm để mở tùy chọn"
             >
               <GripVertical className="w-3.5 h-3.5 stroke-[1.75]" />
             </button>
 
             {showMenu && (
-              <div className="absolute left-6 top-0 z-40 w-44 bg-[var(--ui-surface)]/95 backdrop-blur-xl rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-1.5 text-xs animate-in zoom-in-95 duration-100">
+              <div className={`absolute ${compactGutter ? 'left-5' : 'left-6'} top-0 z-40 w-44 bg-[var(--ui-surface)]/95 backdrop-blur-xl rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-1.5 text-xs animate-in zoom-in-95 duration-100`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -760,12 +803,12 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         </div>
       )}
 
-      <div className={`flex-1 min-w-0 min-h-6 [&_textarea]:block
-        ${block.properties?.bold !== undefined ? '[&_textarea]:[font-weight:inherit] [&_input]:[font-weight:inherit]' : ''}
-        ${block.properties?.fontSize ? '[&_textarea]:text-[length:inherit] [&_input]:text-[length:inherit]' : ''}
-        ${block.properties?.fontFamily ? '[&_textarea]:[font-family:inherit] [&_input]:[font-family:inherit]' : ''}
-        ${block.properties?.italic ? '[&_textarea]:italic [&_input]:italic' : ''}
-        ${block.properties?.underline ? '[&_textarea]:underline [&_input]:underline' : ''}
+      <div className={`relative flex-1 min-w-0 min-h-6 [&_textarea]:block
+        ${block.properties?.bold !== undefined ? '[&_textarea]:[font-weight:inherit] [&_input]:[font-weight:inherit] [&_[data-linked-text]]:[font-weight:inherit] [&_[data-print-mirror]]:[font-weight:inherit]' : ''}
+        ${block.properties?.fontSize ? '[&_textarea]:text-[length:inherit] [&_input]:text-[length:inherit] [&_[data-linked-text]]:text-[length:inherit] [&_[data-print-mirror]]:text-[length:inherit]' : ''}
+        ${block.properties?.fontFamily ? '[&_textarea]:[font-family:inherit] [&_input]:[font-family:inherit] [&_[data-linked-text]]:[font-family:inherit] [&_[data-print-mirror]]:[font-family:inherit]' : ''}
+        ${block.properties?.italic ? '[&_textarea]:italic [&_input]:italic [&_[data-linked-text]]:italic [&_[data-print-mirror]]:italic' : ''}
+        ${block.properties?.underline ? '[&_textarea]:underline [&_input]:underline [&_[data-linked-text]]:underline [&_[data-print-mirror]]:underline' : ''}
       `} style={{
         fontWeight: block.properties?.bold !== undefined ? (block.properties.bold ? 700 : 400) : undefined,
         fontStyle: block.properties?.italic ? 'italic' : undefined,
@@ -775,7 +818,16 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         color: block.properties?.textColor,
         backgroundColor: block.properties?.backgroundColor,
         ...(block.properties?.textColor ? { '--ui-text': block.properties.textColor } : {}),
-      } as React.CSSProperties}>{renderBlockContent()}</div>
+      } as React.CSSProperties}>
+        {renderBlockContent()}
+        {isBlockSelected && (
+          <span
+            aria-hidden="true"
+            data-block-selection-highlight="true"
+            className="no-print pointer-events-none absolute -inset-x-1.5 -inset-y-1 rounded-md bg-[#0071e3]/18 ring-1 ring-[#0071e3]/35"
+          />
+        )}
+      </div>
     </div>
   );
 };

@@ -16,7 +16,7 @@ interface SlashMenuProps {
   onClose: () => void;
   onApplyColor?: (color: string, isBackground: boolean) => void;
   mentions?: NonNullable<BlockProperties['mention']>[];
-  position?: { top: number; left: number };
+  position?: { top: number; left: number; lineTop?: number };
 }
 
 export const normalizeCommandQuery = (value: string) => value.toLowerCase()
@@ -93,17 +93,36 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
   useEffect(() => { setSelectedIndex(0); }, [query]);
   useLayoutEffect(() => {
     const placeMenu = () => {
-      const maxHeight = Math.max(64, Math.min(560, window.innerHeight * 0.6, window.innerHeight - 68));
-      const height = Math.min(containerRef.current?.scrollHeight || maxHeight, maxHeight);
-      const anchorTop = position?.top ?? 160;
-      const top = window.innerHeight - anchorTop - 12 >= height ? anchorTop : anchorTop - height - 32;
-      setLayout({ top: Math.max(56, Math.min(top, window.innerHeight - height - 12)),
-        left: Math.max(12, Math.min(position?.left ?? 320, window.innerWidth - 396)), maxHeight });
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const pad = 12;
+      const preferredMaxH = Math.max(120, Math.min(440, Math.round(vh * 0.58), vh - pad * 2));
+      const listEl = containerRef.current?.querySelector<HTMLElement>('[role="listbox"]');
+      const footerEl = containerRef.current?.lastElementChild as HTMLElement | null;
+      const listScrollH = listEl?.scrollHeight || 0;
+      const naturalH = listScrollH > 0 ? listScrollH + (footerEl?.offsetHeight || 34) + 6 : preferredMaxH;
+      const anchorBelow = position?.top ?? 160;
+      const anchorAbove = position?.lineTop != null ? position.lineTop - 6 : anchorBelow - 32;
+
+      const spaceBelow = Math.max(0, vh - anchorBelow - pad);
+      const spaceAbove = Math.max(0, anchorAbove - pad);
+      const minComfortH = Math.min(280, naturalH);
+      const openAbove = spaceBelow < minComfortH && spaceAbove > spaceBelow;
+
+      const availableSpace = openAbove ? spaceAbove : spaceBelow;
+      const maxHeight = Math.max(96, Math.min(preferredMaxH, availableSpace));
+      const renderedHeight = Math.min(naturalH, maxHeight);
+      const rawTop = openAbove ? anchorAbove - renderedHeight : anchorBelow;
+      const top = Math.max(pad, Math.min(rawTop, vh - renderedHeight - pad));
+
+      const menuWidth = containerRef.current?.offsetWidth || Math.min(384, vw - pad * 2);
+      const left = Math.max(pad, Math.min(position?.left ?? 320, vw - menuWidth - pad));
+      setLayout({ top, left, maxHeight });
     };
     placeMenu();
     window.addEventListener('resize', placeMenu);
     return () => window.removeEventListener('resize', placeMenu);
-  }, [position?.top, position?.left, query]);
+  }, [position?.top, position?.left, position?.lineTop, query, filteredItems.length]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -170,7 +189,7 @@ export const SlashMenu: React.FC<SlashMenuProps> = ({ query, onSelect, onClose, 
     className="fixed z-50 w-[384px] max-w-[calc(100vw-24px)] flex flex-col bg-[var(--ui-surface)] rounded-xl border border-[var(--ui-border)] shadow-2xl overflow-hidden"
     style={{ top: layout.top, left: layout.left, maxHeight: layout.maxHeight }}>
     <div role="listbox" aria-label="Tiện ích nhanh" aria-activedescendant={selectableItems[selectedIndex] ? `slash-${selectableItems[selectedIndex].id}` : undefined}
-      className="min-h-0 overflow-y-auto overscroll-contain p-1.5">
+      className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
       {showRecent && !recentItems.length && <div role="group" aria-label="Được đề xuất" className="mb-2">
         <p className="px-2 pt-2 pb-1 text-xs text-[var(--ui-tertiary)]">Được đề xuất</p>
         <p className="px-2 py-1.5 text-xs text-[var(--ui-tertiary)]">Chưa có mục sử dụng gần đây</p>

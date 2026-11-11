@@ -3,7 +3,7 @@ import { GripVertical, Plus } from 'lucide-react';
 
 export function EmptyBlockRow({ listId, compact = false, onCreate }: { listId: string; compact?: boolean; onCreate: (openMenu: boolean) => void }) {
   return <div data-list-exit-for={listId}
-    className={`group/empty relative -ml-14 rounded-xl ${compact ? '!my-0 h-0' : 'py-1.5'}`}>
+    className={`no-print group/empty relative -ml-14 rounded-xl ${compact ? '!my-0 h-0' : 'py-1.5'}`}>
     <div className={`flex items-center gap-0.5 pl-1 pr-2 ${compact ? 'absolute inset-x-0 top-0 z-10 h-2 hover:h-6 focus-within:h-6' : ''}`}>
     <div className="flex h-6 w-[50px] shrink-0 items-center gap-0.5 opacity-0 group-hover/empty:opacity-100 focus-within:opacity-100 transition-opacity">
       <button type="button" aria-label="Thêm khối sau danh sách" onClick={() => onCreate(false)}

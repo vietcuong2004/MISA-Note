@@ -157,6 +157,16 @@ export interface Document {
   updatedAt: string;
 }
 
+export interface QuickNote {
+  id: string;
+  title: string;
+  icon?: string;
+  blocks: Block[];
+  isPinned?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   name: string;

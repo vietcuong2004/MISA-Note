@@ -2,6 +2,7 @@ import { SIDEBAR_HEADER_BUTTON_CLASS } from './sidebarStyles';
 import { SIDEBAR2_DEFAULT_WIDTH } from '../../app/layoutConfig';
 import { WorkspacePicker } from './WorkspacePicker';
 import { CollapsedSidebar } from './CollapsedSidebar';
+import { QuickActionMenu } from './QuickActionMenu';
 import { SidebarFooter } from './SidebarFooter';
 import { memoryStorage } from '../../utils/memoryStorage';
 import { RenameDialog } from '../modals/RenameDialog';
@@ -9,21 +10,17 @@ import { DocumentLinkShare } from '../modals/DocumentLinkShare';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   SquarePen,
-  Sparkles,
+  FolderPlus,
   MoreHorizontal,
   Search,
   Star,
   ChevronRight,
   ChevronDown,
-  FolderPlus,
   Plus,
-  Users,
   FileText,
-  Upload,
   ChevronsLeft,
   Edit2,
   ArrowRight,
-  X,
 } from 'lucide-react';
 import { Document, Folder as FolderType, SpaceType, UserRole, ViewState } from '../../types';
 import { CURRENT_USER, TEMPLATES } from '../../data/mockData';
@@ -76,10 +73,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   onDeleteFolder,
   onRoleChange,
   onOpenSpotlight,
-  onOpenOneAI,
-  onCreateMeetingNote,
-  onOpenTemplates,
-  onImportDoc,
+  onUseTemplate,
   onToggleFavorite,
   onSoftDeleteDocument,
   onDuplicateDocument,
@@ -88,6 +82,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   onMoveDocument,
   onMoveFolder,
   onToast,
+  onOpenQuickNote,
 }) => {
   const DEFAULT_SIDEBAR_WIDTH = SIDEBAR2_DEFAULT_WIDTH;
   const MIN_SIDEBAR_WIDTH = 200;
@@ -180,7 +175,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
   const [shareDocument, setShareDocument] = useState<Document | null>(null);
   const [favoriteExpanded, setFavoriteExpanded] = useState(true);
   const [showQuickActionMenu, setShowQuickActionMenu] = useState(false);
-  const [showAITooltip, setShowAITooltip] = useState(false);
+  const [showFolderTooltip, setShowFolderTooltip] = useState(false);
   const [showCreateTooltip, setShowCreateTooltip] = useState(false);
 
   // Drag and Drop state
@@ -644,7 +639,7 @@ export const Sidebar2: React.FC<SidebarProps> = ({
             </button>
           </div>
           <div className="mt-2 flex items-center gap-1.5">
-            {/* Tạo mới button */}
+            {/* Tạo tài liệu button */}
             <div className="relative flex-1 min-w-0">
               <button
                 type="button"
@@ -654,43 +649,39 @@ export const Sidebar2: React.FC<SidebarProps> = ({
                 onMouseEnter={() => setShowCreateTooltip(true)}
                 onMouseLeave={() => setShowCreateTooltip(false)}
                 className={`w-full flex items-center justify-center gap-1.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer h-9 ${isNarrowHeader ? 'px-0' : 'px-3'}`}
-                title="Tạo mới"
+                title="Tạo tài liệu"
               >
                 <SquarePen className="w-4 h-4 stroke-[2] shrink-0" />
-                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo mới</span>
+                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo tài liệu</span>
               </button>
 
               {/* Tooltip on hover when narrow */}
               {isNarrowHeader && showCreateTooltip && (
                 <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100 pointer-events-none">
                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
-                  <span className="relative z-10">Tạo mới</span>
+                  <span className="relative z-10">Tạo tài liệu</span>
                 </div>
               )}
             </div>
 
-            {/* Hỏi AI button with tooltip */}
+            {/* Tạo thư mục button */}
             <div className="relative flex-1 min-w-0">
               <button
                 type="button"
-                onClick={onOpenOneAI}
-                onMouseEnter={() => setShowAITooltip(true)}
-                onMouseLeave={() => setShowAITooltip(false)}
+                onClick={() => onCreateFolder(spaceTab)}
+                onMouseEnter={() => setShowFolderTooltip(true)}
+                onMouseLeave={() => setShowFolderTooltip(false)}
                 className={`${SIDEBAR_HEADER_BUTTON_CLASS} w-full ${isNarrowHeader ? 'px-0' : 'px-3'}`}
-                title="Hỏi AI"
+                title="Tạo thư mục"
               >
-                <Sparkles className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
-                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Hỏi AI</span>
+                <FolderPlus className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
+                <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo thư mục</span>
               </button>
 
-              {/* Tooltip positioned below the button so it is never obscured by the top header */}
-              {showAITooltip && (
-                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1.5 rounded-md shadow-xl animate-in fade-in zoom-in-95 duration-100 pointer-events-none flex flex-col items-center">
+              {isNarrowHeader && showFolderTooltip && (
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100 pointer-events-none">
                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
-                  {isNarrowHeader && <span className="font-semibold text-white">Hỏi AI</span>}
-                  <span className={isNarrowHeader ? "text-[9px] text-white/80" : "relative z-10"}>
-                    {isNarrowHeader ? "OneAI sắp ra mắt" : "Kết nối OneAI sắp ra mắt"}
-                  </span>
+                  <span className="relative z-10">Tạo thư mục</span>
                 </div>
               )}
             </div>
@@ -711,70 +702,17 @@ export const Sidebar2: React.FC<SidebarProps> = ({
 
           </div>
 
-          {/* Floating Popover "Thao tác nhanh" matching screenshot */}
+          {/* Floating Popover "Thao tác nhanh" */}
           {showQuickActionMenu && (
-            <div id="quick-action-dialog" role="dialog" aria-label="Thao tác nhanh" className="absolute right-2 top-full mt-1 z-50 w-52 max-w-[calc(100%_-_16px)] max-h-[calc(100dvh-120px)] overflow-y-auto bg-[var(--ui-surface)] rounded-2xl ios-elevated-shadow border border-[var(--ui-border)] py-2 animate-in fade-in zoom-in-95 duration-100 space-y-0.5">
-              <div className="px-3.5 py-1 flex items-center justify-between text-[11px] font-semibold text-[var(--ui-tertiary)]">
-                <span>Thao tác nhanh</span>
-                <button type="button" autoFocus aria-label="Đóng thao tác nhanh" title="Đóng thao tác nhanh"
-                  onClick={closeQuickActions} className="p-1 rounded-md hover:bg-[var(--ui-hover)] hover:text-[var(--ui-text)]">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* 1. Ghi chú cuộc họp */}
-              <button
-                type="button"
-                onClick={() => {
-                  onCreateMeetingNote();
-                  setShowQuickActionMenu(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-              >
-                <Users className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                <span>Ghi chú cuộc họp</span>
-              </button>
-
-              {/* 2. Tạo từ mẫu */}
-              <button
-                type="button"
-                onClick={() => {
-                  onOpenTemplates();
-                  setShowQuickActionMenu(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-              >
-                <FileText className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                <span>Tạo từ mẫu</span>
-              </button>
-
-              {/* 3. Nhập tài liệu */}
-              <button
-                type="button"
-                onClick={() => {
-                  onImportDoc();
-                  setShowQuickActionMenu(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-              >
-                <Upload className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                <span>Nhập tài liệu</span>
-              </button>
-
-              {/* 4. Thư mục mới */}
-              <button
-                type="button"
-                onClick={() => {
-                  onCreateFolder(spaceTab);
-                  setShowQuickActionMenu(false);
-                }}
-                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-              >
-                <FolderPlus className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75]" />
-                <span>Thư mục mới</span>
-              </button>
-
-            </div>
+            <QuickActionMenu
+              positionClassName="right-2 top-full mt-1 max-w-[calc(100%_-_16px)]"
+              onClose={closeQuickActions}
+              onSelectTemplate={(templateId) => {
+                if (spaceTab === 'personal') setPersonalExpanded(true);
+                else setCompanyExpanded(true);
+                onUseTemplate?.(templateId, spaceTab);
+              }}
+            />
           )}
         </div>
 
@@ -985,8 +923,8 @@ export const Sidebar2: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Fixed Utilities: Icon-only Mẫu ghi chú, Thư viện & Thùng rác */}
-      <SidebarFooter viewState={viewState} trashCount={trashDocs.length} onNavigate={onNavigate} />
+      {/* Bottom Fixed Utilities: Icon-only Mẫu ghi chú, Thư viện, Thùng rác & Quick Note */}
+      <SidebarFooter viewState={viewState} trashCount={trashDocs.length} onNavigate={onNavigate} onQuickNote={onOpenQuickNote} />
 
       {/* Floating Document Context Menu */}
       {renamingDocId && <RenameDialog key={renamingDocId} kind="document"

@@ -4,6 +4,7 @@ import {
   Document,
   Block,
   Folder,
+  QuickNote,
   SpaceType,
   UserRole,
 } from '../types';
@@ -24,7 +25,7 @@ import {
 import { TEMPLATES, CURRENT_USER } from '../data/mockData';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Sidebar2 } from '../components/layout/Sidebar2';
-import { layoutConfig, SIDEBAR2_DEFAULT_WIDTH } from './layoutConfig';
+import { layoutConfig, SIDEBAR_DEFAULT_WIDTH, SIDEBAR2_DEFAULT_WIDTH } from './layoutConfig';
 import { Header } from '../components/layout/Header';
 import { ToastContainer, ToastMessage } from '../components/Toast';
 import { FolderModal } from '../components/modals/FolderModal';
@@ -35,6 +36,8 @@ import { MoveFolderModal } from '../components/modals/MoveFolderModal';
 import { NewChatModal } from '../components/modals/NewChatModal';
 import { SpotlightSearchModal } from '../components/modals/SpotlightSearchModal';
 import { ImportDocumentModal } from '../components/modals/ImportDocumentModal';
+import { QuickNoteModal } from '../components/modals/QuickNoteModal';
+import { getQuickNoteDisplayTitle } from '../utils/quickNotes';
 import { AppPages } from './AppPages';
 import { useAppRouter } from './router/useAppRouter';
 import { useTheme } from './theme/useTheme';
@@ -57,12 +60,12 @@ export default function App() {
       if (saved) {
         const parsed = Number(saved);
         if (!isNaN(parsed) && parsed >= 200 && parsed <= 520) {
-          if (parsed === 260) return 280;
+          if (parsed === 260) return SIDEBAR2_DEFAULT_WIDTH;
           return parsed;
         }
       }
     } catch (e) {}
-    return useSidebar2 ? SIDEBAR2_DEFAULT_WIDTH : 280;
+    return useSidebar2 ? SIDEBAR2_DEFAULT_WIDTH : SIDEBAR_DEFAULT_WIDTH;
   });
 
   // Modals
@@ -78,9 +81,12 @@ export default function App() {
   const [newDocumentId, setNewDocumentId] = useState<string | null>(null);
 
   const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [moveModalDoc, setMoveModalDoc] = useState<Document | null>(null);
   const [moveModalFolder, setMoveModalFolder] = useState<Folder | null>(null);
+  const quickNoteOpenRef = React.useRef(quickNoteOpen);
+  quickNoteOpenRef.current = quickNoteOpen;
 
   // Toast feedback
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -94,17 +100,51 @@ export default function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Global Ctrl+K / Cmd+K listener
+  // Global Ctrl+K / Cmd+K and Ctrl+/ / Cmd+/ listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsSpotlightOpen((prev) => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.code === 'Slash')) {
+        if (!quickNoteOpenRef.current) {
+          e.preventDefault();
+          setQuickNoteOpen(true);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleSaveQuickNoteToWorkspace = (note: QuickNote) => {
+    const now = new Date().toISOString();
+    const newDoc: Document = {
+      id: `doc_${crypto.randomUUID()}`,
+      title: getQuickNoteDisplayTitle(note),
+      icon: note.icon || '📝',
+      space: 'personal',
+      folderId: null,
+      type: 'note',
+      tags: ['Ghi chú nhanh'],
+      permission: 'owner',
+      isPrivate: true,
+      author: {
+        id: CURRENT_USER.id,
+        name: CURRENT_USER.name,
+        avatar: CURRENT_USER.avatar,
+        email: CURRENT_USER.email,
+        department: CURRENT_USER.department,
+      },
+      isFavorite: false,
+      isTrash: false,
+      createdAt: now,
+      updatedAt: now,
+      blocks: structuredClone(note.blocks),
+    };
+    setDocuments(upsertDocument(newDoc));
+    addToast('Đã lưu ghi chú nhanh vào Ghi chép của tôi');
+  };
 
   // Handlers for Document CRUD
   const handleUpdateDocument = (updatedDoc: Document) => {
@@ -213,20 +253,26 @@ export default function App() {
   };
 
   // Create new document from template
-  const handleCreateFromTemplate = (templateId: string) => {
+  const handleCreateFromTemplate = (templateId: string, spaceOverride?: SpaceType) => {
     const tpl = TEMPLATES.find((t) => t.id === templateId);
     if (!tpl) { addToast('Không tìm thấy mẫu tài liệu', 'error'); return; }
+    const targetSpace: SpaceType = spaceOverride ?? tpl.space;
+    const targetFolderId = spaceOverride
+      ? null
+      : targetSpace === 'personal' && folders.some(folder => folder.id === 'fld_work' && folder.space === 'personal')
+        ? 'fld_work'
+        : null;
     const newDocId = `doc_${crypto.randomUUID()}`;
     const newDoc: Document = {
       id: newDocId,
       title: tpl.title === 'Ghi chú cá nhân' ? 'Ghi chú không có tiêu đề' : tpl.title,
       icon: '📄',
-      space: tpl.space,
-      folderId: tpl.space === 'personal' && folders.some(folder => folder.id === 'fld_work' && folder.space === 'personal') ? 'fld_work' : null,
+      space: targetSpace,
+      folderId: targetFolderId,
       type: tpl.type,
       tags: [...tpl.tags],
       permission: 'owner',
-      isPrivate: tpl.space === 'personal',
+      isPrivate: targetSpace === 'personal',
       author: {
         id: CURRENT_USER.id,
         name: CURRENT_USER.name,
@@ -418,7 +464,7 @@ export default function App() {
       : null;
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--ui-surface)] text-[var(--ui-text)] select-none font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden print:h-auto print:overflow-visible bg-[var(--ui-surface)] text-[var(--ui-text)] select-none font-sans">
       {/* Full-width Top Header (Navbar) matching MISA AMIS GHI CHÉP */}
       <Header
         theme={theme}
@@ -427,7 +473,7 @@ export default function App() {
         onSidebarVariantChange={variant => {
           memoryStorage.setItem('misa_sidebar_variant', String(variant));
           setUseSidebar2(variant === 2);
-          setSidebarWidth(variant === 2 ? SIDEBAR2_DEFAULT_WIDTH : 280);
+          setSidebarWidth(variant === 2 ? SIDEBAR2_DEFAULT_WIDTH : SIDEBAR_DEFAULT_WIDTH);
         }}
         onOpenSearch={() => setIsSpotlightOpen(true)}
         onOpenChat={() => setChatModalOpen(true)}
@@ -435,7 +481,7 @@ export default function App() {
       />
 
       {/* Main Workspace below header */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden print:overflow-visible relative">
         {/* Sidebar matching screenshot */}
       <ActiveSidebar
         documents={documents}
@@ -459,6 +505,7 @@ export default function App() {
         onOpenOneAI={() => addToast('Tính năng Hỏi AI (One AI) sắp ra mắt', 'info')}
         onCreateMeetingNote={() => handleCreateFromTemplate('tpl_meeting_minutes')}
         onOpenTemplates={() => navigate({ type: 'templates' })}
+        onUseTemplate={handleCreateFromTemplate}
         onOpenChat={() => setChatModalOpen(true)}
         onCreateTaskList={handleCreateTaskList}
         onImportDoc={() => setShowImportModal(true)}
@@ -470,10 +517,11 @@ export default function App() {
         onMoveDocument={handleMoveDocument}
         onMoveFolder={handleMoveFolder}
         onToast={addToast}
+        onOpenQuickNote={() => setQuickNoteOpen(true)}
       />
 
       {/* Main View Port */}
-      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-[var(--ui-surface)]">
+      <main className="flex-1 min-w-0 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-[var(--ui-surface)]">
         <AppPages view={viewState} documents={documents} folders={folders}
           onNavigate={navigate} onUseTemplate={handleCreateFromTemplate}
           actions={{
@@ -619,6 +667,14 @@ export default function App() {
           onToast={addToast}
         />
       )}
+
+      {/* Quick Note two-level popup (Editor & Recent Notes) */}
+      <QuickNoteModal
+        isOpen={quickNoteOpen}
+        onClose={() => setQuickNoteOpen(false)}
+        onToast={addToast}
+        onSaveToWorkspace={handleSaveQuickNoteToWorkspace}
+      />
 
       {/* Notification Toast Container */}
       <ToastContainer toasts={toasts} onDismiss={removeToast} />

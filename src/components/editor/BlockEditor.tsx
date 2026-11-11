@@ -12,11 +12,10 @@ import {
   FolderOpen,
   Download,
   Sparkles,
-  Check,
   Clock,
   Lock,
   Globe,
-  Star,
+  Printer,
   X,
   Plus,
   Maximize2,
@@ -32,6 +31,15 @@ import { ExportModal } from '../modals/ExportModal';
 import { DocumentActionMenu } from '../modals/DocumentActionMenu';
 import { documentUrl } from '../../app/router/routes';
 import { getFolderAncestors } from '../../utils/folders';
+import {
+  BlockFocusTarget,
+  computeBlocksAfterDelete,
+  computeBlocksAfterExitListFirstItem,
+  computeBlocksAfterMergeWithPrevious,
+  focusBlockAtOffset,
+} from '../../utils/blockBackspace';
+import { extractBlocksFromClipboardData, mergePastedBlocks, replaceSelectedBlocks } from '../../utils/blockClipboard';
+import { useMultiBlockSelection } from '../../utils/multiBlockSelection';
 
 interface BlockEditorProps {
   document: Document;
@@ -62,9 +70,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onAutoFocusTitleHandled,
 }) => {
   const [renameOpen, setRenameOpen] = useState(false);
-  const [wideContent, setWideContent] = useState(false);
+  const [wideContent, setWideContent] = useState(true);
   const [doc, setDoc] = useState<Document>(document);
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
 
   useLayoutEffect(() => {
     const input = titleInputRef.current;
@@ -93,7 +100,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     isOpen: boolean;
     blockId: string | null;
     query: string;
-    position?: { top: number; left: number };
+    position?: { top: number; left: number; lineTop?: number };
   }>({
     isOpen: false,
     blockId: null,
@@ -137,7 +144,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     pendingSaveRef.current = null;
     saveCallbackRef.current(updatedDoc);
-    setSaveStatus('saved');
   }, []);
 
   const flushPendingSave = useCallback(() => {
@@ -146,7 +152,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     pendingSaveRef.current = null;
     if (pending) {
       saveCallbackRef.current(pending);
-      setSaveStatus('saved');
     }
   }, []);
 
@@ -162,14 +167,12 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   // Debounced auto-save function
   const triggerAutoSave = useCallback(
     (updatedDoc: Document) => {
-      setSaveStatus('saving');
       pendingSaveRef.current = updatedDoc;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
       saveTimerRef.current = setTimeout(() => {
         pendingSaveRef.current = null;
         saveCallbackRef.current(updatedDoc);
-        setSaveStatus('saved');
       }, 350);
     },
     []
@@ -189,14 +192,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     const updatedBlocks = doc.blocks.map((b) =>
       b.id === blockId ? { ...b, content, properties: properties || b.properties } : b
     );
-    const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
-    setDoc(updatedDoc);
-    triggerAutoSave(updatedDoc);
-  };
-
-  const handleDeleteBlock = (blockId: string) => {
-    if (doc.blocks.length <= 1) return;
-    const updatedBlocks = doc.blocks.filter((b) => b.id !== blockId);
     const updatedDoc = { ...doc, blocks: updatedBlocks, updatedAt: new Date().toISOString() };
     setDoc(updatedDoc);
     triggerAutoSave(updatedDoc);
@@ -264,7 +259,75 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   };
 
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [focusCursorPosition, setFocusCursorPosition] = useState<'start' | 'end'>('start');
   const [menuBlockId, setMenuBlockId] = useState<string | null>(null);
+  const docRef = useRef(doc);
+  docRef.current = doc;
+  const blocksContainerRef = useRef<HTMLDivElement>(null);
+  const pendingBackspaceFocusRef = useRef<BlockFocusTarget | null>(null);
+
+  useLayoutEffect(() => {
+    const target = pendingBackspaceFocusRef.current;
+    if (!target) return;
+    pendingBackspaceFocusRef.current = null;
+    focusBlockAtOffset(blocksContainerRef.current, target.blockId, target.offset);
+  }, [doc.blocks]);
+
+  const applyBlockFocusResult = (result: { blocks: Block[]; focus: BlockFocusTarget } | null) => {
+    if (!result) return;
+    const updatedDoc = { ...docRef.current, blocks: result.blocks, updatedAt: new Date().toISOString() };
+    docRef.current = updatedDoc;
+    pendingBackspaceFocusRef.current = result.focus;
+    setDoc(updatedDoc);
+    setFocusedBlockId(result.focus.blockId);
+    triggerAutoSave(updatedDoc);
+  };
+
+  const handleDeleteBlock = (blockId: string) => {
+    applyBlockFocusResult(computeBlocksAfterDelete(docRef.current.blocks, blockId));
+  };
+
+  const handleMergeWithPrevious = (blockId: string) => {
+    applyBlockFocusResult(computeBlocksAfterMergeWithPrevious(docRef.current.blocks, blockId));
+  };
+
+  const handleExitListStart = (blockId: string) => {
+    applyBlockFocusResult(
+      computeBlocksAfterExitListFirstItem(
+        docRef.current.blocks,
+        blockId,
+        () => `blk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      )
+    );
+  };
+
+  const {
+    selectedBlockIds,
+    selectedBlockIdSet,
+    clearSelection,
+    handleContainerMouseDown,
+    handleContainerKeyDownCapture,
+    handleContainerCopy,
+    handleContainerCut,
+  } = useMultiBlockSelection({
+    blocks: doc.blocks,
+    containerRef: blocksContainerRef,
+    resetKey: doc.id,
+    canEdit: !isReadOnly,
+    isDisabled: slashState.isOpen,
+    onToast,
+    onFocusBlock: (blockId) => {
+      setFocusCursorPosition('start');
+      setFocusedBlockId(blockId);
+    },
+    onReplaceBlocks: (nextBlocks, focusBlockId, caretAtEnd) => {
+      const updatedDoc = { ...docRef.current, blocks: nextBlocks, updatedAt: new Date().toISOString() };
+      setDoc(updatedDoc);
+      setFocusCursorPosition(caretAtEnd ? 'end' : 'start');
+      setFocusedBlockId(focusBlockId);
+      triggerAutoSave(updatedDoc);
+    },
+  });
   const handleAddBlockBelow = (index: number, openMenu = false) => {
     const newBlock: Block = {
       id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -326,6 +389,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       position: {
         top: rect.bottom + 6,
         left: rect.left,
+        lineTop: rect.top,
       },
     });
   };
@@ -759,10 +823,23 @@ function getTextareaSelectionCoords(
     }
   };
 
+  const handlePrintDocument = () => {
+    flushPendingSave();
+    if (typeof window !== 'undefined' && typeof window.print === 'function') {
+      try {
+        window.print();
+      } catch {
+        onToast('Không thể mở hộp thoại in của trình duyệt.', 'error');
+      }
+    } else {
+      onToast('Trình duyệt không hỗ trợ in trực tiếp.', 'error');
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-[var(--ui-surface)] overflow-hidden relative">
-      {/* Top Header Bar matching screenshot: Breadcrumbs on left, [Chia sẻ] and [•••] on right */}
-      <div className="h-14 border-b border-[var(--ui-border)] px-8 flex items-center justify-between gap-4 bg-[var(--ui-surface)] sticky top-0 z-30">
+    <div className="flex-1 flex flex-col h-full print:h-auto bg-[var(--ui-surface)] overflow-hidden print:overflow-visible relative">
+      {/* Top Header Bar: Breadcrumbs on left, [Xem toàn màn hình] [Chia sẻ] [In] [•••] on right */}
+      <div className="no-print h-14 border-b border-[var(--ui-border)] px-8 flex items-center justify-between gap-4 bg-[var(--ui-surface)] sticky top-0 z-30">
         {/* Breadcrumb matching screenshot: "Ghi chép của tôi / Công việc / Kế hoạch tuần" */}
         <div className="flex items-center gap-2 text-xs text-[var(--ui-muted)] min-w-0 font-medium">
           <button type="button" onClick={() => onNavigate?.({ type: doc.space === 'personal' ? 'private' : 'company' })} className="truncate hover:underline">
@@ -780,41 +857,19 @@ function getTextareaSelectionCoords(
           <span className="truncate text-[var(--ui-text)] font-semibold">{doc.title || 'Không có tiêu đề'}</span>
         </div>
 
-        {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Action Buttons Toolbar: [Xem toàn màn hình] [Chia sẻ] [In] [•••] */}
+        <div data-doc-header-actions className="flex items-center gap-2 shrink-0">
           <button type="button" aria-label="Xem toàn màn hình" aria-pressed={wideContent}
             onClick={() => setWideContent(previous => !previous)}
             title={wideContent ? 'Thu hẹp nội dung cho dễ đọc' : 'Giãn nội dung theo chiều rộng màn hình'}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-hover)] px-3 py-1.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-hover-strong)]">
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-hover)] px-3 py-1.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-hover-strong)] cursor-pointer">
             {wideContent ? <Maximize2 aria-hidden="true" className="h-3.5 w-3.5" /> : <Minimize2 aria-hidden="true" className="h-3.5 w-3.5" />}
             <span>{wideContent ? 'Xem toàn màn hình' : 'Vừa đọc'}</span>
           </button>
-          {/* Favorites are personal only. */}
-          {doc.space === 'personal' && <button
-            type="button"
-            onClick={() => {
-              onToggleFavorite(doc.id);
-              setDoc((prev) => ({ ...prev, isFavorite: !prev.isFavorite }));
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ios-interactive shadow-2xs cursor-pointer ${
-              doc.isFavorite
-                ? 'theme-primary bg-[var(--ui-primary)] text-white border-[var(--ui-primary)]'
-                : 'bg-[var(--ui-surface)] border-[var(--ui-border)] text-[var(--ui-text)] hover:bg-[var(--ui-hover)]'
-            }`}
-            title={doc.isFavorite ? 'Xóa khỏi Yêu thích' : 'Thêm vào yêu thích'}
-          >
-            <Star
-              className={`w-3.5 h-3.5 stroke-[1.75] ${
-                doc.isFavorite ? 'fill-white text-white' : 'text-[var(--ui-text)]'
-              }`}
-            />
-            <span>
-              {doc.isFavorite ? 'Đã yêu thích' : 'Yêu thích'}
-            </span>
-          </button>}
 
-          {/* Share Button (white rounded-xl with border) */}
+          {/* Share Button */}
           <button
+            type="button"
             onClick={() => setShareOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
           >
@@ -822,10 +877,22 @@ function getTextareaSelectionCoords(
             <span>Chia sẻ</span>
           </button>
 
-          {/* More options button (•••) */}
+          {/* Print / Export PDF Button */}
+          <button
+            type="button"
+            onClick={handlePrintDocument}
+            title="In hoặc xuất PDF"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--ui-surface)] border border-[var(--ui-border)] hover:bg-[var(--ui-hover)] text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5 stroke-[1.75]" />
+            <span>In</span>
+          </button>
+
+          {/* More options / utilities button (•••) */}
           <div className="relative">
             <button
               ref={moreButtonRef}
+              type="button"
               onClick={() => setShowMoreMenu((prev) => !prev)}
               className="w-8 h-8 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] hover:bg-[var(--ui-hover)] flex items-center justify-center text-[var(--ui-text)] transition-colors ios-interactive shadow-2xs cursor-pointer"
               title="Tùy chọn khác"
@@ -851,7 +918,7 @@ function getTextareaSelectionCoords(
         </div>
       </div>
 
-      {/* Editor Canvas exactly matching screenshot */}
+      {/* Editor Canvas */}
       <div
         ref={scrollContainerRef}
         onScroll={(e) => maybeExpandBottomSpace(e.currentTarget)}
@@ -859,17 +926,19 @@ function getTextareaSelectionCoords(
           if (e.deltaY > 0) maybeExpandBottomSpace(e.currentTarget);
         }}
         data-content-width={wideContent ? 'wide' : 'reading'}
-        className="flex-1 overflow-y-auto px-[5%] pt-10 pb-8"
+        className="flex-1 overflow-y-auto print:overflow-visible px-[5%] print:px-0 pt-10 pb-8 print:py-0"
       >
-        <div className={`mx-auto w-full min-w-0 space-y-4 ${wideContent ? '' : 'max-w-2xl'}`}>
+        <div className={`mx-auto w-full min-w-0 space-y-4 ${wideContent ? '' : 'max-w-2xl print:max-w-none'}`}>
           {/* Document Title matching screenshot */}
           <div>
             <textarea
               ref={titleInputRef}
               rows={1}
               aria-label="Tiêu đề ghi chú"
+              data-print-source=""
               disabled={isReadOnly}
               value={doc.title}
+              onFocus={clearSelection}
               onChange={(e) => updateDocField('title', e.target.value)}
               onBlur={() => flushPendingSave()}
               onKeyDown={(e) => {
@@ -909,31 +978,62 @@ function getTextareaSelectionCoords(
                 }
               }}
               placeholder="Tiêu đề trang..."
-              className="block w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
+              className="block w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight print:hidden"
             />
-
-            {/* Save status and last update time. */}
-            <div className="flex items-center gap-2 text-xs text-[var(--ui-tertiary)] mt-2 font-normal">
-              <span className="flex items-center gap-1 text-[var(--ui-text-secondary)]">
-                <Check className="w-3.5 h-3.5 stroke-[2]" />
-                <span>Đã lưu</span>
-              </span>
-              <span>·</span>
-              <span>Cập nhật {formatDateTime(doc.updatedAt)}</span>
+            <div
+              data-print-mirror=""
+              aria-hidden="true"
+              className="hidden print:block w-full whitespace-pre-wrap break-words text-3xl md:text-4xl font-bold text-[var(--ui-text)] tracking-tight leading-tight"
+            >
+              {doc.title ? (doc.title.endsWith('\n') ? `${doc.title}\u00a0` : doc.title) : '\u00a0'}
             </div>
           </div>
 
           {/* Blocks container */}
-          <div id="document-editor-container" onKeyDownCapture={event => {
-            if (isReadOnly || event.nativeEvent.isComposing || event.nativeEvent.getModifierState?.('AltGraph')) return;
-            if (!(event.target instanceof HTMLTextAreaElement)) return;
-            const command = commandForShortcut(event);
-            const blockId = event.target.closest<HTMLElement>('[data-block-id]')?.dataset.blockId;
-            if (!command || !blockId) return;
-            event.preventDefault(); event.stopPropagation();
-            recordSlashCommand(command.id);
-            handleSelectSlashItem(command.type, command.properties, blockId, !slashState.isOpen);
-          }} onKeyDown={navigateEditorArrow} className="space-y-2 relative min-h-[300px] pt-2">
+          <div
+            id="document-editor-container"
+            ref={blocksContainerRef}
+            tabIndex={-1}
+            data-has-multi-selection={selectedBlockIds.length > 0 ? 'true' : undefined}
+            onMouseDown={handleContainerMouseDown}
+            onCopy={(event) => handleContainerCopy(event)}
+            onCut={handleContainerCut}
+            onKeyDownCapture={(event) => {
+              if (handleContainerKeyDownCapture(event)) return;
+              if (isReadOnly || event.nativeEvent.isComposing || event.getModifierState?.('AltGraph')) return;
+              if (!(event.target instanceof HTMLTextAreaElement)) return;
+              const command = commandForShortcut(event);
+              const blockId = event.target.closest<HTMLElement>('[data-block-id]')?.dataset.blockId;
+              if (!command || !blockId) return;
+              event.preventDefault(); event.stopPropagation();
+              recordSlashCommand(command.id);
+              handleSelectSlashItem(command.type, command.properties, blockId, !slashState.isOpen);
+            }}
+            onPaste={(event) => {
+              const target = event.target;
+              const isTextarea = target instanceof HTMLTextAreaElement;
+              if (isReadOnly || (!isTextarea && selectedBlockIds.length === 0)) return;
+              const blockId = isTextarea ? target.closest<HTMLElement>('[data-block-id]')?.dataset.blockId : undefined;
+              const targetBlock = blockId ? doc.blocks.find((item) => item.id === blockId) : undefined;
+              if (isTextarea && selectedBlockIds.length === 0 && targetBlock?.type === 'code') return;
+              const pastedBlocks = extractBlocksFromClipboardData(event.clipboardData);
+              if (!pastedBlocks?.length) return;
+              event.preventDefault();
+              event.stopPropagation();
+              const { blocks: merged, focusBlockId } =
+                selectedBlockIds.length > 0
+                  ? replaceSelectedBlocks(doc.blocks, selectedBlockIds, pastedBlocks)
+                  : mergePastedBlocks(doc.blocks, blockId, pastedBlocks);
+              clearSelection();
+              const updatedDoc = { ...doc, blocks: merged, updatedAt: new Date().toISOString() };
+              setDoc(updatedDoc);
+              setFocusCursorPosition('start');
+              setFocusedBlockId(focusBlockId);
+              triggerAutoSave(updatedDoc);
+            }}
+            onKeyDown={navigateEditorArrow}
+            className="space-y-2 relative min-h-[300px] print:min-h-0 pt-2 focus:outline-none"
+          >
             {doc.blocks.map((block, idx) => (
               <React.Fragment key={block.id}>
               <BlockItem
@@ -942,13 +1042,17 @@ function getTextareaSelectionCoords(
                 index={idx}
                 totalBlocks={doc.blocks.length}
                 userRole={currentRole}
+                isBlockSelected={selectedBlockIdSet.has(block.id)}
                 autoFocus={focusedBlockId === block.id}
+                autoFocusPosition={focusedBlockId === block.id ? focusCursorPosition : 'start'}
                 openMenuInitially={menuBlockId === block.id}
                 afterList={idx > 0 && ['bullet', 'numbered', 'checklist'].includes(doc.blocks[idx - 1].type)}
                 isDragging={draggingBlockIndex === idx}
                 isDragOver={dragOverBlockIndex === idx && draggingBlockIndex !== idx}
                 onUpdate={handleUpdateBlock}
                 onDelete={handleDeleteBlock}
+                onMergeWithPrevious={handleMergeWithPrevious}
+                onExitListStart={handleExitListStart}
                 onDuplicate={handleDuplicateBlock}
                 onMoveUp={handleMoveBlockUp}
                 onMoveDown={handleMoveBlockDown}
@@ -985,7 +1089,7 @@ function getTextareaSelectionCoords(
                   (doc.blocks[doc.blocks.length - 1].type !== 'paragraph' || doc.blocks[doc.blocks.length - 1].content !== ''))) && (
                 <div
                   onClick={() => handleAddBlockBelow(doc.blocks.length - 1)}
-                  className="group relative flex items-center gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl text-sm text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-text transition-colors hover:bg-[var(--ui-hover)]/30"
+                  className="no-print group relative flex items-center gap-1 py-1.5 -ml-14 pl-14 pr-2 rounded-xl text-sm text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] cursor-text transition-colors hover:bg-[var(--ui-hover)]/30"
                 >
                   <div className="absolute left-1 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <span className="p-1 rounded-lg text-[var(--ui-tertiary)]">
@@ -1008,7 +1112,7 @@ function getTextareaSelectionCoords(
       </div>
 
       {/* Floating help button '?' at bottom right matching screenshot */}
-      <div className="fixed bottom-6 right-6 z-30">
+      <div className="no-print fixed bottom-6 right-6 z-30">
         <button
           type="button"
           onClick={() => setShowHelpModal(true)}
