@@ -51,7 +51,6 @@ const button = (text: string, scope: ParentNode = document) => Array.from(scope.
 const heading = () => document.querySelector('main h1')?.textContent;
 
 test('slash previews follow hover and arrow selection without inserting content', async () => {
-  const { TEMPLATES } = await import('../data/mockData');
   const { saveStoredDocuments } = await import('../utils/storage');
   const base = getStoredDocuments().find(doc => !doc.isTrash)!;
   saveStoredDocuments([{ ...base, id: 'preview-note', blocks: [{ id: 'preview-input', type: 'paragraph', content: '' }] }]);
@@ -68,13 +67,7 @@ test('slash previews follow hover and arrow selection without inserting content'
     assert(item);
     await act(async () => item.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true })));
   };
-  for (const template of TEMPLATES) {
-    await hover(template.title);
-    const preview = document.querySelector<HTMLElement>(`[data-slash-preview="${template.id}"]`)!;
-    assert(preview);
-    assert(preview.textContent?.includes(template.createBlocks()[0].content));
-    assert.equal(input.value, '/');
-  }
+  assert.equal(document.querySelector('[role="group"][aria-label="Gợi ý template"]'), null);
   await hover('Danh sách gạch đầu dòng');
   assert(document.querySelector('[data-slash-preview="bullet"]')?.textContent?.includes('Chuẩn bị nội dung công việc'));
   await act(async () => input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })));
@@ -119,37 +112,63 @@ test('slash previews follow hover and arrow selection without inserting content'
   assert(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'));
 });
 
-test('slash template suggestions insert all five reusable templates into the current document', async () => {
+test('new document template pills insert all five templates and disappear after writing', async () => {
   const { TEMPLATES } = await import('../data/mockData');
   const { saveStoredDocuments } = await import('../utils/storage');
   const base = getStoredDocuments().find(doc => !doc.isTrash)!;
   for (const template of TEMPLATES) {
-    saveStoredDocuments([{ ...base, id: 'inline-template', title: 'Tài liệu đang viết', blocks: [
-      { id: 'before-template', type: 'paragraph', content: 'Nội dung trước mẫu' },
+    saveStoredDocuments([{ ...base, id: 'pill-template', title: 'Ghi chú mới', blocks: [
       { id: 'template-input', type: 'paragraph', content: '' },
-      { id: 'after-template', type: 'paragraph', content: 'Nội dung sau mẫu' },
     ] }]);
-    await mount('/documents/inline-template');
-    const input = document.querySelector<HTMLTextAreaElement>('[data-block-id="template-input"] textarea')!;
+    await mount('/documents/pill-template');
+    const pills = document.querySelector('[aria-label="Mẫu tài liệu"]')!;
+    assert(pills.textContent?.includes('Tạo nhanh bằng các mẫu'));
+    assert.equal(pills.querySelectorAll('button[aria-label^="Ẩn mẫu"]').length, 5);
+    const pill = button(template.title, pills)!;
+    await act(async () => pill.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true })));
+    const preview = document.querySelector(`[data-template-preview="${template.id}"]`)!;
+    assert(preview?.textContent?.includes(template.createBlocks()[0].content));
     await act(async () => {
-      input.focus();
-      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, '/');
-      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+      pill.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+      preview.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true, relatedTarget: document.body }));
+      await new Promise(resolve => setTimeout(resolve, 220));
+      preview.querySelector('[data-command-preview-content]')!.dispatchEvent(new window.Event('scroll', { bubbles: true }));
     });
-    const group = document.querySelector('[role="group"][aria-label="Gợi ý template"]')!;
-    assert.equal(group.querySelectorAll('[role="option"]').length, 5);
-    await click(group.querySelector(`[data-slash-command-title="${template.title}"]`));
-    assert.equal(window.location.pathname, '/documents/inline-template');
-    assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
+    assert(document.querySelector(`[data-template-preview="${template.id}"]`));
+    await act(async () => {
+      preview.dispatchEvent(new window.MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }));
+      await new Promise(resolve => setTimeout(resolve, 220));
+    });
+    assert.equal(document.querySelector('[data-template-preview]'), null);
+    await act(async () => pill.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true })));
+    const clickablePreview = document.querySelector(`[data-template-preview="${template.id}"]`)!;
+    assert.equal(clickablePreview.getAttribute('role'), 'button');
+    await click(clickablePreview.querySelector('[data-command-preview-content]'));
+    assert.equal(document.querySelector('[aria-label="Mẫu tài liệu"]'), null);
     await mount('/private');
-    const saved = getStoredDocuments().find(doc => doc.id === 'inline-template')!;
-    assert.equal(saved.title, 'Tài liệu đang viết');
-    assert.equal(saved.blocks[0].content, 'Nội dung trước mẫu');
-    assert.equal(saved.blocks.at(-1)?.content, 'Nội dung sau mẫu');
-    assert.deepEqual(saved.blocks.slice(1, -1).map(block => block.type), template.createBlocks().map(block => block.type));
+    const saved = getStoredDocuments().find(doc => doc.id === 'pill-template')!;
+    assert.equal(saved.title, template.title);
+    assert.equal(saved.folderId, base.folderId);
+    assert.equal(saved.space, base.space);
+    assert.deepEqual(saved.blocks.map(block => block.type), template.createBlocks().map(block => block.type));
     assert.equal(new Set(saved.blocks.map(block => block.id)).size, saved.blocks.length);
-    assert(!saved.blocks.some(block => block.content === '/'));
   }
+  await mount('/documents/pill-template');
+  assert.equal(document.querySelector('[aria-label="Mẫu tài liệu"]'), null);
+  saveStoredDocuments([{ ...base, id: 'typed-note', blocks: [{ id: 'typed-input', type: 'paragraph', content: '' }] }]);
+  await mount('/documents/typed-note');
+  assert(document.querySelector('[aria-label="Mẫu tài liệu"]'));
+  await click(document.querySelector('button[aria-label="Ẩn mẫu Ghi chú cá nhân"]'));
+  const remainingPills = document.querySelector('[aria-label="Mẫu tài liệu"]')!;
+  assert.equal(remainingPills.querySelectorAll('button[aria-label^="Ẩn mẫu"]').length, 4);
+  assert(!button('Ghi chú cá nhân', remainingPills));
+  assert.equal(document.querySelectorAll('[data-block-id="typed-input"]').length, 1);
+  const input = document.querySelector<HTMLTextAreaElement>('[data-block-id="typed-input"] textarea')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Nội dung tự viết');
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(document.querySelector('[aria-label="Mẫu tài liệu"]'), null);
 });
 
 test('share dialog adds employees from search and directory, saves roles and reopens session settings', async () => {
@@ -994,7 +1013,7 @@ test('slash suggestions show the five most recently used unique items and surviv
   assert.equal(recommended.querySelector('button')?.getAttribute('data-slash-command-title'), 'Ghi chép cuộc họp với AI');
   assert(recommended.querySelector('button')?.disabled);
   const groups = Array.from(document.querySelectorAll('[role="group"]')).map(group => group.getAttribute('aria-label'));
-  assert.equal(groups[groups.indexOf('Nội tuyến') - 1], 'Gợi ý template');
+  assert(!groups.includes('Gợi ý template'));
   assert(!groups.includes('Đang phát triển'));
   assert.deepEqual(suggested(), []);
   await click(document.querySelector('button[data-slash-command-title="Ghi chép cuộc họp với AI"]'));
@@ -1551,6 +1570,46 @@ test('Back and Forward render the page stored in browser history', async () => {
   await goHistory('back'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
   await goHistory('back'); assert.equal(window.location.pathname, '/library/private'); assert.equal(heading(), 'Thư viện');
   await goHistory('forward'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
+});
+
+test('sidebar utilities duplicate documents and folder subtrees at the same level', async () => {
+  const { getStoredFolders, saveStoredFolders, saveStoredDocuments } = await import('../utils/storage');
+  const sourceFolder = getStoredFolders().find(folder => folder.id === 'fld_work')!;
+  const child = { ...sourceFolder, id: 'duplicate-child', parentId: sourceFolder.id, name: 'Thư mục con' };
+  saveStoredFolders([...getStoredFolders(), child]);
+  const base = getStoredDocuments().find(doc => doc.space === 'personal' && !doc.isTrash)!;
+  const sourceDoc = { ...base, id: 'duplicate-doc', title: 'Ghi chú cần sao chép', folderId: sourceFolder.id };
+  const childDoc = { ...base, id: 'duplicate-child-doc', title: 'Nội dung con', folderId: child.id };
+  saveStoredDocuments([sourceDoc, childDoc]);
+  for (const variant of ['1', '2']) {
+    memoryStorage.setItem('misa_sidebar_variant', variant);
+    await mount('/private');
+    await click(document.querySelector('aside button[aria-label="Tùy chọn thư mục Công việc"]'));
+    const menu = document.querySelector('[role="menu"]')!;
+    assert(menu.textContent?.includes('Tiện ích'));
+    await click(button('Nhân bản', menu));
+    const copy = getStoredFolders().filter(folder => folder.name.startsWith('Bản sao của Công việc')).at(-1)!;
+    assert(copy && copy.id !== sourceFolder.id);
+    assert.equal(copy.parentId || null, sourceFolder.parentId || null);
+    assert.equal(copy.space, sourceFolder.space);
+    const copiedChild = getStoredFolders().find(folder => folder.parentId === copy.id && folder.name === child.name)!;
+    assert(copiedChild && copiedChild.id !== child.id);
+    const docs = getStoredDocuments();
+    const copiedDoc = docs.find(doc => doc.folderId === copy.id && doc.title === sourceDoc.title)!;
+    assert(copiedDoc && copiedDoc.id !== sourceDoc.id);
+    assert.notEqual(copiedDoc.blocks[0].id, sourceDoc.blocks[0].id);
+    assert(docs.some(doc => doc.folderId === copiedChild.id && doc.title === childDoc.title));
+    await mount('/folders/fld_work');
+    await click(document.querySelector('aside [data-sidebar-document="duplicate-doc"] button[title="Tùy chọn tài liệu"]'));
+    const docMenu = document.querySelector('[aria-label="Thao tác tài liệu"]')!;
+    assert(docMenu.textContent?.includes('Tiện ích'));
+    await click(button('Nhân bản', docMenu));
+    const noteCopy = getStoredDocuments().filter(doc => doc.title === 'Bản sao của Ghi chú cần sao chép' && doc.folderId === sourceDoc.folderId).at(0)!;
+    assert(noteCopy && noteCopy.id !== sourceDoc.id);
+    assert.equal(noteCopy.folderId, sourceDoc.folderId);
+    assert.equal(noteCopy.space, sourceDoc.space);
+    assert.notEqual(noteCopy.blocks[0].id, sourceDoc.blocks[0].id);
+  }
 });
 
 test('library document types use workspace labels and filter by workspace', async () => {

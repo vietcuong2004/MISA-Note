@@ -72,7 +72,7 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
     onDrop: (event: React.DragEvent) => drop(event, id),
   });
   const folderMenu = (item: Folder) => favoritesOnly ? null : <FolderActions folder={item} onCreateDocument={actions.onCreateDocument}
-    onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder} onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />;
+    onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder} onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} onDuplicate={actions.onDuplicateFolder} />;
   const dragFolder = (item: Folder) => ({
     draggable: true,
     onDragStart: (event: React.DragEvent) => { event.stopPropagation(); setDragFolder(event, item.id); },
@@ -143,7 +143,7 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
           </select>
           {!favoritesOnly && (rootSpace ? <SpaceCreateMenu title="Tạo mới" onCreateDocument={() => actions.onCreateDocument?.(rootSpace, null)} onCreateFolder={() => actions.onCreateFolder?.(rootSpace, null)} /> : <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
             onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder}
-            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />)}
+            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} onDuplicate={actions.onDuplicateFolder} />)}
         </div>
       </header>
       <section aria-label="Nội dung thư mục" data-folder-mode={mode} {...dropProps(folder.id)} className="min-h-36">
@@ -166,6 +166,7 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
     <DocumentActionMenu isOpen={!!menuDocument} isFavorite={menuDocument?.isFavorite}
       position={documentMenu || undefined} onClose={() => setDocumentMenu(null)}
       onToggleFavorite={menuDocument?.space === 'personal' ? () => actions.onToggleFavorite(menuDocument.id) : undefined}
+      onDuplicate={actions.onDuplicateDocument ? () => { if (menuDocument) actions.onDuplicateDocument?.(menuDocument.id); } : undefined}
       onRename={() => { if (menuDocument) setRenameId(menuDocument.id); }}
       onShare={() => { if (menuDocument) setShareId(menuDocument.id); }}
       onMove={() => { if (menuDocument) actions.onMoveDocumentRequest?.(menuDocument); }}

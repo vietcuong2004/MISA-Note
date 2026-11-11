@@ -28,6 +28,7 @@ interface Props {
   onRenameNewFolder: (folder: Folder, name: string) => void;
   onEditFolder: (folder: Folder) => void;
   onMoveFolder?: (folder: Folder) => void;
+  onDuplicateFolder?: (id: string) => void;
   onDeleteFolder: (id: string) => void;
   onDragOverFolder: (id: string | null) => void;
   onDropDocument: (folder: Folder, documentId: string) => void;
@@ -305,7 +306,7 @@ export function FolderTree(props: Props) {
                 )}
               </div>
               <FolderActions folder={folder} onCreateDocument={props.onCreateDocument} onCreateFolder={props.onCreateFolder}
-                onRename={props.onEditFolder} onMove={props.onMoveFolder} onDelete={props.onDeleteFolder} />
+                onRename={props.onEditFolder} onMove={props.onMoveFolder} onDelete={props.onDeleteFolder} onDuplicate={props.onDuplicateFolder} />
             </div>
 
             {/* Folder Open Contents Area */}

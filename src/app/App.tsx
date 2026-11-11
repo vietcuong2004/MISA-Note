@@ -11,6 +11,8 @@ import {
 import {
   getStoredDocuments,
   getStoredFolders,
+  saveStoredFolders,
+  saveStoredDocuments,
   upsertDocument,
   softDeleteDocument,
   restoreDocumentFromTrash,
@@ -222,24 +224,57 @@ export default function App() {
     }
   };
 
+  const cloneDocument = (source: Document, folderId = source.folderId, title = `Bản sao của ${source.title}`): Document => {
+    const copy = structuredClone(source);
+    copy.id = `doc_${crypto.randomUUID()}`;
+    copy.title = title;
+    copy.folderId = folderId;
+    copy.createdAt = copy.updatedAt = new Date().toISOString();
+    copy.isFavorite = false;
+    copy.blocks.forEach(block => {
+      block.id = `blk_${crypto.randomUUID()}`;
+      block.properties?.listItems?.forEach(item => { item.id = `item_${crypto.randomUUID()}`; });
+    });
+    return copy;
+  };
+
   const handleDuplicateDocument = (docId: string) => {
-    const source = documents.find((d) => d.id === docId);
+    const source = documents.find(doc => doc.id === docId && !doc.isTrash);
     if (!source) return;
-    const newDocId = `doc_${Date.now()}`;
-    const newDoc: Document = {
-      ...source,
-      id: newDocId,
-      title: `Bản sao của ${source.title}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      blocks: source.blocks.map((b) => ({
-        ...b,
-        id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      })),
-    };
-    const newDocs = upsertDocument(newDoc);
-    setDocuments(newDocs);
-    addToast(`Đã nhân bản "${newDoc.title}"`);
+    const copy = cloneDocument(source);
+    setDocuments(upsertDocument(copy));
+    addToast(`Đã nhân bản "${copy.title}"`);
+  };
+
+  const handleDuplicateFolder = (folderId: string) => {
+    const source = folders.find(folder => folder.id === folderId);
+    if (!source) return;
+    const ids = new Map<string, string>([[source.id, `fld_${crypto.randomUUID()}`]]);
+    const originals = [source];
+    for (let i = 0; i < originals.length; i++) {
+      for (const child of folders.filter(folder => folder.parentId === originals[i].id && !ids.has(folder.id))) {
+        ids.set(child.id, `fld_${crypto.randomUUID()}`);
+        originals.push(child);
+      }
+    }
+    let name = `Bản sao của ${source.name}`;
+    let suffix = 2;
+    while (folders.some(folder => folder.space === source.space && (folder.parentId || null) === (source.parentId || null) && folder.name === name)) {
+      name = `Bản sao của ${source.name} (${suffix++})`;
+    }
+    const now = new Date().toISOString();
+    const copies = originals.map(folder => ({ ...structuredClone(folder), id: ids.get(folder.id)!,
+      parentId: folder.id === source.id ? source.parentId : ids.get(folder.parentId!)!,
+      name: folder.id === source.id ? name : folder.name, createdAt: now, updatedAt: now }));
+    const copiedDocuments = documents.filter(doc => !doc.isTrash && doc.folderId && ids.has(doc.folderId))
+      .map(doc => cloneDocument(doc, ids.get(doc.folderId!)!, doc.title));
+    const nextFolders = [...folders, ...copies];
+    const nextDocuments = [...documents, ...copiedDocuments];
+    saveStoredFolders(nextFolders);
+    saveStoredDocuments(nextDocuments);
+    setFolders(nextFolders);
+    setDocuments(nextDocuments);
+    addToast(`Đã nhân bản "${name}"`);
   };
 
   const handleRenameDocument = (docId: string, newTitle: string) => {
@@ -500,6 +535,7 @@ export default function App() {
         onRenameNewFolder={(folder, name) => { handleSaveFolder({ ...folder, name }); setNewFolderId(null); }}
         onEditFolder={handleOpenEditFolder}
         onDeleteFolder={handleDeleteFolder}
+        onDuplicateFolder={handleDuplicateFolder}
         onRoleChange={setCurrentRole}
         onOpenSpotlight={() => setIsSpotlightOpen(true)}
         onOpenOneAI={() => addToast('Tính năng Hỏi AI (One AI) sắp ra mắt', 'info')}
@@ -536,6 +572,7 @@ export default function App() {
             onEditFolder: handleOpenEditFolder,
             onMoveFolderRequest: (folder) => setMoveModalFolder(folder),
             onDeleteFolder: handleDeleteFolder,
+            onDuplicateFolder: handleDuplicateFolder,
             onRecordAudioNote: () => addToast('Tính năng ghi âm thành ghi chú OneAI đang được kết nối'),
             onDuplicateDocument: handleDuplicateDocument,
             onRenameDocument: handleRenameDocument,

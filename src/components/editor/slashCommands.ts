@@ -1,5 +1,4 @@
 import { BlockProperties, BlockType } from '../../types';
-import { TEMPLATES } from '../../data/mockData';
 
 export interface SlashCommand {
   id: string; type: BlockType; title: string; category: string;
@@ -39,10 +38,6 @@ const BASE_COMMANDS: SlashCommand[] = [
   {"id": "command_19", "type": "audio", "title": "Âm thanh", "category": "Phương tiện", "properties": {"commandTitle": "Âm thanh"}},
   {"id": "command_21", "type": "file", "title": "Tệp", "category": "Phương tiện", "properties": {"commandTitle": "Tệp"}},
   {"id": "command_16", "type": "link", "title": "Liên kết đến trang (URL)", "category": "Phương tiện", "properties": {"commandTitle": "Liên kết đến trang (URL)"}},
-  ...TEMPLATES.map((template): SlashCommand => ({
-    id: `template-${template.id}`, templateId: template.id, type: 'paragraph',
-    title: template.title, subtitle: template.description, category: 'Gợi ý template',
-  })),
   {"id": "command_57", "type": "utility", "title": "Nhắc đến 1 người", "category": "Nội tuyến", "properties": {"commandTitle": "Nhắc đến 1 người", "utilityKind": "Nhắc đến một người"}, "shortcut": "@"},
   {"id": "mention_group", "type": "utility", "title": "Nhắc đến 1 nhóm", "category": "Nội tuyến", "shortcut": "@", "properties": {"commandTitle": "Nhắc đến 1 nhóm", "utilityKind": "Nhắc đến một nhóm"}},
   ...colors.map((color): SlashCommand => ({

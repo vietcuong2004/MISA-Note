@@ -1,3 +1,4 @@
+import { TemplateSuggestions } from './TemplateSuggestions';
 import { TEMPLATES } from '../../data/mockData';
 import { formatDateTime } from '../../utils/dateTime';
 import { commandForShortcut } from './slashCommands';
@@ -71,6 +72,8 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onAutoFocusTitleHandled,
 }) => {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [dismissedTemplates, setDismissedTemplates] = useState<string[]>([]);
+  const [templateApplied, setTemplateApplied] = useState(false);
   const [wideContent, setWideContent] = useState(true);
   const [doc, setDoc] = useState<Document>(document);
 
@@ -408,11 +411,14 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     setSlashState({ isOpen: false, blockId: null, query: '' });
   };
 
+  const visibleTemplates = TEMPLATES.filter(template => !dismissedTemplates.includes(template.id));
+  const showTemplatePills = !templateApplied && visibleTemplates.length > 0 && !isReadOnly && doc.blocks.every(block => block.type === 'paragraph' && !block.content.trim());
   const handleInsertTemplate = (templateId: string) => {
-    if (isReadOnly || !slashState.blockId) return;
+    if (!showTemplatePills) return;
+    const targetId = doc.blocks[0]?.id;
     const template = TEMPLATES.find(item => item.id === templateId);
-    const index = doc.blocks.findIndex(block => block.id === slashState.blockId);
-    if (!template || index < 0) return;
+    const index = 0;
+    if (!template) return;
     const inserted = template.createBlocks().map(original => {
       const block = structuredClone(original);
       block.id = `blk_${crypto.randomUUID()}`;
@@ -421,7 +427,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
       if (block.properties?.actionItems) block.properties.actionItems = block.properties.actionItems.map(item => ({ ...item, id: `action_${crypto.randomUUID()}` }));
       return block;
     });
-    const blankDocument = doc.blocks.every(block => block.id === slashState.blockId || (block.type === 'paragraph' && !block.content.trim()));
+    const blankDocument = doc.blocks.every(block => block.id === targetId || (block.type === 'paragraph' && !block.content.trim()));
     const defaultTitle = ['', 'Ghi chú mới', 'Ghi chú không có tiêu đề', 'Không có tiêu đề'].includes(doc.title.trim());
     const updated = { ...doc,
       title: blankDocument && defaultTitle ? template.title : doc.title,
@@ -434,6 +440,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
     triggerAutoSave(updated);
     setFocusedBlockId(inserted.find(block => ['paragraph', 'h1', 'h2', 'h3', 'h4', 'bullet', 'numbered', 'checklist'].includes(block.type))?.id || inserted[0]?.id || null);
     setSlashState({ isOpen: false, blockId: null, query: '' });
+    setTemplateApplied(true);
     onToast(`Đã chèn mẫu ${template.title}`, 'success');
   };
 
@@ -1141,6 +1148,9 @@ function getTextareaSelectionCoords(
           />
         </div>
       </div>
+
+      {showTemplatePills && <TemplateSuggestions templates={visibleTemplates} onSelect={handleInsertTemplate}
+        onDismiss={id => setDismissedTemplates(previous => [...previous, id])} />}
 
       {/* Floating help button '?' at bottom right matching screenshot */}
       <div className="no-print fixed bottom-6 right-6 z-30">

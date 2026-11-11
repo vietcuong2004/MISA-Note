@@ -74,6 +74,7 @@ export interface LibraryViewProps {
   onEditFolder?: (folder: Folder) => void;
   onMoveFolderRequest?: (folder: Folder) => void;
   onMoveFolder?: (folderId: string, targetParentId: string | null, targetSpace: SpaceType) => void;
+  onDuplicateFolder?: (folderId: string) => void;
   onDeleteFolder?: (folderId: string) => void;
   onToast?: (msg: string, type?: 'success' | 'info' | 'error') => void;
 }
@@ -107,6 +108,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onMoveFolderRequest,
   onMoveFolder,
   onDeleteFolder,
+  onDuplicateFolder,
   onToast,
 }) => {
   // Navigation Tab matching screenshot: Tất cả, Của tôi, Công ty, Được chia sẻ, Cuộc họp, Mẫu
@@ -592,7 +594,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 )}
               </button>
               {!trashMode && <FolderActions folder={folder} onCreateDocument={onCreateDocument} onCreateFolder={onCreateFolder}
-                onRename={onEditFolder} onMove={onMoveFolderRequest} onDelete={onDeleteFolder} />}
+                onRename={onEditFolder} onMove={onMoveFolderRequest} onDelete={onDeleteFolder} onDuplicate={onDuplicateFolder} />}
             </div>
           </td>
           <td className="py-2 px-2 text-center"></td>
@@ -1470,6 +1472,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
         isFavorite={activeRowDoc?.isFavorite}
         position={rowMenuPos}
         onShare={() => { if (activeRowDoc) setShareDocument(activeRowDoc); }}
+        onDuplicate={onDuplicateDocument ? () => { if (activeRowDoc) onDuplicateDocument(activeRowDoc.id); } : undefined}
         onClose={() => setActiveRowDoc(null)}
         onToggleFavorite={activeRowDoc?.space === 'personal' ? () => onToggleFavorite(activeRowDoc.id) : undefined}
         onRename={() => {

@@ -52,6 +52,7 @@ interface SidebarProps {
   onFinishNewFolder: () => void;
   onRenameNewFolder: (folder: FolderType, name: string) => void;
   onEditFolder: (folder: FolderType) => void;
+  onDuplicateFolder?: (folderId: string) => void;
   onDeleteFolder: (folderId: string) => void;
   onRoleChange: (role: UserRole) => void;
   onOpenSpotlight: () => void;
@@ -90,6 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameNewFolder,
   onEditFolder,
   onDeleteFolder,
+  onDuplicateFolder,
   onRoleChange,
   onOpenSpotlight,
   onUseTemplate,
@@ -600,6 +602,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onEditFolder={onEditFolder}
       onMoveFolder={(f) => setMoveFolderModal({ isOpen: true, folder: f })}
       onDeleteFolder={onDeleteFolder}
+      onDuplicateFolder={onDuplicateFolder}
       onDragOverFolder={setDragOverFolderId}
       draggingDocumentId={draggingDocId}
       draggingFolderId={draggingFolderId}
@@ -1004,6 +1007,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         isFavorite={docMenuState.doc?.isFavorite}
         position={docMenuState.position}
         onShare={() => { if (docMenuState.doc) setShareDocument(docMenuState.doc); }}
+        onDuplicate={onDuplicateDocument ? () => { if (docMenuState.doc) onDuplicateDocument(docMenuState.doc.id); } : undefined}
         onClose={closeDocMenu}
         onToggleFavorite={docMenuState.doc?.space === 'personal' ? () => {
           if (docMenuState.doc) {

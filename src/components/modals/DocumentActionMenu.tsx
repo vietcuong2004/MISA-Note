@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { Star, Edit2, ArrowRight, Trash2, Share2 } from 'lucide-react';
+import { Star, Edit2, ArrowRight, Trash2, Share2, Copy } from 'lucide-react';
 
 export interface DocumentActionMenuProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ export interface DocumentActionMenuProps {
   onMove?: () => void;
   onShare?: () => void;
   onDelete?: () => void;
+  onDuplicate?: () => void;
   position?: { top: number; left: number };
   className?: string;
   headerTitle?: string;
@@ -27,9 +28,10 @@ export const DocumentActionMenu = forwardRef<HTMLDivElement, DocumentActionMenuP
       onMove,
       onShare,
       onDelete,
+      onDuplicate,
       position,
       className = '',
-      headerTitle = 'Trang',
+      headerTitle = 'Tiện ích',
       triggerRef,
     },
     ref
@@ -110,6 +112,10 @@ export const DocumentActionMenu = forwardRef<HTMLDivElement, DocumentActionMenuP
             </button>
           )}
 
+          {onDuplicate && <button type="button" onClick={() => { onDuplicate(); onClose(); }}
+            className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer">
+            <Copy className="w-3.5 h-3.5" /><span>Nhân bản</span>
+          </button>}
           {/* 2. Đổi tên (Ctrl+Shift+R) */}
           {onRename && (
             <button
