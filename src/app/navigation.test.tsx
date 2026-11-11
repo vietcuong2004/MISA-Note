@@ -47,6 +47,67 @@ async function click(element: Element | null | undefined) {
 const button = (text: string, scope: ParentNode = document) => Array.from(scope.querySelectorAll('button')).find(element => element.textContent?.trim() === text);
 const heading = () => document.querySelector('main h1')?.textContent;
 
+test('link dialog saves display text and renders a plain underlined hyperlink', async () => {
+  const { LinkBlock } = await import('../components/editor/LinkBlock');
+  let block: import('../types').Block = { id: 'new-link', type: 'link', content: '' };
+  root = createRoot(document.getElementById('root')!);
+  const render = () => root!.render(<LinkBlock block={block} readOnly={false} onChange={(content, properties) => { block = { ...block, content, properties }; render(); }} />);
+  await act(async () => render());
+  for (const [label, value] of [['URL trang', 'https://example.com/guide'], ['Nội dung hiển thị', 'Xem hướng dẫn']]) {
+    const input = document.querySelector(`[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+      input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+  }
+  await act(async () => document.querySelector('form')!.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })));
+  const link = document.querySelector('a')!;
+  assert.equal(link.textContent, 'Xem hướng dẫn');
+  assert.equal(link.href, 'https://example.com/guide');
+  assert(link.classList.contains('underline'));
+  assert.equal(document.querySelector('form'), null);
+  assert.equal(document.querySelector('button'), null);
+});
+
+test('ODT sample renders links inside list text and keeps them aligned after editing', async () => {
+  await mount('/documents/doc_odt_meeting_20261026');
+  const links = document.querySelectorAll<HTMLAnchorElement>('[data-linked-text] a');
+  assert.equal(links.length, 7);
+  assert.equal(links[0].textContent, 'tại đây');
+  assert(links[0].href.startsWith('https://amis.misa.vn/'));
+  assert(links[0].classList.contains('underline'));
+  assert.equal(document.querySelectorAll('main a').length, 7);
+  const parent = links[0].closest('[data-list-item]')!;
+  const input = parent.querySelector('textarea')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Mới: ' + input.value);
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+  });
+  assert.equal(parent.querySelector('a')?.textContent, 'tại đây');
+  assert(parent.querySelector('[data-linked-text]')?.textContent?.startsWith('Mới: '));
+});
+
+test('editor width toggle switches between reading and wide content without changing text', async () => {
+  const doc = getStoredDocuments().find(item => !item.isTrash)!;
+  await mount(`/documents/${doc.id}`);
+  const toggle = document.querySelector<HTMLButtonElement>('button[aria-label="Xem toàn màn hình"]')!;
+  const content = document.querySelector<HTMLElement>('[data-content-width]')!;
+  const initialText = document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value;
+  assert.equal(toggle.textContent, 'Vừa đọc');
+  assert(content.firstElementChild?.classList.contains('max-w-2xl'));
+  assert(content.firstElementChild?.classList.contains('mx-auto'));
+  await click(toggle);
+  assert.equal(toggle.getAttribute('aria-pressed'), 'true');
+  assert.equal(toggle.textContent, 'Xem toàn màn hình');
+  assert(content.classList.contains('px-[5%]'));
+  assert(!content.firstElementChild?.classList.contains('max-w-2xl'));
+  assert.equal(document.querySelector<HTMLTextAreaElement>('#document-editor-container textarea')?.value, initialText);
+  await click(toggle);
+  assert.equal(toggle.textContent, 'Vừa đọc');
+  assert(content.firstElementChild?.classList.contains('max-w-2xl'));
+  assert(content.firstElementChild?.classList.contains('mx-auto'));
+});
+
 test('library folder tree starts collapsed and expands on demand', async () => {
   await mount('/library/all');
   const main = document.querySelector('main')!;
@@ -962,7 +1023,7 @@ test('share menu copies the current document URL and reports clipboard failures 
   await act(async () => { dialog.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
   assert.equal(document.querySelector('[aria-label="Chia sẻ tài liệu"]'), null);
   await mount(new URL(copied).pathname);
-  assert.equal(document.querySelector('main input[placeholder="Tiêu đề trang..."]')?.getAttribute('value'), doc.title);
+  assert.equal(document.querySelector<HTMLTextAreaElement>('main textarea[placeholder="Tiêu đề trang..."]')?.value, doc.title);
   Reflect.deleteProperty(navigator, 'clipboard');
 });
 
@@ -1081,14 +1142,14 @@ test('all five template actions create, persist and open distinct document URLs'
     const saved = getStoredDocuments().find(doc => doc.id === id)!;
     assert.equal(saved.space, template.space);
     assert.equal(saved.blocks.length, template.createBlocks().length);
-    assert.equal((document.querySelector('input[placeholder="Tiêu đề trang..."]') as HTMLInputElement).value, saved.title);
+    assert.equal((document.querySelector('textarea[placeholder="Tiêu đề trang..."]') as HTMLTextAreaElement).value, saved.title);
   }
   assert.equal(documentIds.size, 5);
   assert.equal(getStoredDocuments().length, initialCount + 5);
   const documentPath = window.location.pathname;
   await mount(documentPath); // Fresh application mount at a copied document URL.
   assert.equal(window.location.pathname, documentPath);
-  assert(document.querySelector('input[placeholder="Tiêu đề trang..."]'));
+  assert(document.querySelector('textarea[placeholder="Tiêu đề trang..."]'));
 });
 
 test('direct links and reloads open templates, private/company lists, folders and not-found pages', async () => {
@@ -1117,16 +1178,16 @@ test('new notes use the space and folder of the current page', async () => {
 
 test('pending editor changes survive immediate navigation and a fresh document mount', async () => {
   await mount('/documents/doc_week_plan');
-  const input = document.querySelector('input[placeholder="Tiêu đề trang..."]') as HTMLInputElement;
+  const input = document.querySelector('textarea[placeholder="Tiêu đề trang..."]') as HTMLTextAreaElement;
   assert(input);
   await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, 'Edited before navigating');
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'Edited before navigating');
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
   });
   await click(button('Mẫu ghi chú'));
   assert.equal(getStoredDocuments().find(doc => doc.id === 'doc_week_plan')?.title, 'Edited before navigating');
   await mount('/documents/doc_week_plan');
-  assert.equal((document.querySelector('input[placeholder="Tiêu đề trang..."]') as HTMLInputElement).value, 'Edited before navigating');
+  assert.equal((document.querySelector('textarea[placeholder="Tiêu đề trang..."]') as HTMLTextAreaElement).value, 'Edited before navigating');
 });
 
 test('avatar appearance picker switches all three themes and persists the selection', async () => {
@@ -1374,7 +1435,7 @@ test('both spaces have a permanent unclassified folder and heading plus creates 
 });
 
 test('selecting text in block editor renders EditTextDialog with side-by-side submenu and closing on unselect', async () => {
-  const initialDoc = getStoredDocuments()[0];
+  const initialDoc = getStoredDocuments().find(doc => doc.id === 'doc_week_plan')!;
   await mount(`/documents/${initialDoc.id}`);
   const textarea = document.querySelector('#document-editor-container textarea') as HTMLTextAreaElement;
   assert(textarea, 'Expected at least one textarea in document editor');
@@ -1555,16 +1616,16 @@ test('scrolling to bottom of block editor automatically adds bottom whitespace a
 test('creating a new document focuses its title and pressing Enter saves immediately and moves to content', async () => {
   const existing = getStoredDocuments().find(doc => !doc.isTrash)!;
   await mount(`/documents/${existing.id}`);
-  assert.notEqual(document.activeElement, document.querySelector('input[placeholder="Tiêu đề trang..."]'));
+  assert.notEqual(document.activeElement, document.querySelector('textarea[placeholder="Tiêu đề trang..."]'));
 
   await click(document.querySelector('aside button[title="Tạo mới"]'));
-  const titleInput = document.querySelector<HTMLInputElement>('input[placeholder="Tiêu đề trang..."]')!;
+  const titleInput = document.querySelector<HTMLTextAreaElement>('textarea[placeholder="Tiêu đề trang..."]')!;
   assert.equal(document.activeElement, titleInput);
   assert.equal(titleInput.selectionStart, 0);
   assert.equal(titleInput.selectionEnd, 'Ghi chú mới'.length);
 
   await act(async () => {
-    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(titleInput, 'Kế hoạch quý 4');
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(titleInput, 'Kế hoạch quý 4');
     titleInput.dispatchEvent(new window.Event('input', { bubbles: true }));
   });
   await act(async () => {

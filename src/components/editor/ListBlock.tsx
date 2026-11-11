@@ -1,3 +1,4 @@
+import { LinkedTextarea, shiftInlineLinks } from './LinkedTextarea';
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import { Block, BlockProperties } from '../../types';
@@ -45,11 +46,11 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
         </button> : <span aria-hidden="true" className={`inline-flex h-6 min-w-5 shrink-0 items-center justify-center whitespace-nowrap leading-6 text-[var(--ui-text)] ${block.type === 'numbered' ? 'text-sm' : 'text-base'}`}>
           {block.type === 'numbered' ? `${numbers[index]}${listLevel(item) === 1 ? '.' : ''}` : ['–', '●', '○', '■'][listLevel(item) - 1]}
         </span>}
-        <textarea ref={node => { if (node) inputs.current.set(item.id, node); else inputs.current.delete(item.id); }}
+        <LinkedTextarea links={item.inlineLinks} ref={node => { if (node) inputs.current.set(item.id, node); else inputs.current.delete(item.id); }}
           rows={1} disabled={readOnly} aria-label={`Nội dung mục ${index + 1}`} value={item.content}
           placeholder={block.type === 'checklist' ? 'Việc cần làm...' : 'Nội dung danh sách...'}
           className={`block w-full min-w-0 resize-none bg-transparent text-sm leading-6 outline-none placeholder:text-[var(--ui-tertiary)] ${item.checked && block.type === 'checklist' ? 'line-through text-[var(--ui-tertiary)]' : 'text-[var(--ui-text)]'}`}
-          onChange={event => save(items.map(current => current.id === item.id ? { ...current, content: event.target.value } : current))}
+          onChange={event => save(items.map(current => current.id === item.id ? { ...current, content: event.target.value, inlineLinks: shiftInlineLinks(current.inlineLinks, current.content, event.target.value) } : current))}
           onKeyDown={event => {
             if (event.nativeEvent.isComposing) return;
             if (event.key === 'Tab') {
@@ -60,15 +61,15 @@ export function ListBlock({ block, readOnly, autoFocus, onChange }: {
               event.preventDefault(); event.stopPropagation();
               const start = event.currentTarget.selectionStart;
               const end = event.currentTarget.selectionEnd;
-              const next = { id: `list_${crypto.randomUUID()}`, content: item.content.slice(end), checked: false, level: listLevel(item) };
+              const next = { id: `list_${crypto.randomUUID()}`, content: item.content.slice(end), checked: false, level: listLevel(item), inlineLinks: (item.inlineLinks || []).filter(link => link.start >= end).map(link => ({ ...link, start: link.start - end, end: link.end - end })) };
               const updated = [...items];
-              updated.splice(index, 1, { ...item, content: item.content.slice(0, start) }, next);
+              updated.splice(index, 1, { ...item, content: item.content.slice(0, start), inlineLinks: (item.inlineLinks || []).filter(link => link.end <= start) }, next);
               save(updated); setFocus({ id: next.id, offset: 0 });
             } else if (event.key === 'Backspace' && event.currentTarget.selectionStart === 0 && event.currentTarget.selectionEnd === 0 && index > 0) {
               event.preventDefault(); event.stopPropagation();
               const previous = items[index - 1];
               const updated = [...items];
-              updated.splice(index - 1, 2, { ...previous, content: previous.content + item.content });
+              updated.splice(index - 1, 2, { ...previous, content: previous.content + item.content, inlineLinks: [...(previous.inlineLinks || []), ...(item.inlineLinks || []).map(link => ({ ...link, start: link.start + previous.content.length, end: link.end + previous.content.length }))] });
               save(updated); setFocus({ id: previous.id, offset: previous.content.length });
             }
           }} />

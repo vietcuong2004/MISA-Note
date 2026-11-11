@@ -2,7 +2,7 @@ import { EmptyBlockRow } from './EmptyBlockRow';
 import { navigateEditorArrow } from '../../utils/editorArrowNavigation';
 import { RenameDialog } from '../modals/RenameDialog';
 import { employeeName } from './EmployeePicker';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import {
   UserPlus,
   MoreHorizontal,
@@ -16,6 +16,8 @@ import {
   Star,
   X,
   Plus,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { Block, BlockProperties, BlockType, Document, Folder, UserRole, ViewState } from '../../types';
 import { BlockItem } from './BlockItem';
@@ -57,8 +59,20 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   onAutoFocusTitleHandled,
 }) => {
   const [renameOpen, setRenameOpen] = useState(false);
+  const [wideContent, setWideContent] = useState(false);
   const [doc, setDoc] = useState<Document>(document);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving'>('saved');
+
+  useLayoutEffect(() => {
+    const input = titleInputRef.current;
+    if (!input) return;
+    const resize = () => { input.style.height = 'auto'; input.style.height = `${input.scrollHeight}px`; };
+    resize();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : undefined;
+    if (input.parentElement) observer?.observe(input.parentElement);
+    window.addEventListener('resize', resize);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', resize); };
+  }, [doc.title, wideContent]);
 
   // Modals state
   const [shareOpen, setShareOpen] = useState(false);
@@ -88,7 +102,7 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const saveCallbackRef = useRef(onUpdateDocument);
   saveCallbackRef.current = onUpdateDocument;
   const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const titleInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const autoFocusTitleHandledRef = useRef(onAutoFocusTitleHandled);
   autoFocusTitleHandledRef.current = onAutoFocusTitleHandled;
@@ -756,6 +770,13 @@ function getTextareaSelectionCoords(
 
         {/* Action Buttons Toolbar: [Yêu thích] [+ Chia sẻ] [•••] */}
         <div className="flex items-center gap-2 shrink-0">
+          <button type="button" aria-label="Xem toàn màn hình" aria-pressed={wideContent}
+            onClick={() => setWideContent(previous => !previous)}
+            title={wideContent ? 'Thu hẹp nội dung cho dễ đọc' : 'Giãn nội dung theo chiều rộng màn hình'}
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-hover)] px-3 py-1.5 text-xs font-medium text-[var(--ui-text)] transition-colors hover:bg-[var(--ui-hover-strong)]">
+            {wideContent ? <Maximize2 aria-hidden="true" className="h-3.5 w-3.5" /> : <Minimize2 aria-hidden="true" className="h-3.5 w-3.5" />}
+            <span>{wideContent ? 'Xem toàn màn hình' : 'Vừa đọc'}</span>
+          </button>
           {/* Favorite Toggle Button */}
           <button
             type="button"
@@ -825,14 +846,16 @@ function getTextareaSelectionCoords(
         onWheel={(e) => {
           if (e.deltaY > 0) maybeExpandBottomSpace(e.currentTarget);
         }}
-        className="flex-1 overflow-y-auto px-[15%] pt-10 pb-8"
+        data-content-width={wideContent ? 'wide' : 'reading'}
+        className="flex-1 overflow-y-auto px-[5%] pt-10 pb-8"
       >
-        <div className="w-full min-w-0 space-y-4">
+        <div className={`mx-auto w-full min-w-0 space-y-4 ${wideContent ? '' : 'max-w-2xl'}`}>
           {/* Document Title matching screenshot */}
           <div>
-            <input
+            <textarea
               ref={titleInputRef}
-              type="text"
+              rows={1}
+              aria-label="Tiêu đề ghi chú"
               disabled={isReadOnly}
               value={doc.title}
               onChange={(e) => updateDocField('title', e.target.value)}
@@ -874,7 +897,7 @@ function getTextareaSelectionCoords(
                 }
               }}
               placeholder="Tiêu đề trang..."
-              className="w-full text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
+              className="block w-full resize-none overflow-hidden whitespace-pre-wrap break-words text-3xl md:text-4xl font-bold text-[var(--ui-text)] bg-transparent focus:outline-none placeholder:text-[#C7C7CC] tracking-tight leading-tight"
             />
 
             {/* Meta Status matching screenshot: "✓ Đã lưu  ·  Cập nhật 2 phút trước" */}
@@ -919,7 +942,7 @@ function getTextareaSelectionCoords(
                 }}
               />
               {!isReadOnly && ['bullet', 'numbered', 'checklist'].includes(block.type) && doc.blocks[idx + 1]?.type !== 'paragraph' &&
-                <EmptyBlockRow listId={block.id} onCreate={openMenu => handleExitList(idx, openMenu)} />}
+                <EmptyBlockRow listId={block.id} compact={idx < doc.blocks.length - 1} onCreate={openMenu => handleExitList(idx, openMenu)} />}
               </React.Fragment>
             ))}
 

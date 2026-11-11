@@ -1,3 +1,4 @@
+import { LinkedTextarea, shiftInlineLinks } from './LinkedTextarea';
 import { TableBlock } from './TableBlock';
 import { LinkBlock } from './LinkBlock';
 import { AttachmentBlock } from './AttachmentBlock';
@@ -115,7 +116,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
-    onUpdate(block.id, val, block.properties);
+    onUpdate(block.id, val, { ...block.properties, inlineLinks: shiftInlineLinks(block.properties?.inlineLinks, block.content, val) });
 
     if ((val.startsWith('/') || val.startsWith('@')) && textRef.current) {
       const rect = textRef.current.getBoundingClientRect();
@@ -152,13 +153,13 @@ export const BlockItem: React.FC<BlockItemProps> = ({
         return <UtilityBlock block={block} readOnly={isReadOnly}
           onChange={(content, properties) => onUpdate(block.id, content, properties)} />;
       case 'h4':
-        return <textarea ref={textRef} rows={1} disabled={isReadOnly}
+        return <LinkedTextarea links={block.properties?.inlineLinks} ref={textRef} rows={1} disabled={isReadOnly}
           value={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown}
           placeholder="Tiêu đề 4..."
           className="w-full text-sm font-semibold bg-transparent resize-none focus:outline-none placeholder:text-[#C7C7CC] mt-1" />;
       case 'h1':
         return (
-          <textarea
+          <LinkedTextarea links={block.properties?.inlineLinks}
             ref={textRef}
             rows={1}
             disabled={isReadOnly}
@@ -172,7 +173,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
       case 'h2':
         return (
-          <textarea
+          <LinkedTextarea links={block.properties?.inlineLinks}
             ref={textRef}
             rows={1}
             disabled={isReadOnly}
@@ -186,7 +187,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
 
       case 'h3':
         return (
-          <textarea
+          <LinkedTextarea links={block.properties?.inlineLinks}
             ref={textRef}
             rows={1}
             disabled={isReadOnly}
@@ -218,7 +219,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               >
                 {isOpen ? <ChevronDown className="w-4 h-4 stroke-[1.75]" /> : <ChevronRight className="w-4 h-4 stroke-[1.75]" />}
               </button>
-              <textarea
+              <LinkedTextarea links={block.properties?.inlineLinks}
                 ref={textRef}
                 rows={1}
                 disabled={isReadOnly}
@@ -230,7 +231,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
             </div>
             {isOpen && (
               <div className="pl-6 border-l-2 border-[var(--ui-border)] ml-3">
-                <textarea
+                <LinkedTextarea links={block.properties?.inlineLinks}
                   rows={2}
                   disabled={isReadOnly}
                   value={block.properties?.caption || ''}
@@ -251,7 +252,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'quote':
         return (
           <div className="w-full pl-4 border-l-2 border-[var(--ui-primary)] py-1 my-1">
-            <textarea
+            <LinkedTextarea links={block.properties?.inlineLinks}
               ref={textRef}
               rows={1}
               disabled={isReadOnly}
@@ -277,7 +278,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
               {block.properties?.calloutIcon || '💡'}
             </span>
             <div className="flex-1 min-w-0">
-              <textarea
+              <LinkedTextarea links={block.properties?.inlineLinks}
                 ref={textRef}
                 rows={1}
                 disabled={isReadOnly}
@@ -322,7 +323,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
                 <span>{copiedCode ? 'Đã sao chép' : 'Sao chép mã'}</span>
               </button>
             </div>
-            <textarea
+            <LinkedTextarea links={block.properties?.inlineLinks}
               rows={4}
               disabled={isReadOnly}
               value={block.content}
@@ -623,7 +624,7 @@ export const BlockItem: React.FC<BlockItemProps> = ({
       case 'paragraph':
       default:
         return (
-          <textarea
+          <LinkedTextarea links={block.properties?.inlineLinks}
             ref={textRef}
             rows={1}
             disabled={isReadOnly}

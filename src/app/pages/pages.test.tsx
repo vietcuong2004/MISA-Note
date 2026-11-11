@@ -8,7 +8,7 @@ import { Document } from '../../types';
 import { viewForLocation } from '../router/routes';
 
 const note = (id: string, extra: Partial<Document>): Document => ({
-  ...INITIAL_DOCUMENTS[0], id, title: id, author: CURRENT_USER,
+  ...INITIAL_DOCUMENTS[0], id, title: id, author: CURRENT_USER, type: 'note',
   blocks: [{ id: `${id}_block`, type: 'paragraph', content: `Content of ${id}` }],
   tags: [], isTrash: false, isFavorite: false, ...extra,
 });

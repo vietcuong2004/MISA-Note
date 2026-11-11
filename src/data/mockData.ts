@@ -1,4 +1,5 @@
 import { Block, BlockType, Document, Folder, User } from '../types';
+import { ODT_SAMPLE_BLOCKS } from './odtSample';
 
 export const CURRENT_USER: User = {
   id: 'usr_vc',
@@ -72,60 +73,21 @@ const NOW = Date.now();
 
 export const INITIAL_DOCUMENTS: Document[] = [
   {
-    id: 'doc_untitled',
-    title: 'Ghi chú không có tiêu đề',
-    icon: '📄',
-    space: 'personal',
-    folderId: 'fld_work',
-    type: 'note',
-    tags: ['Ghi chép', 'Ý tưởng', 'Công việc'],
+    id: 'doc_odt_meeting_20261026',
+    title: 'Biên bản giao ban sản xuất',
+    icon: '📅',
+    space: 'company',
+    folderId: 'fld_projects',
+    type: 'meeting',
+    tags: ['Cuộc họp', 'Sản xuất'],
     permission: 'owner',
-    isPrivate: true,
-    author: {
-      id: 'usr_vc',
-      name: 'Việt Cường',
-      avatar: 'VC',
-      email: 'cuong.viet@congty.vn',
-      department: 'Sản phẩm',
-    },
+    isPrivate: false,
+    author: CURRENT_USER,
     isFavorite: false,
     isTrash: false,
-    createdAt: new Date(NOW - 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(NOW - 2 * 60 * 1000).toISOString(),
-    blocks: [
-      {
-        id: 'blk_u_01',
-        type: 'h1',
-        content: 'Ý tưởng & Ghi chép hôm nay',
-      },
-      {
-        id: 'blk_u_03',
-        type: 'h2',
-        content: '1. Nội dung cốt lõi',
-      },
-      {
-        id: 'blk_u_04',
-        type: 'paragraph',
-        content: 'Bắt đầu gõ nội dung hoặc gõ / để chèn các tiện ích...',
-      },
-      {
-        id: 'blk_u_05',
-        type: 'h2',
-        content: '2. Việc cần làm trong ngày',
-      },
-      {
-        id: 'blk_u_06',
-        type: 'checklist',
-        content: 'Kiểm tra hộp thư và phản hồi các yêu cầu gấp',
-        properties: { checked: false },
-      },
-      {
-        id: 'blk_u_07',
-        type: 'checklist',
-        content: 'Đồng bộ tài liệu với nhóm sản phẩm',
-        properties: { checked: false },
-      },
-    ],
+    createdAt: '2026-10-26T06:40:00Z',
+    updatedAt: new Date(NOW - 60 * 1000).toISOString(),
+    blocks: ODT_SAMPLE_BLOCKS,
   },
   {
     id: 'doc_week_plan',

@@ -81,11 +81,13 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
     <span aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
     <FileText className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
     <button type="button" onClick={() => actions.onOpenDocument(doc.id)} className="min-w-0 flex-1 truncate text-left text-xs">{doc.title || 'Không có tiêu đề'}</button>
-    <span className="hidden text-xs text-[var(--ui-tertiary)] sm:block">Cập nhật {date(doc.updatedAt)}</span>
+    <span className="hidden w-40 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(doc.updatedAt)}</span>
+    <div className="flex w-14 shrink-0 justify-end">
     <button type="button" aria-label={`Tùy chọn tài liệu ${doc.title}`} onClick={event => {
       const rect = event.currentTarget.getBoundingClientRect();
       setDocumentMenu({ id: doc.id, top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 260)), left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)) });
     }} className="rounded-lg p-1.5 text-[var(--ui-tertiary)] hover:bg-[var(--ui-hover)]"><MoreHorizontal className="h-4 w-4" /></button>
+    </div>
   </div>;
   const tree = (parentId: string, depth = 0, seen = new Set<string>()): React.ReactNode => <>
     {childFolders(parentId).filter(item => !seen.has(item.id)).map(item => <React.Fragment key={item.id}>
@@ -99,9 +101,9 @@ export function FolderPage({ folderId, rootSpace, documents, folders, actions, o
           ? <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
           : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />}
         <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className="min-w-0 flex-1 truncate text-left text-xs font-medium">{item.name}</button>
-        <span className="text-xs text-[var(--ui-muted)]">{count(item)} mục</span>
-        <span className="hidden text-xs text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
-        {folderMenu(item)}
+        <span className="shrink-0 whitespace-nowrap text-xs text-[var(--ui-muted)]">{count(item)} mục</span>
+        <span className="hidden w-40 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
+        <div className="flex w-14 shrink-0 justify-end">{folderMenu(item)}</div>
       </div>
       {!collapsed.has(item.id) && tree(item.id, depth + 1, new Set([...seen, parentId, item.id]))}
     </React.Fragment>)}

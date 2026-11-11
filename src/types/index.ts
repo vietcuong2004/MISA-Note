@@ -64,13 +64,16 @@ export interface BlockTableData {
   rows: string[][];
 }
 
+export interface InlineLink { start: number; end: number; url: string }
+
 export interface BlockProperties {
+  inlineLinks?: InlineLink[];
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
   fontFamily?: string;
   fontSize?: number;
-  listItems?: { id: string; content: string; checked?: boolean; level?: number }[];
+  listItems?: { id: string; content: string; checked?: boolean; level?: number; inlineLinks?: InlineLink[] }[];
   textColor?: string;
   backgroundColor?: string;
   mention?: {
