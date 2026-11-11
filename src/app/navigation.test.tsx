@@ -48,7 +48,7 @@ const button = (text: string, scope: ParentNode = document) => Array.from(scope.
 const heading = () => document.querySelector('main h1')?.textContent;
 
 test('library folder tree starts collapsed and expands on demand', async () => {
-  await mount('/library');
+  await mount('/library/all');
   const main = document.querySelector('main')!;
   assert(button('Mở tất cả', main));
   assert.equal(main.querySelectorAll('table tbody button[title="Tùy chọn khác"]').length, 0);
@@ -60,7 +60,7 @@ test('library folder tree starts collapsed and expands on demand', async () => {
 });
 
 test('sidebar folders start collapsed and clicking a folder expands only that folder', async () => {
-  await mount('/private');
+  await mount('/library/private');
   const sidebar = document.querySelector('aside')!;
   const toggles = Array.from(sidebar.querySelectorAll('button[aria-label^="Mở thư mục"], button[aria-label*="Chưa phân loại"]'));
   assert(toggles.length > 0);
@@ -80,8 +80,16 @@ test('table selection inserts and removes rows and columns without losing neighb
   root = createRoot(document.getElementById('root')!);
   const render = () => root!.render(<TableBlock block={block} readOnly={false} onChange={(content, properties) => { block = { ...block, content, properties }; render(); }} />);
   await act(async () => render());
-  await click(document.querySelector('[aria-label="Chọn hàng 2"]'));
-  assert(document.querySelector('[role="dialog"][aria-label="Thao tác hàng"]'));
+  const rowHandle = document.querySelector('[aria-label="Chọn hàng 2"]')!;
+  rowHandle.getBoundingClientRect = () => new window.DOMRect(100, 200, 28, 34);
+  await click(rowHandle);
+  const rowMenu = document.querySelector<HTMLElement>('[role="dialog"][aria-label="Thao tác hàng"]')!;
+  assert(rowMenu);
+  assert.equal(rowMenu.style.left, '134px');
+  assert.equal(rowMenu.style.top, '200px');
+  rowHandle.getBoundingClientRect = () => new window.DOMRect(100, 150, 28, 34);
+  await act(async () => window.dispatchEvent(new window.Event('scroll')));
+  assert.equal(rowMenu.style.top, '150px');
   await click(button('Thêm hàng phía trên'));
   assert.deepEqual(block.properties!.tableData!.rows, [['a1', 'b1'], ['', ''], ['a2', 'b2']]);
   await click(document.querySelector('[aria-label="Chọn hàng 2"]'));
@@ -89,7 +97,12 @@ test('table selection inserts and removes rows and columns without losing neighb
   await click(document.querySelector('[aria-label="Chọn hàng 1"]'));
   await click(button('Thêm hàng bên dưới'));
   assert.deepEqual(block.properties!.tableData!.rows[1], ['', '']);
-  await click(document.querySelector('[aria-label="Chọn cột 2"]'));
+  const columnHandle = document.querySelector('[aria-label="Chọn cột 2"]')!;
+  columnHandle.getBoundingClientRect = () => new window.DOMRect(300, 100, 150, 20);
+  await click(columnHandle);
+  const columnMenu = document.querySelector<HTMLElement>('[aria-label="Thao tác cột"]')!;
+  assert.equal(columnMenu.style.left, '300px');
+  assert.equal(columnMenu.style.top, '126px');
   await click(button('Thêm cột bên trái'));
   assert.deepEqual(block.properties!.tableData!.headers, ['A', '', 'B']);
   assert.deepEqual(block.properties!.tableData!.rows[2], ['a2', '', 'b2']);
@@ -167,7 +180,7 @@ test('video supports uploads and URLs while attachments only upload and retain t
     await upload(dialog.querySelector('input[type="file"]')!, new NodeFile([bytes], 'bao-cao.pdf', { type: 'application/pdf' }));
     await waitFor(() => !document.querySelector('[aria-label="Chọn tệp"]') && !!document.querySelector('[aria-label="Thao tác tệp"]'));
     assert(document.querySelector('[data-attachment-block="file-input"]')?.textContent?.includes('bao-cao.pdf'));
-    await mount('/private');
+    await mount('/library/private');
     const saved = getStoredDocuments().find(doc => doc.id === 'attachment-test')!;
     const fileId = saved.blocks[1].properties?.attachmentId;
     assert(fileId);
@@ -265,7 +278,7 @@ test('slash image opens upload/link tabs and saves embedded URLs or local image 
     });
     assert.equal(filename, 'local.png');
   } finally { dom.window.HTMLAnchorElement.prototype.click = originalClick; }
-  await mount('/private');
+  await mount('/library/private');
   const saved = getStoredDocuments().find(doc => doc.id === 'image-test')!.blocks[0];
   assert.equal(saved.properties?.fileName, 'local.png');
   assert(saved.properties?.url?.startsWith('data:image/png;base64,'));
@@ -370,7 +383,7 @@ test('Tab and Shift+Tab change list indentation within four levels and Enter kee
       assert.equal(block.querySelectorAll('li')[1].getAttribute('data-level'), String(expected));
     }
   }
-  await mount('/private');
+  await mount('/library/private');
   const blocks = getStoredDocuments().find(doc => doc.id === 'list-levels')!.blocks;
   for (const block of blocks) assert.deepEqual(block.properties?.listItems?.map(item => item.level), [3, 1]);
   await mount('/documents/list-levels');
@@ -478,7 +491,7 @@ test('slash suggestions show the five most recently used unique items and surviv
   const options = Array.from(document.querySelectorAll('[role="option"]'));
   assert.equal(new Set(options.map(option => option.id)).size, options.length);
   await click(document.querySelector('[aria-label="Được đề xuất"] button[title="Đề mục 2"]'));
-  await mount('/private');
+  await mount('/library/private');
   await mount('/documents/recent-slash');
   await open();
   assert.deepEqual(suggested(), ['Đề mục 2', 'Chữ màu đỏ', 'Đề mục 4', 'Đề mục 3', 'Đề mục 1']);
@@ -556,7 +569,7 @@ test('list Enter creates nested items and clicking below exits into a normal par
     assert.equal(document.querySelectorAll('[data-block-id]').length, rootCount);
     assert.equal(document.activeElement, outside);
   }
-  await mount('/private');
+  await mount('/library/private');
   const saved = getStoredDocuments().find(doc => doc.id === 'nested-lists')!;
   const lists = saved.blocks.filter(block => ['bullet', 'numbered', 'checklist'].includes(block.type));
   assert.equal(lists.length, 3);
@@ -606,7 +619,7 @@ test('slash filters while typing and arrow keys select without moving the editor
   assert.equal(document.querySelectorAll('[data-block-id]').length, 1);
   await key('Escape');
   assert.equal(document.querySelector('[aria-label="Chèn tiện ích nhanh"]'), null);
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'slash-keyboard')?.blocks[0].type, 'h2');
 });
 
@@ -628,7 +641,7 @@ test('Enter after every heading level creates and focuses a paragraph below it',
     assert.equal(paragraph.value, '');
     assert.equal(input.value, `Đề mục ${level}`);
   }
-  await mount('/private');
+  await mount('/library/private');
   const blocks = getStoredDocuments().find(doc => doc.id === 'heading-enter')!.blocks;
   assert.deepEqual(blocks.map(block => block.type), ['h1', 'paragraph', 'h2', 'paragraph', 'h3', 'paragraph', 'h4', 'paragraph']);
 });
@@ -662,7 +675,7 @@ test('Enter moves the cursor to the new block and allows immediate continued typ
   await enter(inputs[2], { shiftKey: true });
   await enter(inputs[2], { isComposing: true });
   assert.equal(document.querySelectorAll('[data-block-id] textarea').length, 3);
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'enter-focus')?.blocks[1].content, 'Gõ tiếp ngay');
 });
 
@@ -695,7 +708,7 @@ test('slash colors apply independently, preserve block type and reset to default
   const content = document.querySelector('[data-block-id="color-block"] textarea')!.parentElement!;
   assert.equal(content.style.color, 'rgb(212, 76, 71)');
   assert.equal(content.style.backgroundColor, 'rgb(231, 243, 248)');
-  await mount('/private');
+  await mount('/library/private');
   let block = getStoredDocuments().find(doc => doc.id === 'colors-test')!.blocks[0];
   assert.equal(block.type, 'h2');
   assert.equal(block.content, 'Nội dung được giữ');
@@ -705,7 +718,7 @@ test('slash colors apply independently, preserve block type and reset to default
   await mount('/documents/colors-test');
   await type('/chu mac dinh');
   await click(document.querySelector('button[title="Chữ mặc định"]'));
-  await mount('/private');
+  await mount('/library/private');
   block = getStoredDocuments().find(doc => doc.id === 'colors-test')!.blocks[0];
   assert.equal(block.type, 'h2');
   assert.equal(block.properties?.textColor, undefined);
@@ -735,7 +748,7 @@ test('AI meeting command is visible but cannot be selected with mouse or keyboar
   assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Văn bản');
   await act(async () => { textarea.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true })); });
   assert.equal(document.querySelector('[role="option"][aria-selected="true"]')?.getAttribute('title'), 'Nền đỏ');
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'disabled-slash')?.blocks[0].type, 'paragraph');
 });
 
@@ -795,7 +808,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   await fill(dialog.querySelector('[aria-label="Tên nhóm"]')!, 'Nhóm sản phẩm');
   await add('nam.le');
   await click(button('Gửi lời mời (1)', dialog));
-  await mount('/private');
+  await mount('/library/private');
   const saved = getStoredDocuments().find(doc => doc.id === 'mentions-test')!;
   assert.deepEqual(saved.blocks[0].properties?.mention?.permissions, {
     'ha.tran@congty.vn': 'comment', 'cuong.viet@congty.vn': 'view',
@@ -810,7 +823,7 @@ test('invitation mock adds employees, saves individual permissions and reuses si
   await click(button('Hủy', dialog));
   await fill(document.querySelector('[data-block-id="mention-reuse"] textarea')!, '@cuong.viet');
   await click(document.querySelector('button[title="Việt Cường"]'));
-  await mount('/private');
+  await mount('/library/private');
   const reused = getStoredDocuments().find(doc => doc.id === 'mentions-test')!.blocks[2];
   assert.equal(reused.content, '@Việt Cường');
   assert.equal(reused.properties?.mention?.permission, 'view');
@@ -825,7 +838,7 @@ test('unclassified folders highlight document drops, clear feedback and reject f
   };
   try {
     for (const space of ['personal', 'company'] as const) {
-      await mount(space === 'personal' ? '/private' : '/company');
+      await mount(space === 'personal' ? '/library/private' : '/library/company');
       const doc = getStoredDocuments().find(item => !item.isTrash && item.folderId)!;
       const target = document.querySelector(`[data-unclassified-space="${space}"]`)!;
       await act(async () => {
@@ -862,7 +875,7 @@ test('unclassified folders highlight document drops, clear feedback and reject f
 });
 
 test('note rename uses the folder-style dialog and only saves on confirmation', async () => {
-  await mount('/private');
+  await mount('/library/private');
   const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
   const openRename = async () => {
     const trigger = Array.from(document.querySelectorAll('aside button')).find(item => item.getAttribute('aria-label') === `Tùy chọn ${doc.title}`);
@@ -891,7 +904,7 @@ test('note rename uses the folder-style dialog and only saves on confirmation', 
   await click(button('Lưu', dialog));
   assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.title, 'Ghi chú đã đổi tên');
   assert.equal(document.querySelector('[aria-label="Đặt lại tên ghi chú"]'), null);
-  await mount('/library');
+  await mount('/library/all');
   const main = document.querySelector('main')!;
   await click(button('Mở tất cả', main));
   await click(main.querySelector('table button[title="Tùy chọn khác"]'));
@@ -909,12 +922,12 @@ test('note rename uses the folder-style dialog and only saves on confirmation', 
   input = dialog.querySelector('input')!;
   await fill('Đổi tên từ trình soạn thảo');
   await act(async () => { input.closest('form')!.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })); });
-  await mount('/private'); // Unmount flushes the editor's pending save.
+  await mount('/library/private'); // Unmount flushes the editor's pending save.
   assert.equal(getStoredDocuments().find(item => item.id === doc.id)?.title, 'Đổi tên từ trình soạn thảo');
 });
 
 test('share menu copies the current document URL and reports clipboard failures honestly', async () => {
-  await mount('/private');
+  await mount('/library/private');
   const doc = getStoredDocuments().find(item => !item.isTrash && item.space === 'personal')!;
   let copied = '';
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
@@ -932,7 +945,7 @@ test('share menu copies the current document URL and reports clipboard failures 
   assert.equal(copied, expected);
   assert(button('Đã sao chép', dialog));
   await click(dialog.querySelector('button[aria-label="Đóng chia sẻ"]'));
-  await mount('/library');
+  await mount('/library/all');
   const main = document.querySelector('main')!;
   await click(button('Mở tất cả', main));
   await click(main.querySelector('table button[title="Tùy chọn khác"]'));
@@ -1006,33 +1019,33 @@ async function goHistory(direction: 'back' | 'forward') {
 }
 
 test('real sidebar and library clicks update both URL and the rendered page', async () => {
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(heading(), 'Thư viện');
   await click(button('Mẫu ghi chú', document.querySelector('aside')!));
   assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
   await click(document.getElementById('space-tab-company'));
-  assert.equal(window.location.pathname, '/company'); assert.equal(heading(), 'Thư viện');
+  assert.equal(window.location.pathname, '/company'); assert.equal(heading(), 'Tài liệu công ty');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(button('GHI CHÉP CỦA TÔI'));
-  assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Thư viện');
+  assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Ghi chép của tôi');
   await click(button('Thư viện', document.querySelector('aside')!));
-  assert.equal(window.location.pathname, '/library');
+  assert.equal(window.location.pathname, '/library/all');
   await click(button('Của tôi', document.querySelector('main')!));
-  assert.equal(window.location.pathname, '/private');
+  assert.equal(window.location.pathname, '/library/private');
 });
 
 test('Back and Forward render the page stored in browser history', async () => {
-  await mount('/private');
+  await mount('/library/private');
   await click(button('Mẫu ghi chú'));
   await click(document.getElementById('space-tab-company'));
   await goHistory('back'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
-  await goHistory('back'); assert.equal(window.location.pathname, '/private'); assert.equal(heading(), 'Thư viện');
+  await goHistory('back'); assert.equal(window.location.pathname, '/library/private'); assert.equal(heading(), 'Thư viện');
   await goHistory('forward'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
 });
 
 test('all library navigation tabs, sidebar lists and folder names have working routes', async () => {
-  for (const [label, path] of [['Của tôi', '/private'], ['Công ty', '/company'], ['Được chia sẻ', '/shared'], ['Cuộc họp', '/meetings'], ['Mẫu', '/templates']]) {
-    await mount('/library');
+  for (const [label, path] of [['Của tôi', '/library/private'], ['Công ty', '/library/company'], ['Được chia sẻ', '/library/shared'], ['Cuộc họp', '/library/meetings'], ['Mẫu', '/templates']]) {
+    await mount('/library/all');
     await click(button(label, document.querySelector('main')!));
     assert.equal(window.location.pathname, path);
     if (path !== '/templates') {
@@ -1040,7 +1053,7 @@ test('all library navigation tabs, sidebar lists and folder names have working r
       assert(document.querySelector('main')?.textContent?.includes('Tất cả ghi chú và tài liệu bạn có quyền truy cập.'));
     }
   }
-  await mount('/private');
+  await mount('/library/private');
   await click(button('Công việc', document.querySelector('aside')!));
   assert.equal(window.location.pathname, '/folders/fld_work'); assert.equal(heading(), 'Công việc');
   await click(document.getElementById('space-tab-company'));
@@ -1079,18 +1092,18 @@ test('all five template actions create, persist and open distinct document URLs'
 });
 
 test('direct links and reloads open templates, private/company lists, folders and not-found pages', async () => {
-  for (const [path, title] of [['/templates', 'Mẫu ghi chú'], ['/private', 'Thư viện'], ['/company', 'Thư viện'], ['/folders/fld_work', 'Công việc']]) {
+  for (const [path, title] of [['/templates', 'Mẫu ghi chú'], ['/library/private', 'Thư viện'], ['/library/company', 'Thư viện'], ['/folders/fld_work', 'Công việc']]) {
     await mount(path); assert.equal(window.location.pathname, path); assert.equal(heading(), title);
     await mount(path); assert.equal(window.location.pathname, path); assert.equal(heading(), title);
   }
   await mount('/documents/missing'); assert.equal(heading(), 'Tài liệu không khả dụng');
   await mount('/folders/missing'); assert.equal(heading(), 'Không tìm thấy thư mục');
   await mount('/no-such-page'); assert.equal(heading(), 'Không tìm thấy trang');
-  await mount('/'); assert.equal(window.location.pathname, '/private');
+  await mount('/'); assert.equal(window.location.pathname, '/library/private');
 });
 
 test('new notes use the space and folder of the current page', async () => {
-  for (const [path, space, folderId] of [['/private', 'personal', null], ['/company', 'company', null], ['/folders/fld_work', 'personal', 'fld_work']] as const) {
+  for (const [path, space, folderId] of [['/library/private', 'personal', null], ['/library/company', 'company', null], ['/folders/fld_work', 'personal', 'fld_work']] as const) {
     await mount(path);
     if (folderId) {
       await click(document.querySelector('main header button[aria-label="Tạo thư mục con trong Công việc"]'));
@@ -1117,7 +1130,7 @@ test('pending editor changes survive immediate navigation and a fresh document m
 });
 
 test('avatar appearance picker switches all three themes and persists the selection', async () => {
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(document.documentElement.dataset.theme, 'default');
   await click(document.querySelector('button[aria-label="Tài khoản cá nhân"]'));
   await click(button('Giao diện', document.getElementById('account-dropdown')!));
@@ -1133,7 +1146,7 @@ test('avatar appearance picker switches all three themes and persists the select
   await click(button('Mẫu ghi chú', document.querySelector('aside')!));
   assert.equal(window.location.pathname, '/templates');
   assert.equal(document.documentElement.dataset.theme, 'graphite-champagne');
-  await mount('/company');
+  await mount('/library/company');
   assert.equal(document.documentElement.dataset.theme, 'graphite-champagne');
   assert.equal(heading(), 'Thư viện');
 });
@@ -1158,7 +1171,7 @@ test('theme palettes preserve the default and apply distinct header/sidebar/butt
   style.textContent = readFileSync(new URL('./theme/themes.css', import.meta.url), 'utf8');
   document.head.append(style);
   try {
-    await mount('/private');
+    await mount('/library/private');
     const token = (name: string, target: Element = document.documentElement) => window.getComputedStyle(target).getPropertyValue(name).trim();
     const palettes = [
       ['default', '#1f59b6', '#fafafa', '#1d1d1f'],
@@ -1204,7 +1217,7 @@ async function nameNewFolder(name: string) {
 
 test('folder plus creates nested folders, rename keeps ancestry, and confirmed deletion preserves contents', async () => {
   const { getStoredFolders } = await import('../utils/storage');
-  await mount('/private');
+  await mount('/library/private');
   const initialNoteCount = getStoredDocuments().length;
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
   await click(button('Tạo thư mục', document.querySelector('aside')!));
@@ -1266,7 +1279,7 @@ test('folder deletion can be canceled by X or Escape; deleting the active root n
   await click(document.querySelector('aside button[aria-label="Tùy chọn thư mục Công việc"]'));
   await click(document.querySelector('button[aria-label="Xóa thư mục Công việc"]'));
   await click(button('Xóa thư mục', document.querySelector('[role="alertdialog"]')!));
-  assert.equal(window.location.pathname, '/private');
+  assert.equal(window.location.pathname, '/library/private');
   assert(!getStoredFolders().some(folder => folder.id === 'fld_work'));
   assert(!getStoredDocuments().some(doc => doc.folderId === 'fld_work'));
   assert.equal(getStoredDocuments().length, originalCount);
@@ -1274,7 +1287,7 @@ test('folder deletion can be canceled by X or Escape; deleting the active root n
 
 test('immediate folder creation keeps saved defaults on Escape and avoids duplicate sibling names', async () => {
   const { getStoredFolders } = await import('../utils/storage');
-  await mount('/private');
+  await mount('/library/private');
   await click(document.querySelector('button[aria-label="Tạo thư mục con trong Công việc"]'));
   await click(button('Tạo thư mục', document.querySelector('aside')!));
   const firstInput = document.querySelector('input[aria-label="Tên thư mục mới"]') as HTMLInputElement;
@@ -1289,7 +1302,7 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
   await act(async () => { secondInput.blur(); });
   assert.equal(document.querySelector('input[aria-label="Tên thư mục mới"]'), null);
   assert(getStoredFolders().some(folder => folder.parentId === 'fld_work' && folder.name === 'Thư mục mới 2'));
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(button('Thư mục mới', document.querySelector('aside')!), undefined);
   await click(document.querySelector('aside [aria-label="Mở thư mục Công việc"]'));
   assert(button('Thư mục mới', document.querySelector('aside')!));
@@ -1297,7 +1310,7 @@ test('immediate folder creation keeps saved defaults on Escape and avoids duplic
 });
 
 test('clicking tab Của tôi highlights it and plus creates a note inside Chưa phân loại', async () => {
-  await mount('/company');
+  await mount('/library/company');
   assert.equal(document.getElementById('space-tab-company')?.getAttribute('aria-selected'), 'true');
   await click(document.getElementById('space-tab-personal'));
   assert.equal(document.getElementById('space-tab-personal')?.getAttribute('aria-selected'), 'true');
@@ -1319,12 +1332,12 @@ test('clicking tab Của tôi highlights it and plus creates a note inside Chưa
 
 test('both spaces have a permanent unclassified folder and heading plus creates inside it', async () => {
   for (const space of ['personal', 'company'] as const) {
-    await mount(space === 'personal' ? '/private' : '/company');
+    await mount(space === 'personal' ? '/library/private' : '/library/company');
     const panel = document.querySelector(`[data-space-panel="${space}"]`)!;
     const systemFolder = panel.querySelector(`[data-unclassified-space="${space}"]`)!;
     assert(systemFolder, 'Expected default unclassified folder');
     await click(button('Chưa phân loại', systemFolder));
-    assert.equal(window.location.pathname, `/${space === 'personal' ? 'private' : 'company'}/unclassified`);
+    assert.equal(window.location.pathname, `/library/${space === 'personal' ? 'private' : 'company'}/unclassified`);
     assert.equal(heading(), 'Chưa phân loại');
     const before = new Set(getStoredDocuments().map(doc => doc.id));
     await click(panel.querySelector(`button[title="${space === 'personal' ? 'Tạo ghi chú mới' : 'Tạo tài liệu công ty mới'}"]`));
@@ -1424,7 +1437,7 @@ test('selecting text in block editor renders EditTextDialog with side-by-side su
 
 test('folder and document drag and drop updates hierarchy and persists to storage', async () => {
   const { getStoredFolders, saveStoredFolders } = await import('../utils/storage');
-  await mount('/private');
+  await mount('/library/private');
 
   // Verify initial state: fld_personal and fld_work are roots
   let folders = getStoredFolders();
@@ -1590,7 +1603,7 @@ test('callout block renders lightbulb icon and prominent border', async () => {
   const newCallout = document.querySelector('[data-block-id="callout-input"] [data-callout-box]')!;
   assert(newCallout);
   assert.equal(newCallout.querySelector('span[aria-hidden="true"]')?.textContent, '💡');
-  await mount('/private');
+  await mount('/library/private');
   assert.equal(getStoredDocuments().find(doc => doc.id === 'callout-test')?.blocks[1].properties?.calloutIcon, '💡');
 });
 

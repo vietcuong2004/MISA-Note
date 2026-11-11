@@ -26,6 +26,7 @@ export interface AppPagesProps extends DocumentPageProps {
 
 export function AppPages({ view, onNavigate, onUseTemplate, editor, trash, ...workspace }: AppPagesProps) {
   switch (view.type) {
+    case 'space_root': return <FolderPage key={view.space} {...workspace} folderId={''} rootSpace={view.space} onNavigate={onNavigate} />;
     case 'private': return <PrivatePage {...workspace} />;
     case 'company': return <CompanyPage {...workspace} />;
     case 'templates': return <TemplatesPage onUseTemplate={onUseTemplate} />;

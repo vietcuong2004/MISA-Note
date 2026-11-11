@@ -1,9 +1,10 @@
+import { SpaceCreateMenu } from '../../components/layout/SpaceCreateMenu';
 import { FolderActions } from '../../components/layout/FolderActions';
 import React, { useState } from 'react';
 import { Folder as FolderIcon, FolderOpen, Plus, Home, ChevronRight, ChevronDown, LayoutGrid, List, FolderTree, MoreHorizontal, FileText } from 'lucide-react';
 import { DocumentPageProps } from './pageTypes';
 import { NotFoundPage } from './NotFoundPage';
-import { Folder, Document, ViewState } from '../../types';
+import { Folder, Document, ViewState, SpaceType } from '../../types';
 import { getFolderAncestors } from '../../utils/folders';
 import { canDropFolderInto, clearActiveDrag, getDragPayload, setDragFolder, setDragDocument } from '../../utils/dnd';
 import { DocumentActionMenu } from '../../components/modals/DocumentActionMenu';
@@ -13,8 +14,8 @@ import { RenameDialog } from '../../components/modals/RenameDialog';
 type Mode = 'structure' | 'grid' | 'list';
 type Sort = 'sidebar' | 'name-asc' | 'name-desc' | 'updated';
 
-export function FolderPage({ folderId, documents, folders, actions, onNavigate }:
-  DocumentPageProps & { folderId: string; onNavigate: (view: ViewState) => void }) {
+export function FolderPage({ folderId, rootSpace, documents, folders, actions, onNavigate }:
+  DocumentPageProps & { folderId: string; rootSpace?: SpaceType; onNavigate: (view: ViewState) => void }) {
   const [mode, setMode] = useState<Mode>('structure');
   const [sort, setSort] = useState<Sort>('sidebar');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -22,15 +23,15 @@ export function FolderPage({ folderId, documents, folders, actions, onNavigate }
   const [documentMenu, setDocumentMenu] = useState<{ id: string; top: number; left: number } | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [shareId, setShareId] = useState<string | null>(null);
-  const folder = folders.find(item => item.id === folderId);
+  const folder: Folder | undefined = rootSpace ? { id: '__space_root', name: rootSpace === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty', space: rootSpace, parentId: null, createdAt: '', updatedAt: '' } : folders.find(item => item.id === folderId);
   if (!folder) return <NotFoundPage title="Không tìm thấy thư mục" />;
   const activeDocs = documents.filter(doc => !doc.isTrash && doc.space === folder.space);
-  const ancestors = getFolderAncestors(folder.id, folders);
+  const ancestors = rootSpace ? [] : getFolderAncestors(folder.id, folders);
   const sortItems = <T extends { updatedAt: string }>(items: T[], name: (item: T) => string): T[] => [...items].sort((a, b) =>
     sort === 'sidebar' ? 0 : sort === 'updated' ? Date.parse(b.updatedAt) - Date.parse(a.updatedAt) : name(a).localeCompare(name(b), 'vi', { numeric: true }) * (sort === 'name-desc' ? -1 : 1));
-  const childFolders = (parentId: string) => sortItems(folders.filter(item => item.parentId === parentId && item.space === folder.space), item => item.name);
+  const childFolders = (parentId: string) => sortItems(folders.filter(item => (rootSpace && parentId === folder.id ? !item.parentId : item.parentId === parentId) && item.space === folder.space), item => item.name);
   const folderDocs = (parentId: string) => {
-    const notes = activeDocs.filter(doc => doc.folderId === parentId);
+    const notes = activeDocs.filter(doc => (rootSpace && parentId === folder.id ? !doc.folderId : doc.folderId === parentId));
     return sort === 'sidebar' ? notes.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)) : sortItems(notes, doc => doc.title);
   };
   const children = childFolders(folder.id);
@@ -42,6 +43,7 @@ export function FolderPage({ folderId, documents, folders, actions, onNavigate }
 
   const drop = (event: React.DragEvent, parentId: string | null) => {
     event.preventDefault(); event.stopPropagation(); setDragOver(null);
+    if (rootSpace && parentId === folder.id) parentId = null;
     const payload = getDragPayload(event, folders, documents);
     clearActiveDrag();
     if (!payload) return;
@@ -108,8 +110,8 @@ export function FolderPage({ folderId, documents, folders, actions, onNavigate }
 
   return <div className="flex-1 min-h-0 overflow-y-auto bg-[var(--ui-surface)] text-[var(--ui-text)]">
     <section aria-label="Thao tác thư mục và thư mục con" className="border-b border-[var(--ui-border)]">
-      <nav aria-label="Đường dẫn thư mục" className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-6 py-4 text-sm md:px-10">
-        <button type="button" {...dropProps(null)} onClick={() => onNavigate({ type: folder.space === 'personal' ? 'private' : 'company' })}
+      <nav aria-label="Đường dẫn thư mục" className="flex w-full flex-wrap items-center gap-2 px-[5%] py-4 text-sm">
+        <button type="button" {...dropProps(null)} onClick={() => onNavigate({ type: 'space_root', space: folder.space })}
           className={`flex items-center gap-2 rounded-lg p-1 text-[var(--ui-accent)] ${dragOver === 'root' ? 'ring-2 ring-[var(--ui-primary)]' : ''}`}>
           <Home className="h-4 w-4" />{folder.space === 'personal' ? 'Ghi chép của tôi' : 'Tài liệu công ty'}
         </button>
@@ -120,7 +122,7 @@ export function FolderPage({ folderId, documents, folders, actions, onNavigate }
         </React.Fragment>)}
       </nav>
     </section>
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-6 md:px-10">
+    <div className="w-full space-y-6 px-[5%] py-6">
       <header className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex min-w-0 items-center gap-4"><FolderIcon className="h-14 w-14 shrink-0 text-[var(--ui-text)]" strokeWidth={1.2} />
           <div className="min-w-0"><h1 className="break-words text-3xl font-bold tracking-tight">{folder.name}</h1>
@@ -134,9 +136,9 @@ export function FolderPage({ folderId, documents, folders, actions, onNavigate }
           <select aria-label="Sắp xếp thư mục" value={sort} onChange={event => setSort(event.target.value as Sort)} className="rounded-lg border border-[var(--ui-border)] bg-[var(--ui-surface)] px-3 py-2 text-xs">
             <option value="sidebar">Mặc định</option><option value="name-asc">Tên (A → Z)</option><option value="name-desc">Tên (Z → A)</option><option value="updated">Mới cập nhật</option>
           </select>
-          <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
+          {rootSpace ? <SpaceCreateMenu title="Tạo mới" onCreateDocument={() => actions.onCreateDocument?.(rootSpace, null)} onCreateFolder={() => actions.onCreateFolder?.(rootSpace, null)} /> : <FolderActions folder={folder} alwaysVisible onCreateDocument={actions.onCreateDocument}
             onCreateFolder={actions.onCreateFolder} onRename={actions.onEditFolder}
-            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />
+            onMove={actions.onMoveFolderRequest} onDelete={actions.onDeleteFolder} />}
         </div>
       </header>
       <section aria-label="Nội dung thư mục" data-folder-mode={mode} {...dropProps(folder.id)} className="min-h-36">

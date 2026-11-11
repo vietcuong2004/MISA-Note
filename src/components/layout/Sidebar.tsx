@@ -196,7 +196,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? documents.find(doc => doc.id === viewState.documentId)?.space
     : viewState.type === 'folder' ? folders.find(folder => folder.id === viewState.folderId)?.space
     : viewState.type === 'unclassified' ? viewState.space
-    : viewState.type === 'private' ? 'personal' : viewState.type === 'company' ? 'company' : undefined;
+    : viewState.type === 'space_root' ? viewState.space : viewState.type === 'private' ? 'personal' : viewState.type === 'company' ? 'company' : undefined;
   useEffect(() => {
     if (navigatedSpace) setSpaceTab(navigatedSpace);
   }, [locationKey, navigatedSpace]);
@@ -464,7 +464,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const trashDocs = documents.filter((d) => d.isTrash);
 
   const recentDocs = activeDocs
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 3);
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   const favoriteDocs = activeDocs.filter((d) => d.isFavorite);
 
 
@@ -518,6 +518,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return (
       <div
         key={doc.id}
+        data-sidebar-document={doc.id}
         draggable={!isRenaming}
         onDragStart={(e) => {
           e.stopPropagation();
@@ -1013,22 +1014,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* List of recent documents right below "Gần đây" tab */}
             {recentExpanded && (
-              <div className="pl-6 space-y-0.5 border-l border-[var(--ui-border)] ml-3.5 my-0.5">
-                {recentDocs.slice(0, 7).map((doc) => renderDocumentItem(doc, doc.folderId))}
+              <div role="region" aria-label="Danh sách gần đây" tabIndex={0} className="max-h-[178px] overflow-y-auto overscroll-contain pl-6 space-y-0.5 border-l border-[var(--ui-border)] ml-3.5 my-0.5 [&>div[data-sidebar-document]]:h-[34px]">
+                {recentDocs.map((doc) => renderDocumentItem(doc, doc.folderId))}
                 {recentDocs.length === 0 && (
                   <div className="text-[10px] text-[var(--ui-tertiary)] italic px-2 py-1">
                     Chưa có ghi chú nào
                   </div>
                 )}
-                {recentDocs.length > 7 && (
-                  <button
-                    type="button"
-                    onClick={() => onNavigate({ type: 'recent' })}
-                    className="w-full text-left px-2 py-1 text-[11px] text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:underline font-medium cursor-pointer"
-                  >
-                    Xem tất cả ({recentDocs.length}) →
-                  </button>
-                )}
+
               </div>
             )}
           </div>
@@ -1066,7 +1059,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* List of favorite documents right below "Yêu thích" tab */}
             {favoriteExpanded && (
-              <div className="pl-6 space-y-0.5 border-l border-[var(--ui-border)] ml-3.5 my-0.5">
+              <div role="region" aria-label="Danh sách yêu thích" tabIndex={0} className="max-h-[178px] overflow-y-auto overscroll-contain pl-6 space-y-0.5 border-l border-[var(--ui-border)] ml-3.5 my-0.5 [&>div[data-sidebar-document]]:h-[34px]">
                 {favoriteDocs.map((doc) => renderDocumentItem(doc, doc.folderId))}
                 {favoriteDocs.length === 0 && (
                   <div className="text-[10px] text-[var(--ui-tertiary)] italic px-2 py-1">
@@ -1083,7 +1076,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {(['personal', 'company'] as const).map(space => <button key={space} type="button"
               role="tab" id={`space-tab-${space}`} aria-controls={`space-panel-${space}`}
               aria-selected={spaceTab === space} tabIndex={spaceTab === space ? 0 : -1}
-              onClick={() => { setSpaceTab(space); onNavigate({ type: space === 'personal' ? 'private' : 'company' }); }}
+              onClick={() => { setSpaceTab(space); onNavigate({ type: 'space_root', space }); }}
               onDragEnter={() => setSpaceTab(space)}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1095,7 +1088,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   event.preventDefault();
                   const target = event.key === 'Home' ? 'personal' : event.key === 'End' ? 'company' : space === 'personal' ? 'company' : 'personal';
                   setSpaceTab(target);
-                  onNavigate({ type: target === 'personal' ? 'private' : 'company' });
+                  onNavigate({ type: 'space_root', space: target });
                   document.getElementById(`space-tab-${target}`)?.focus();
                 }
               }}
@@ -1142,9 +1135,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <button
-              onClick={() => { setPersonalExpanded(true); onNavigate({ type: 'private' }); }}
+              onClick={() => { setPersonalExpanded(true); onNavigate({ type: 'space_root', space: 'personal' }); }}
               className={`flex items-center gap-1.5 transition-colors cursor-pointer ${
-                viewState.type === 'private'
+                (viewState.type === 'space_root' && viewState.space === 'personal')
                   ? 'text-[var(--ui-text)] font-extrabold'
                   : 'text-[var(--ui-tertiary)] hover:text-[var(--ui-text)]'
               }`}
@@ -1233,7 +1226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
           >
             <button
-              onClick={() => { setCompanyExpanded(true); onNavigate({ type: 'company' }); }}
+              onClick={() => { setCompanyExpanded(true); onNavigate({ type: 'space_root', space: 'company' }); }}
               className="flex items-center gap-1.5 hover:text-[var(--ui-text)] transition-colors cursor-pointer"
             >
               <span>TÀI LIỆU CÔNG TY</span>

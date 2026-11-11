@@ -63,8 +63,8 @@ test('session data stays in memory and reinitializes to mock data when runtime s
 });
 
 test('unclassified folders filter root notes by space and recent includes filed notes', () => {
-  const personal = render('/private/unclassified');
-  const company = render('/company/unclassified');
+  const personal = render('/library/private/unclassified');
+  const company = render('/library/company/unclassified');
   assert(personal.includes('PERSONAL_ROOT_NOTE'));
   assert(!personal.includes('PERSONAL_FOLDER_NOTE') && !personal.includes('COMPANY_ROOT_NOTE'));
   assert(company.includes('COMPANY_ROOT_NOTE') && company.includes('COMPANY_MEETING_NOTE'));
@@ -75,7 +75,7 @@ test('unclassified folders filter root notes by space and recent includes filed 
 });
 
 test('private and company URLs render only their own notes, excluding trash', () => {
-  const personal = render('/private'); const company = render('/company');
+  const personal = render('/library/private'); const company = render('/library/company');
   assert(personal.includes('Công việc') && personal.includes('PERSONAL_ROOT_NOTE'));
   assert(!personal.includes('PERSONAL_FOLDER_NOTE'));
   assert(!personal.includes('COMPANY_ROOT_NOTE') && !personal.includes('TRASHED_NOTE'));
@@ -83,11 +83,25 @@ test('private and company URLs render only their own notes, excluding trash', ()
   assert(!company.includes('PERSONAL_FOLDER_NOTE'));
 });
 
+test('sidebar space roots use the folder explorer while library tabs keep the library header', () => {
+  for (const [path, title, tab] of [['/private', 'Ghi chép của tôi', '/library/private'], ['/company', 'Tài liệu công ty', '/library/company']]) {
+    const html = render(path);
+    assert(html.includes(`>${title}</h1>`));
+    assert(html.includes('data-folder-mode="structure"'));
+    assert(html.includes('Sắp xếp thư mục'));
+    assert(!html.includes('__space_root</'));
+    assert(render(tab).includes('>Thư viện</h1>'));
+  }
+  const personal = render('/private');
+  assert(personal.includes('PERSONAL_ROOT_NOTE') && personal.includes('Công việc'));
+  assert(!personal.includes('COMPANY_ROOT_NOTE'));
+});
+
 test('folder, favorites, unclassified, meetings and trash URLs select the correct content', () => {
   const folder = render('/folders/fld_work'); assert(folder.includes('PERSONAL_FOLDER_NOTE')); assert(!folder.includes('PERSONAL_ROOT_NOTE'));
   const favorites = render('/favorites'); assert(favorites.includes('PERSONAL_ROOT_NOTE')); assert(!favorites.includes('COMPANY_ROOT_NOTE'));
   const roots = render('/unclassified'); assert(roots.includes('PERSONAL_ROOT_NOTE')); assert(!roots.includes('PERSONAL_FOLDER_NOTE')); assert(!roots.includes('TRASHED_NOTE'));
-  const meetings = render('/meetings'); assert(meetings.includes('COMPANY_MEETING_NOTE')); assert(!meetings.includes('COMPANY_ROOT_NOTE'));
+  const meetings = render('/library/meetings'); assert(meetings.includes('COMPANY_MEETING_NOTE')); assert(!meetings.includes('COMPANY_ROOT_NOTE'));
   const trash = render('/trash'); assert(trash.includes('TRASHED_NOTE')); assert(!trash.includes('PERSONAL_ROOT_NOTE'));
 });
 

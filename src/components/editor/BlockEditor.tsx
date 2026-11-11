@@ -825,9 +825,9 @@ function getTextareaSelectionCoords(
         onWheel={(e) => {
           if (e.deltaY > 0) maybeExpandBottomSpace(e.currentTarget);
         }}
-        className="flex-1 overflow-y-auto px-8 pt-10 pb-8 md:px-20 lg:px-32"
+        className="flex-1 overflow-y-auto px-[15%] pt-10 pb-8"
       >
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="w-full min-w-0 space-y-4">
           {/* Document Title matching screenshot */}
           <div>
             <input

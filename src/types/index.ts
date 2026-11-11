@@ -164,6 +164,7 @@ export interface User {
 }
 
 export type ViewState =
+  | { type: 'space_root'; space: SpaceType }
   | { type: 'private' }
   | { type: 'company' }
   | { type: 'shared' }

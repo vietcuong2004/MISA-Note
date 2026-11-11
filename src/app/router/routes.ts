@@ -1,14 +1,15 @@
 import { ViewState } from '../../types';
 
 const pagePaths = {
-  private: '/private', company: '/company', templates: '/templates',
-  recent: '/recent', favorite: '/favorites', library: '/library',
-  trash: '/trash', meeting_notes: '/meetings', shared: '/shared',
+  private: '/library/private', company: '/library/company', templates: '/templates',
+  recent: '/recent', favorite: '/favorites', library: '/library/all',
+  trash: '/trash', meeting_notes: '/library/meetings', shared: '/library/shared',
 } as const;
 
 export function pathForView(view: ViewState): string {
   switch (view.type) {
-    case 'unclassified': return view.space ? `/${view.space === 'personal' ? 'private' : 'company'}/unclassified` : '/unclassified';
+    case 'space_root': return view.space === 'personal' ? '/private' : '/company';
+    case 'unclassified': return view.space ? `/library/${view.space === 'personal' ? 'private' : 'company'}/unclassified` : '/unclassified';
     case 'document': return `/documents/${encodeURIComponent(view.documentId)}`;
     case 'folder': return `/folders/${encodeURIComponent(view.folderId)}`;
     case 'not_found': return view.path.startsWith('/') && !view.path.startsWith('//') ? view.path : '/404';
@@ -23,10 +24,15 @@ export function viewForLocation(location: string): ViewState {
   const legacyDocument = new URLSearchParams(url.hash.slice(1)).get('doc');
   if ((path === '/' || path === '/Notes') && legacyDocument) return { type: 'document', documentId: legacyDocument };
   if (path === '/' || path === '/Notes') return { type: 'private' };
+  const aliases: Record<string, ViewState> = {
+    '/library': { type: 'library' }, '/private': { type: 'space_root', space: 'personal' }, '/company': { type: 'space_root', space: 'company' },
+    '/shared': { type: 'shared' }, '/meetings': { type: 'meeting_notes' },
+  };
+  if (aliases[path]) return aliases[path];
   if (path === '/recent') return { type: 'recent' };
   if (path === '/unclassified') return { type: 'unclassified' };
-  if (path === '/private/unclassified') return { type: 'unclassified', space: 'personal' };
-  if (path === '/company/unclassified') return { type: 'unclassified', space: 'company' };
+  if (path === '/private/unclassified' || path === '/library/private/unclassified') return { type: 'unclassified', space: 'personal' };
+  if (path === '/company/unclassified' || path === '/library/company/unclassified') return { type: 'unclassified', space: 'company' };
   for (const [type, pagePath] of Object.entries(pagePaths)) {
     if (pagePath === path) return { type } as ViewState;
   }

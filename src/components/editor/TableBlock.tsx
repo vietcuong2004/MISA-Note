@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GripHorizontal, GripVertical } from 'lucide-react';
 import { Block, BlockProperties, BlockTableData } from '../../types';
 
@@ -9,9 +10,11 @@ export function TableBlock({ block, readOnly, onChange }: {
   const data = block.properties?.tableData || { headers: ['Công việc', 'Người phụ trách', 'Trạng thái'], rows: [['', '', '']] };
   const [selection, setSelection] = useState<Selection | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 });
   const start = useRef<{ row: number; column: number } | null>(null);
   useEffect(() => {
-    const outside = (event: MouseEvent) => { if (!root.current?.contains(event.target as Node)) setSelection(null); };
+    const outside = (event: MouseEvent) => { if (!root.current?.contains(event.target as Node) && !menu.current?.contains(event.target as Node)) setSelection(null); };
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelection(null); };
     const release = () => { start.current = null; };
     document.addEventListener('mousedown', outside);
@@ -23,6 +26,26 @@ export function TableBlock({ block, readOnly, onChange }: {
       document.removeEventListener('keydown', escape);
     };
   }, []);
+  useLayoutEffect(() => {
+    if (!selection || readOnly) return;
+    const update = () => {
+      const label = `Chọn ${selection.kind === 'row' ? 'hàng' : 'cột'} ${selection.index + 1}`;
+      const anchor = root.current?.querySelector(`[aria-label="${label}"]`);
+      if (!anchor || !menu.current) return;
+      const rect = anchor.getBoundingClientRect();
+      const { width, height } = menu.current.getBoundingClientRect();
+      const gap = 6;
+      let left = selection.kind === 'row' ? rect.right + gap : rect.left;
+      let top = selection.kind === 'row' ? rect.top : rect.bottom + gap;
+      if (left + width > window.innerWidth - 8) left = selection.kind === 'row' ? rect.left - width - gap : rect.right - width;
+      if (top + height > window.innerHeight - 8) top = rect.top - height - gap;
+      setMenuPosition({ left: Math.max(8, Math.min(left, window.innerWidth - width - 8)), top: Math.max(8, Math.min(top, window.innerHeight - height - 8)) });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => { window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); };
+  }, [selection, readOnly]);
   const save = (next: BlockTableData) => onChange(block.content, { ...block.properties, tableData: next });
   const insertRow = (index: number) => {
     const rows = data.rows.map(row => [...row]);
@@ -92,12 +115,13 @@ export function TableBlock({ block, readOnly, onChange }: {
         </tbody>
       </table>
     </div>
-    {!readOnly && selection && <div role="dialog" aria-label={selection.kind === 'row' ? 'Thao tác hàng' : 'Thao tác cột'}
-      className="absolute left-8 top-full z-30 mt-1 min-w-52 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1.5 text-xs shadow-lg">
+    {!readOnly && selection && createPortal(<div ref={menu} role="dialog" aria-label={selection.kind === 'row' ? 'Thao tác hàng' : 'Thao tác cột'}
+      style={menuPosition} onMouseDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}
+      className="fixed z-[100] w-52 max-w-[calc(100vw-16px)] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1.5 text-xs text-[var(--ui-text)] shadow-lg">
       <button type="button" onClick={remove} disabled={selection.kind === 'column' && data.headers.length <= 1}
         className="block w-full rounded-md px-3 py-2 text-left text-red-500 hover:bg-[var(--ui-hover)] disabled:opacity-40">{selection.kind === 'row' ? 'Xóa hàng' : 'Xóa cột'}</button>
       <button type="button" onClick={() => selection.kind === 'row' ? insertRow(selection.index) : insertColumn(selection.index)} className="block w-full rounded-md px-3 py-2 text-left hover:bg-[var(--ui-hover)]">{selection.kind === 'row' ? 'Thêm hàng phía trên' : 'Thêm cột bên trái'}</button>
       <button type="button" onClick={() => selection.kind === 'row' ? insertRow(selection.index + 1) : insertColumn(selection.index + 1)} className="block w-full rounded-md px-3 py-2 text-left hover:bg-[var(--ui-hover)]">{selection.kind === 'row' ? 'Thêm hàng bên dưới' : 'Thêm cột bên phải'}</button>
-    </div>}
+    </div>, document.body)}
   </div>;
 }
