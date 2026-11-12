@@ -116,7 +116,7 @@ export const DocumentActionMenu = forwardRef<HTMLDivElement, DocumentActionMenuP
             className="w-full px-3 py-1.5 text-left flex items-center gap-2.5 hover:bg-[var(--ui-hover)] transition-colors cursor-pointer">
             <Copy className="w-3.5 h-3.5" /><span>Nhân bản</span>
           </button>}
-          {/* 2. Đổi tên (Ctrl+Shift+R) */}
+          {/* 2. Đổi tên */}
           {onRename && (
             <button
               type="button"
@@ -130,11 +130,10 @@ export const DocumentActionMenu = forwardRef<HTMLDivElement, DocumentActionMenuP
                 <Edit2 className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
                 <span>Đổi tên</span>
               </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+R</span>
             </button>
           )}
 
-          {/* 3. Di chuyển đến (Ctrl+Shift+P) */}
+          {/* 3. Di chuyển đến */}
           {onMove && (
             <button
               type="button"
@@ -148,7 +147,6 @@ export const DocumentActionMenu = forwardRef<HTMLDivElement, DocumentActionMenuP
                 <ArrowRight className="w-3.5 h-3.5 stroke-[1.75] text-[var(--ui-text)]" />
                 <span>Di chuyển đến</span>
               </div>
-              <span className="text-[10px] text-[var(--ui-tertiary)] font-mono">Ctrl+⇧+P</span>
             </button>
           )}
 

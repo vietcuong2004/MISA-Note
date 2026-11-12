@@ -651,17 +651,17 @@ export const Sidebar2: React.FC<SidebarProps> = ({
                 onMouseEnter={() => setShowCreateTooltip(true)}
                 onMouseLeave={() => setShowCreateTooltip(false)}
                 className={`w-full flex items-center justify-center gap-1.5 rounded-xl theme-primary bg-[var(--ui-primary)] text-white hover:bg-[var(--ui-primary-hover)] font-semibold text-xs transition-colors shadow-xs ios-interactive cursor-pointer h-9 ${isNarrowHeader ? 'px-0' : 'px-3'}`}
-                title="Tạo tài liệu"
+                title="Tạo tài liệu" aria-keyshortcuts="Control+Alt+N"
               >
                 <SquarePen className="w-4 h-4 stroke-[2] shrink-0" />
                 <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo tài liệu</span>
               </button>
 
               {/* Tooltip on hover when narrow */}
-              {isNarrowHeader && showCreateTooltip && (
+              {showCreateTooltip && (
                 <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100 pointer-events-none">
                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
-                  <span className="relative z-10">Tạo tài liệu</span>
+                  <span className="relative z-10">Tạo tài liệu <kbd className="ml-2 text-white/70">Ctrl+Alt+N</kbd></span>
                 </div>
               )}
             </div>
@@ -674,16 +674,16 @@ export const Sidebar2: React.FC<SidebarProps> = ({
                 onMouseEnter={() => setShowFolderTooltip(true)}
                 onMouseLeave={() => setShowFolderTooltip(false)}
                 className={`${SIDEBAR_HEADER_BUTTON_CLASS} w-full ${isNarrowHeader ? 'px-0' : 'px-3'}`}
-                title="Tạo thư mục"
+                title="Tạo thư mục" aria-keyshortcuts="Control+Alt+F"
               >
                 <FolderPlus className="w-4 h-4 text-[var(--ui-text)] stroke-[1.75] shrink-0" />
                 <span className={isNarrowHeader ? "sr-only" : "truncate whitespace-nowrap"}>Tạo thư mục</span>
               </button>
 
-              {isNarrowHeader && showFolderTooltip && (
+              {showFolderTooltip && (
                 <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-[#262626] text-white text-[10px] font-medium px-2.5 py-1 rounded-md shadow-lg animate-in fade-in zoom-in-95 duration-100 pointer-events-none">
                   <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-[#262626]" />
-                  <span className="relative z-10">Tạo thư mục</span>
+                  <span className="relative z-10">Tạo thư mục <kbd className="ml-2 text-white/70">Ctrl+Alt+F</kbd></span>
                 </div>
               )}
             </div>

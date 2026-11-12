@@ -350,7 +350,7 @@ export default function App() {
 
   // Create blank document
   const handleCreateDocument = (space: SpaceType, folderId?: string | null) => {
-    const newDocId = `doc_${Date.now()}`;
+    const newDocId = `doc_${crypto.randomUUID()}`;
     const newDoc: Document = {
       id: newDocId,
       title: 'Ghi chú mới',
@@ -461,6 +461,24 @@ export default function App() {
       setNewFolderId(folder.id);
     } catch (error) { addToast(error instanceof Error ? error.message : 'Không tạo được thư mục.', 'error'); }
   };
+
+  useEffect(() => {
+    const createWithShortcut = (event: KeyboardEvent) => {
+      if (!event.ctrlKey || !event.altKey || event.metaKey || event.getModifierState('AltGraph') || event.isComposing || event.repeat || event.shiftKey || !['n', 'f'].includes(event.key.toLowerCase())) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const currentFolder = viewState.type === 'folder' ? folders.find(folder => folder.id === viewState.folderId) : undefined;
+      const currentDocument = viewState.type === 'document' ? documents.find(doc => doc.id === viewState.documentId && !doc.isTrash) : undefined;
+      const space = currentFolder?.space || currentDocument?.space ||
+        (viewState.type === 'space_root' || viewState.type === 'unclassified' ? viewState.space : undefined) ||
+        (viewState.type === 'company' ? 'company' : 'personal');
+      const parentId = currentFolder?.id || currentDocument?.folderId || null;
+      if (event.key.toLowerCase() === 'f') handleCreateFolder(space, parentId);
+      else handleCreateDocument(space, parentId);
+    };
+    window.addEventListener('keydown', createWithShortcut, true);
+    return () => window.removeEventListener('keydown', createWithShortcut, true);
+  }, [viewState, folders, documents, handleCreateDocument, handleCreateFolder]);
 
   const handleOpenEditFolder = (folder: Folder) => {
     setFolderModalState({ isOpen: true, defaultSpace: folder.space, folderToEdit: folder });

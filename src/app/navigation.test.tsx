@@ -1572,6 +1572,43 @@ test('Back and Forward render the page stored in browser history', async () => {
   await goHistory('forward'); assert.equal(window.location.pathname, '/templates'); assert.equal(heading(), 'Mẫu ghi chú');
 });
 
+test('Ctrl Alt N and Ctrl Alt F create in the current folder or document parent', async () => {
+  const { getStoredFolders } = await import('../utils/storage');
+  const key = async (folder = false) => {
+    const event = new window.KeyboardEvent('keydown', { key: folder ? 'f' : 'n', code: folder ? 'KeyF' : 'KeyN', ctrlKey: true, altKey: true, bubbles: true, cancelable: true });
+    await act(async () => window.dispatchEvent(event));
+    assert(event.defaultPrevented);
+  };
+  for (const folderId of ['fld_work', 'fld_projects']) {
+    await mount(`/folders/${folderId}`);
+    const folder = getStoredFolders().find(item => item.id === folderId)!;
+    const beforeFolders = new Set(getStoredFolders().map(item => item.id));
+    await key(true);
+    const createdFolder = getStoredFolders().find(item => !beforeFolders.has(item.id))!;
+    assert.equal(createdFolder.parentId, folderId);
+    assert.equal(createdFolder.space, folder.space);
+    const beforeDocs = new Set(getStoredDocuments().map(item => item.id));
+    await key();
+    const createdDoc = getStoredDocuments().find(item => !beforeDocs.has(item.id))!;
+    assert.equal(createdDoc.folderId, folderId);
+    assert.equal(createdDoc.space, folder.space);
+    assert.equal(window.location.pathname, `/documents/${createdDoc.id}`);
+    const nextFolders = new Set(getStoredFolders().map(item => item.id));
+    await key(true);
+    const siblingFolder = getStoredFolders().find(item => !nextFolders.has(item.id))!;
+    assert.equal(siblingFolder.parentId, folderId);
+    assert.equal(siblingFolder.space, folder.space);
+  }
+  await mount('/company');
+  const before = new Set(getStoredDocuments().map(item => item.id));
+  await act(async () => window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'n', ctrlKey: true, bubbles: true, cancelable: true })));
+  assert.equal(getStoredDocuments().length, before.size, 'Reserved Chrome shortcut does not create an extra document');
+  await key();
+  const rootDoc = getStoredDocuments().find(item => !before.has(item.id))!;
+  assert.equal(rootDoc.space, 'company');
+  assert.equal(rootDoc.folderId, null);
+});
+
 test('sidebar utilities duplicate documents and folder subtrees at the same level', async () => {
   const { getStoredFolders, saveStoredFolders, saveStoredDocuments } = await import('../utils/storage');
   const sourceFolder = getStoredFolders().find(folder => folder.id === 'fld_work')!;

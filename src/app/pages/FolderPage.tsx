@@ -42,7 +42,6 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
   const menuDocument = documents.find(doc => doc.id === documentMenu?.id && !doc.isTrash);
   const shareDocument = documents.find(doc => doc.id === shareId && !doc.isTrash);
   const date = formatDateTime;
-  const count = (item: Folder) => childFolders(item.id).length + folderDocs(item.id).length;
 
   const drop = (event: React.DragEvent, parentId: string | null) => {
     event.preventDefault(); event.stopPropagation(); setDragOver(null);
@@ -104,7 +103,6 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
           ? <FolderIcon className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />
           : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-[var(--ui-text)]" strokeWidth={1.75} />}
         <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className="min-w-0 flex-1 truncate text-left text-xs font-medium">{item.name}</button>
-        <span className="shrink-0 whitespace-nowrap text-xs text-[var(--ui-muted)]">{count(item)} mục</span>
         <span className="hidden w-52 shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-[var(--ui-tertiary)] sm:block">Cập nhật {date(item.updatedAt)}</span>
         <div className="flex w-14 shrink-0 justify-end">{folderMenu(item)}</div>
       </div>
@@ -153,7 +151,7 @@ export function FolderPage({ folderId, rootSpace, favoritesOnly = false, documen
               className={`group relative rounded-xl border border-[var(--ui-border)] ${dragOver === item.id ? 'bg-[var(--ui-selected)] ring-2 ring-[var(--ui-primary)]' : 'hover:bg-[var(--ui-hover)]'} ${mode === 'grid' ? 'p-5' : 'flex items-center gap-3 p-3'}`}>
               <button type="button" onClick={() => onNavigate({ type: 'folder', folderId: item.id })} className={`flex min-w-0 flex-1 text-left ${mode === 'grid' ? 'w-full flex-col items-start gap-3' : 'items-center gap-3'}`}>
                 <FolderIcon className={`${mode === 'grid' ? 'h-14 w-14' : 'h-8 w-8'} shrink-0 text-[var(--ui-text)]`} strokeWidth={1.2} />
-                <span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.name}</span><span className="mt-1 block text-xs text-[var(--ui-muted)]">{count(item)} mục · Cập nhật {date(item.updatedAt)}</span></span>
+                <span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.name}</span><span className="mt-1 block text-xs text-[var(--ui-muted)]">Cập nhật {date(item.updatedAt)}</span></span>
               </button>
               <div className={mode === 'grid' ? 'absolute right-2 top-2' : ''}>{folderMenu(item)}</div>
             </article>)}

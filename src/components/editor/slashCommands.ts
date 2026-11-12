@@ -66,7 +66,7 @@ const commandPresentation: Record<string, { subtitle: string; shortcut?: string;
   image: { subtitle: 'Tải ảnh lên hoặc nhập liên kết ảnh', shortcut: 'Ctrl+Alt+I', shortcutCode: 'KeyI' },
   video: { subtitle: 'Thêm video từ tệp hoặc liên kết', shortcut: 'Ctrl+Alt+V', shortcutCode: 'KeyV' },
   audio: { subtitle: 'Tải tệp âm thanh từ máy tính', shortcut: 'Ctrl+Alt+A', shortcutCode: 'KeyA' },
-  file: { subtitle: 'Đính kèm tệp từ máy tính', shortcut: 'Ctrl+Alt+F', shortcutCode: 'KeyF' },
+  file: { subtitle: 'Đính kèm tệp từ máy tính' },
   link: { subtitle: 'Chèn chữ có liên kết đến trang web', shortcut: 'Ctrl+Alt+K', shortcutCode: 'KeyK' },
 };
 

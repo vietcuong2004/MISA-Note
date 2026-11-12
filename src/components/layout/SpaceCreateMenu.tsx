@@ -52,11 +52,11 @@ export function SpaceCreateMenu({ title, onCreateDocument, onCreateFolder }: {
         }
       }}
       className="absolute right-0 top-full mt-1 z-40 w-44 rounded-xl border border-[var(--ui-border)] bg-[var(--ui-surface)] p-1 shadow-lg normal-case tracking-normal text-xs font-medium text-[var(--ui-text)]">
-      <button ref={firstItem} type="button" role="menuitem" onClick={() => choose(onCreateDocument)}
+      <button ref={firstItem} type="button" role="menuitem" title="Ctrl+Alt+N" aria-keyshortcuts="Control+Alt+N" onClick={() => choose(onCreateDocument)}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-[var(--ui-hover)]">
         <FileText className="w-3.5 h-3.5" />Tạo tài liệu
       </button>
-      <button type="button" role="menuitem" onClick={() => choose(onCreateFolder)}
+      <button type="button" role="menuitem" title="Ctrl+Alt+F" aria-keyshortcuts="Control+Alt+F" onClick={() => choose(onCreateFolder)}
         className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-[var(--ui-hover)]">
         <FolderPlus className="w-3.5 h-3.5" />Tạo thư mục
       </button>
