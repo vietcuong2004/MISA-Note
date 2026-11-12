@@ -3,15 +3,6 @@ description: Tạo Work Item từ tài liệu business.md của PBI
 title: "[PBI-xxxxxx] Tên tính năng"
 labels: ["PBI"]
 body:
-  - type: input
-    id: pbi_title
-    attributes:
-      label: Title
-      description: Mã PBI và tên tính năng (ví dụ [PBI-123456] Tính năng chỉnh sửa ghi chú)
-      placeholder: "[PBI-xxxxxx] Tên tính năng"
-    validations:
-      required: true
-
   - type: textarea
     id: business_description
     attributes:
