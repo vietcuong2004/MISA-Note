@@ -93,7 +93,6 @@ export const BlockEditor: React.FC<BlockEditorProps> = ({
   const [moveOpen, setMoveOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Drag and drop block reordering state
   const [draggingBlockIndex, setDraggingBlockIndex] = useState<number | null>(null);
@@ -1151,58 +1150,6 @@ function getTextareaSelectionCoords(
 
       {showTemplatePills && <TemplateSuggestions templates={visibleTemplates} onSelect={handleInsertTemplate}
         onDismiss={id => setDismissedTemplates(previous => [...previous, id])} />}
-
-      {/* Floating help button '?' at bottom right matching screenshot */}
-      <div className="no-print fixed bottom-6 right-6 z-30">
-        <button
-          type="button"
-          onClick={() => setShowHelpModal(true)}
-          className="w-8 h-8 rounded-full bg-[var(--ui-surface)] border border-[var(--ui-border)] shadow-2xs hover:bg-[var(--ui-hover)] flex items-center justify-center text-xs font-semibold text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] transition-all ios-interactive"
-          title="Trợ giúp"
-        >
-          ?
-        </button>
-      </div>
-
-      {/* Help Modal */}
-      {showHelpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-150 p-4">
-          <div className="bg-[var(--ui-surface)] rounded-[24px] ios-elevated-shadow border border-[var(--ui-border)] w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-[var(--ui-border)] pb-3">
-              <h3 className="text-sm font-semibold text-[var(--ui-text)]">Hướng dẫn & Phím tắt</h3>
-              <button
-                type="button"
-                onClick={() => setShowHelpModal(false)}
-                aria-label="Đóng"
-                title="Đóng"
-                className="p-1.5 rounded-lg text-[var(--ui-tertiary)] hover:text-[var(--ui-text)] hover:bg-[var(--ui-hover)] transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4 stroke-[1.75]" />
-              </button>
-            </div>
-            <div className="space-y-2.5 text-xs text-[var(--ui-muted)] leading-relaxed">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
-                <span>Mở menu 20 tiện ích</span>
-                <span className="font-mono font-bold text-[var(--ui-text)] px-1.5 py-0.5 rounded bg-[var(--ui-surface)] border border-[var(--ui-border)]">/</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
-                <span>Tìm kiếm & hỏi</span>
-                <span className="font-mono font-bold text-[var(--ui-text)] px-1.5 py-0.5 rounded bg-[var(--ui-surface)] border border-[var(--ui-border)]">Ctrl + K</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--ui-subtle)]">
-                <span>Tự động lưu</span>
-                <span className="text-[var(--ui-text)] font-semibold">Tức thì</span>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowHelpModal(false)}
-              className="w-full py-2 rounded-xl theme-primary bg-[var(--ui-primary)] text-white text-xs font-semibold hover:bg-[var(--ui-primary-hover)] transition-colors"
-            >
-              Đã hiểu
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Modals */}
       {renameOpen && !isReadOnly && <RenameDialog kind="document" initialName={doc.title}

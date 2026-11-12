@@ -571,7 +571,7 @@ export default function App() {
         onMoveDocument={handleMoveDocument}
         onMoveFolder={handleMoveFolder}
         onToast={addToast}
-        onOpenQuickNote={() => setQuickNoteOpen(true)}
+        onOpenQuickNote={() => setQuickNoteOpen(open => !open)}
       />
 
       {/* Main View Port */}

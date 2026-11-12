@@ -299,7 +299,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   };
 
   const typeOptions = [
-    { id: 'personal', label: 'Ghi chú của tôi', Icon: LockKeyhole, iconColor: 'text-amber-500' },
+    { id: 'personal', label: 'Ghi chép của tôi', Icon: LockKeyhole, iconColor: 'text-amber-500' },
     { id: 'company', label: 'Tài liệu công ty', Icon: Building2, iconColor: 'text-slate-500' },
   ] as const;
   const selectedTypeOption = typeOptions.find(item => item.id === selectedType);

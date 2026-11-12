@@ -1654,13 +1654,13 @@ test('library document types use workspace labels and filter by workspace', asyn
   const main = document.querySelector('main')!;
   await click(main.querySelector('button[aria-label="Dạng danh sách"]'));
   await click(button('Loại tài liệu', main));
-  assert(button('Ghi chú của tôi', main)?.querySelector('.lucide-lock-keyhole'));
+  assert(button('Ghi chép của tôi', main)?.querySelector('.lucide-lock-keyhole'));
   assert(button('Tài liệu công ty', main)?.querySelector('.lucide-building-2'));
-  await click(button('Ghi chú của tôi', main));
+  await click(button('Ghi chép của tôi', main));
   const rows = () => Array.from(main.querySelectorAll('tbody tr'));
   assert(rows().length > 0);
-  assert(rows().every(row => row.querySelectorAll('td')[2]?.textContent === 'Ghi chú của tôi'));
-  await click(button('Ghi chú của tôi', main));
+  assert(rows().every(row => row.querySelectorAll('td')[2]?.textContent === 'Ghi chép của tôi'));
+  await click(button('Ghi chép của tôi', main));
   await click(button('Tài liệu công ty', main));
   assert(rows().length > 0);
   assert(rows().every(row => row.querySelectorAll('td')[2]?.textContent === 'Tài liệu công ty'));
@@ -2301,6 +2301,21 @@ test('sidebar footer buttons render icons only with hover tooltips in both sideb
       assert(quickNoteTooltip?.className.includes('group-hover/footer-item:opacity-100'));
       assert(!quickNoteTooltip?.className.includes('group-focus-within'));
     } finally { layoutConfig.useSidebar2 = false; }
+  }
+});
+
+test('sidebar Quick Note button toggles the dialog open and closed in both variants', async () => {
+  for (const variant of ['1', '2']) {
+    memoryStorage.setItem('misa_sidebar_variant', variant);
+    await mount('/private');
+    const trigger = document.querySelector('aside button[aria-label="Quick Note"]')!;
+    assert.equal(document.querySelector('[data-quick-note-modal]'), null);
+    await click(trigger);
+    assert(document.querySelector('[data-quick-note-modal]'));
+    await click(trigger);
+    assert.equal(document.querySelector('[data-quick-note-modal]'), null);
+    await click(trigger);
+    assert(document.querySelector('[data-quick-note-modal]'));
   }
 });
 
@@ -3363,11 +3378,10 @@ test('print layout renders normal-flow text mirrors, reflows linked text, recalc
   });
   assert.equal(linkedSource.style.height, '48px', 'ListBlock must recalculate item height on width/viewport resize');
 
-  // 4. Main top navbar (.main-header), floating '?' help button, bottom empty prompt, EmptyBlockRow, and block drag gutter are excluded from print
+  // 4. Main top navbar (.main-header), bottom empty prompt, EmptyBlockRow, and block drag gutter are excluded from print
   const mainHeader = document.querySelector<HTMLElement>('.main-header')!;
   assert(mainHeader.classList.contains('no-print'), 'Main app header must carry no-print so it is not printed');
-  const helpButton = document.querySelector<HTMLElement>('main button[title="Trợ giúp"]')!;
-  assert(helpButton.closest('.no-print'), 'Floating ? help button must be hidden in print');
+  assert.equal(document.querySelector('main button[title="Trợ giúp"]'), null, 'Editor has no floating help button');
   const boldMirrorParent = document.querySelector<HTMLElement>('[data-block-id*="odt_meeting_01"] [data-print-mirror]')!.parentElement!;
   assert(boldMirrorParent.className.includes('[&_[data-print-mirror]]:[font-weight:inherit]'));
   const exitRow = document.querySelector<HTMLElement>('[data-list-exit-for]');
