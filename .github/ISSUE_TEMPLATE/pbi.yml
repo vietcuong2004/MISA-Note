@@ -1,0 +1,39 @@
+name: PBI - Product Backlog Item
+description: Tạo Work Item từ tài liệu business.md của PBI
+title: "[PBI-xxxxxx] Tên tính năng"
+labels: ["PBI"]
+body:
+  - type: textarea
+    id: business_description
+    attributes:
+      label: Business Description
+      description: Sao chép và dán toàn bộ nội dung file business.md vào đây
+      placeholder: |
+        ### 1. Câu chuyện nghiệp vụ
+        ...
+
+        ### 2. Mục tiêu
+        ...
+
+        ### 3. Giải pháp phần mềm chi tiết
+        ...
+    validations:
+      required: true
+
+  - type: input
+    id: spec_link
+    attributes:
+      label: Link to spec.md
+      description: Đường dẫn tới file spec.md trên nhánh main của GitHub
+      placeholder: "https://github.com/vietcuong2004/MISA-Note/blob/main/.specify/R1/123456-ten-tinh-nang/spec.md"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Ghi chú bàn giao cho Dev/QA, ràng buộc kỹ thuật hoặc các điểm cần BA xác nhận (nếu có)
+      placeholder: "Ghi chú thêm..."
+    validations:
+      required: false
