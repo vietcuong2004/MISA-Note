@@ -958,7 +958,9 @@ test('folder explorer defaults to structure and supports cards, rows, sorting, n
   await click(main.querySelector('[aria-label="Dạng Lưới"]'));
   assert(main.querySelector('[data-folder-mode="grid"]'));
   assert.deepEqual(Array.from(main.querySelectorAll('[data-folder-entry]')).map(node => node.getAttribute('data-folder-entry')), ['explorer-beta', 'explorer-alpha']);
-  assert(main.querySelector('[data-folder-entry="explorer-alpha"]')?.textContent?.includes('1 mục'));
+  const alphaCard = main.querySelector('[data-folder-entry="explorer-alpha"]');
+  assert(alphaCard?.textContent?.includes('Alpha'));
+  assert(!/\d+ mục/.test(alphaCard?.textContent ?? ''));
   const sort = main.querySelector<HTMLSelectElement>('[aria-label="Sắp xếp thư mục"]')!;
   await act(async () => { sort.value = 'name-asc'; sort.dispatchEvent(new window.Event('change', { bubbles: true })); });
   assert.equal(main.querySelector('[data-folder-entry]')?.getAttribute('data-folder-entry'), 'explorer-alpha');
