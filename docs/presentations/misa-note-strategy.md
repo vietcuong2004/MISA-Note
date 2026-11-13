@@ -1,380 +1,1177 @@
-# ĐỀ XUẤT CHIẾN LƯỢC TÁI PHÁT TRIỂN MISA GHI CHÚ THÀNH MISA NOTE
-*Từ công cụ nội bộ đến nền tảng quản lý tri thức thông minh*
+# Đề xuất chiến lược tái phát triển MISA Ghi Chú thành MISA Note
 
-Bản trình bày 17 slide · tiếng Việt · 16:9 · dành cho Ban lãnh đạo MISA · biên soạn 12/11/2026.
+**44 slide · 4 phần**
 
-## Quy ước bằng chứng
-- Hiện trạng MISA Ghi Chú cũ: do đầu bài cung cấp, cần xác nhận nội bộ; chưa có ảnh hay số liệu vận hành.
-- Prototype MISA Note: đối chiếu mã nguồn và danh mục tính năng, chỉ lưu trong phiên; chia sẻ/quyền mới mô phỏng; chưa có AI thật.
-- Định vị, phân khúc, mô hình kinh doanh và roadmap: đề xuất nghiên cứu, không phải quyết định đã duyệt.
-- Đối thủ: nguồn chính thức truy cập ngày 12/11/2026; không đưa giá hoặc số liệu thị trường. NotebookLM hiện dùng tên Gemini Notebook trên các trang Google được kiểm tra.
-- 1.833 giờ/tháng là giả định tính toán, không phải kết quả thực tế; không suy ra doanh thu hoặc ROI từ con số này.
-- Khung ảnh là placeholder có nhãn; không dùng ảnh giả làm giao diện chính thức. Không thêm slide bìa riêng để giữ đúng 17 slide.
-
-## Hướng dẫn nhập Gamma
-Nhập nội dung từng slide dưới đây, giữ thứ tự và đúng 17 slide. Dùng tiêu đề kết luận, thông điệp cuối slide và bố cục gợi ý. Đặt ghi chú thuyết trình vào speaker notes, không đẩy toàn bộ lên slide. Giữ nhãn giả định/mô phỏng/đề xuất. Thiết kế nền trắng, xanh #0066CC, chữ #111827, xám #64748B; tránh thêm số liệu, ảnh đối thủ hoặc mốc ngân sách chưa có nguồn.
-
----
-## Slide 01 — MISA Ghi Chú hiện tại chủ yếu đáp ứng nhu cầu xem tài liệu nội bộ
-**Phần:** I · THỰC TRẠNG  
-**Trạng thái:** THEO ĐẦU BÀI · CẦN XÁC NHẬN NỘI BỘ  
-**Bố cục:** before
-
-### Phạm vi theo đầu bài
-Nhân viên MISA tiếp nhận tài liệu công ty cung cấp.  
-Chưa có luồng tạo ghi chú cá nhân và tìm kiếm đáp ứng nhu cầu được mô tả.
-
-### Luồng sử dụng một chiều
-Công ty cung cấp → Nhân viên truy cập → Xem tài liệu
-
-### Khoảng trống cần xác nhận
-Tạo lập → Tổ chức → Chia sẻ → Khai thác tri thức
-
-**Khung ảnh:** Ảnh giao diện MISA Ghi Chú hiện tại — chờ cung cấp screenshot đã duyệt.
-
-**Thông điệp:** Cần chuyển từ tiếp nhận thông tin sang chủ động quản lý tri thức.
-
-**Ghi chú thuyết trình:** Đề án: ĐỀ XUẤT CHIẾN LƯỢC TÁI PHÁT TRIỂN MISA GHI CHÚ THÀNH MISA NOTE. Phụ đề: Từ công cụ nội bộ đến nền tảng quản lý tri thức thông minh. Các hạn chế sản phẩm cũ do đầu bài cung cấp, chưa có khảo sát hoặc ảnh giao diện để xác minh. Không dùng prototype hiện tại làm bằng chứng rằng hệ thống cũ có hay không có tính năng. Thay khung ảnh bằng screenshot sản phẩm cũ đã được duyệt.
+## Mục lục
+| Phần | Slide |
+| --- | --- |
+| Mở đầu | 1 |
+| Phần I: Đánh giá hiện trạng AMIS Ghi Chép | 2–4 |
+| Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh | 5–11 |
+|  | 12–13 |
+| Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh | 14–14 |
+|  | 15–15 |
+| Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh | 16–26 |
+| Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển | 27–35 |
+| Phần IV: Chiến lược và lộ trình phát triển sản phẩm | 36–44 |
 
 ---
-## Slide 02 — Ba rào cản đang hạn chế khả năng thương mại hóa
-**Phần:** I · THỰC TRẠNG  
-**Trạng thái:** GIẢ THUYẾT CẦN KIỂM CHỨNG  
-**Bố cục:** cards
+## Slide 01 — MISA NOTE
+Từ ghi chú đến tri thức dùng được
+**Phần:** ĐỀ ÁN TÁI PHÁT TRIỂN
 
-### Giá trị sử dụng
-Thiếu luồng ghi chú, tổ chức và tìm kiếm hoàn chỉnh.  
-Tác động giả định: khó hình thành thói quen dùng thường xuyên.
+### Phần I
 
-### Giá trị cạnh tranh
-Lý do lựa chọn và chuyển đổi chưa rõ.  
-Cần xác định một bài toán đủ quan trọng để giải quyết tốt hơn.
+Đánh giá hiện trạng AMIS Ghi Chép
 
-### Giá trị thương mại
-Chưa có bằng chứng về phân khúc và mức sẵn sàng trả phí.  
-Cần phỏng vấn và thử nghiệm trước đầu tư mở rộng.
+### Phần II
 
-**Thông điệp:** Cần kiểm chứng giá trị sử dụng, khác biệt và khả năng trả phí cùng lúc.
+Nghiên cứu thị trường và đối thủ cạnh tranh
 
-**Ghi chú thuyết trình:** Đây là các giả thuyết chiến lược từ đầu bài, không phải kết quả nghiên cứu đã thực hiện. Đề nghị thu thập baseline sử dụng và phỏng vấn các nhóm người dùng trước khi kết luận nguyên nhân.
+### Phần III
+
+Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Phần IV
+
+Chiến lược và lộ trình phát triển sản phẩm
+
+ĐỀ XUẤT CHIẾN LƯỢC TÁI PHÁT TRIỂN MISA GHI CHÚ THÀNH MISA NOTE
+
 
 ---
-## Slide 03 — Tái phát triển MISA Note giải quyết hai bài toán chiến lược
-**Phần:** I · THỰC TRẠNG  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** cards
+## Slide 02 — Phần I: Đánh giá hiện trạng AMIS Ghi Chép
+**Phần:** Phần I: Đánh giá hiện trạng AMIS Ghi Chép
 
-### Nâng giá trị nội bộ
-Ghi chú và tài liệu trên một không gian thống nhất.  
-Dễ tìm, chia sẻ và tái sử dụng thông tin.  
-Đo hiệu quả công việc thực tế.
+### Phạm vi
+
+Đánh giá mức độ đáp ứng nhu cầu sử dụng, nhận diện các hạn chế về trải nghiệm và quản lý thông tin, từ đó xác lập cơ sở cho việc tái phát triển sản phẩm.
+
+**Ghi chú thuyết trình:**
+
+Phần I: Đánh giá hiện trạng AMIS Ghi Chép
+
+Phạm vi
+Đánh giá mức độ đáp ứng nhu cầu sử dụng, nhận diện các hạn chế về trải nghiệm và quản lý thông tin, từ đó xác lập cơ sở cho việc tái phát triển sản phẩm.
+
+
+---
+## Slide 03 — AMIS Ghi Chép chưa đáp ứng đầy đủ nhu cầu quản lý thông tin
+**Phần:** Phần I: Đánh giá hiện trạng AMIS Ghi Chép
+
+### 1. Hạn chế trong việc tạo lập và quản lý nội dung
+
+- Người dùng chủ yếu tiếp nhận tài liệu được cung cấp sẵn, chưa thể chủ động tạo và quản lý ghi chú cá nhân.
+- Chưa hình thành được không gian làm việc để người dùng tự tổ chức và cập nhật thông tin theo nhu cầu.
+Tác động: Phạm vi sử dụng còn hạn chế, chưa trở thành công cụ hỗ trợ công việc thường xuyên.
+
+### 2. Khó khăn trong việc tìm kiếm và khai thác tài liệu
+
+- Khả năng tìm kiếm chưa đáp ứng tốt nhu cầu tra cứu thông tin.
+- Người dùng phải mất nhiều thao tác để xác định tài liệu hoặc nội dung cần tìm.
+Tác động: Giảm hiệu quả tiếp cận và tái sử dụng thông tin, đặc biệt khi số lượng tài liệu tăng lên.
+
+### 3. Trải nghiệm chia sẻ và phân quyền chưa thuận tiện
+
+- Sản phẩm đã có tính năng phân quyền nhưng cách thể hiện và thao tác chưa đủ trực quan.
+- Người dùng gặp khó khăn khi xác định phạm vi chia sẻ và quyền truy cập phù hợp.
+Tác động: Làm giảm sự thuận tiện trong chia sẻ và phối hợp sử dụng tài liệu.
+
+AMIS Ghi Chép hiện mới đáp ứng một phần nhu cầu tiếp nhận thông tin, chưa hỗ trợ đầy đủ quá trình tạo lập, quản lý và khai thác tri thức trong công việc.
+
+**Ghi chú thuyết trình:**
+
+AMIS Ghi Chép chưa đáp ứng đầy đủ nhu cầu quản lý thông tin
+
+1. Hạn chế trong việc tạo lập và quản lý nội dung
+• Người dùng chủ yếu tiếp nhận tài liệu được cung cấp sẵn, chưa thể chủ động tạo và quản lý ghi chú cá nhân.
+• Chưa hình thành được không gian làm việc để người dùng tự tổ chức và cập nhật thông tin theo nhu cầu.
+Tác động: Phạm vi sử dụng còn hạn chế, chưa trở thành công cụ hỗ trợ công việc thường xuyên.
+
+2. Khó khăn trong việc tìm kiếm và khai thác tài liệu
+• Khả năng tìm kiếm chưa đáp ứng tốt nhu cầu tra cứu thông tin.
+• Người dùng phải mất nhiều thao tác để xác định tài liệu hoặc nội dung cần tìm.
+Tác động: Giảm hiệu quả tiếp cận và tái sử dụng thông tin, đặc biệt khi số lượng tài liệu tăng lên.
+
+3. Trải nghiệm chia sẻ và phân quyền chưa thuận tiện
+• Sản phẩm đã có tính năng phân quyền nhưng cách thể hiện và thao tác chưa đủ trực quan.
+• Người dùng gặp khó khăn khi xác định phạm vi chia sẻ và quyền truy cập phù hợp.
+Tác động: Làm giảm sự thuận tiện trong chia sẻ và phối hợp sử dụng tài liệu.
+
+
+
+AMIS Ghi Chép hiện mới đáp ứng một phần nhu cầu tiếp nhận thông tin, chưa hỗ trợ đầy đủ quá trình tạo lập, quản lý và khai thác tri thức trong công việc.
+
+
+---
+## Slide 04 — Hạn chế hiện tại đang cản trở giá trị sử dụng và khả năng mở rộng
+**Phần:** Phần I: Đánh giá hiện trạng AMIS Ghi Chép
+
+### 1. Khó trở thành công cụ hằng ngày
+
+Chủ yếu đọc tài liệu có sẵn, chưa hỗ trợ đầy đủ ghi chép cá nhân.
+Hệ quả: Ít lý do quay lại, khó hình thành thói quen sử dụng.
+
+### 2. Tri thức chưa được khai thác tốt
+
+Tìm kiếm, tổ chức và chia sẻ còn bất tiện.
+Hệ quả: Mất thêm thời gian tìm, hỏi và tổng hợp lại thông tin đã có.
+
+### 3. Chưa sẵn sàng mở rộng thị trường
+
+Nhu cầu cơ bản chưa được đáp ứng tốt, giá trị khác biệt chưa rõ.
+Hệ quả: Cần hoàn thiện nội bộ trước khi thương mại hóa.
+
+Tái phát triển để người dùng chủ động tạo lập, tổ chức, chia sẻ và khai thác tri thức — tạo giá trị nội bộ trước, mở rộng thị trường sau.
+
+**Ghi chú thuyết trình:**
+
+Những hạn chế hiện tại đang giới hạn giá trị và tiềm năng phát triển sản phẩm
+
+1. Giá trị sử dụng chưa đủ toàn diện
+Khi sản phẩm chủ yếu phục vụ việc đọc và tra cứu tài liệu có sẵn, người dùng chưa có nhiều lý do để sử dụng thường xuyên cho các hoạt động ghi chép và quản lý thông tin cá nhân.
+Hệ quả: Khó hình thành thói quen sử dụng hằng ngày và mở rộng phạm vi ứng dụng trong nội bộ.
+
+2. Hiệu quả khai thác tri thức còn hạn chế
+Tài liệu đã được lưu trữ nhưng việc tìm kiếm, tổ chức và chia sẻ chưa thực sự thuận tiện, khiến giá trị của thông tin chưa được khai thác tối đa.
+Hệ quả: Người dùng có thể phải dành thêm thời gian tìm kiếm, trao đổi hoặc tổng hợp lại những thông tin đã tồn tại.
+
+3. Chưa tạo được lợi thế đủ rõ để mở rộng thị trường
+Các nền tảng ghi chú hiện đại đang cung cấp trải nghiệm quản lý thông tin linh hoạt, phối hợp và khai thác tài liệu bằng AI. Trong khi đó, AMIS Ghi Chép vẫn còn những hạn chế ngay ở các nhu cầu sử dụng cơ bản.
+Hệ quả: Sản phẩm cần được hoàn thiện và xác lập giá trị khác biệt trước khi xem xét thương mại hóa.
+
+Định hướng cần giải quyết: Chuyển AMIS Ghi Chép từ công cụ cung cấp và tra cứu tài liệu thành nền tảng cho phép người dùng chủ động tạo lập, tổ chức, chia sẻ và khai thác thông tin hiệu quả.
+Việc tái phát triển cần kế thừa những chức năng đang đáp ứng tốt nhu cầu, đồng thời ưu tiên cải thiện các điểm hạn chế trực tiếp ảnh hưởng đến trải nghiệm và giá trị sử dụng.
+
+Tái phát triển AMIS Ghi Chép không đơn thuần là bổ sung tính năng, mà là bước cần thiết để nâng cao giá trị sử dụng nội bộ và tạo nền tảng cho khả năng cạnh tranh, thương mại hóa trong tương lai.
+
+
+---
+## Slide 05 — Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Phạm vi
+
+Phân tích xu hướng phát triển, cách tiếp cận sản phẩm và giá trị kinh doanh của các ứng dụng ghi chú, phối hợp và khai thác tri thức bằng AI.
+
+
+---
+## Slide 06 — Notion AI, Gemini Notebook và Lark: 3 sản phẩm nổi bật
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+Ba sản phẩm được nghiên cứu theo ba hướng tiếp cận: tổ chức công việc, khai thác tri thức từ tài liệu và phối hợp trong doanh nghiệp.
+
+### Notion AI
+
+- Kiến trúc sư và người điều phối.
+- Vai trò: Hệ điều hành cho công việc và phối hợp nhóm.
+- Chức năng: Quản lý dự án, xây dựng Wiki nội bộ, giao tiếp nhóm, chia sẻ tài liệu và theo dõi tiến độ công việc.
+
+### Gemini Notebook
+
+- Trợ lý nghiên cứu dựa trên nguồn.
+- Vai trò: Phân tích, tổng hợp và khai thác tri thức.
+- Chức năng: Hỏi đáp có trích dẫn; tạo nội dung, học liệu và bảng dữ liệu bằng AI.
+
+### Lark
+
+- Hệ sinh thái cơ bản.
+- Vai trò: Hệ sinh thái điều hành cho công việc
+- Chức năng: Giao tiếp nhóm, chia sẻ tài liệu và theo dõi tiến độ công việc
+
+![Minh họa](assets/images/image-4-1.jpeg)
+
+![Minh họa](assets/images/gemini-logo.png)
+
+![Minh họa](assets/images/image-4-3.jpeg)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 07 — So sánh đối tượng sử dụng
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Notion AI
+
+- Đối tượng: Tổ chức, Doanh nghiệp
+- Chia sẻ: Phân quyền linh hoạt theo workspace
+- Làm việc nhóm: Phối hợp real-time
+
+### Gemini Notebook
+
+- Đối tượng: Cá nhân, nhóm nghiên cứu và tổ chức.
+- Chia sẻ: Mời người xem hoặc người chỉnh sửa notebook.
+- Làm việc nhóm: Cùng khai thác bộ nguồn; không thay thế công cụ quản lý dự án.
+
+### Lark
+
+- Đối tượng: Doanh nghiệp, tổ chức
+- Chia sẻ: Chia sẻ và phân quyền tài liệu trong workspace
+- Làm việc nhóm: Phối hợp real-time (Docs, Chat, Meeting, Task)
+
+![Minh họa](assets/images/image-5-1.png)
+
+![Minh họa](assets/images/gemini-logo.png)
+
+![Minh họa](assets/images/image-5-3.jpeg)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 08 — Notion: không gian làm việc linh hoạt và tùy biến
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+Notion kết hợp ghi chú, quản lý dự án và tài liệu trong một không gian có thể tùy biến theo nhu cầu.
+
+### Không gian làm việc tùy biến
+
+Tổ chức Wiki, dự án và tài liệu trên cùng nền tảng, phù hợp với cách làm việc của từng cá nhân hoặc nhóm.
+
+### Database liên kết
+
+Liên kết các trang và dữ liệu để tổ chức thông tin có cấu trúc, thay vì chỉ lưu các ghi chú rời rạc.
+
+### Nhiều cách hiển thị
+
+Trình bày cùng dữ liệu dưới các dạng Kanban, Calendar, Table hoặc Gallery theo mục đích sử dụng.
+
+Tùy biến cách tổ chức và hiển thị giúp một nền tảng phục vụ nhiều nhu cầu công việc.
+
+**Ghi chú thuyết trình:**
+
+Notion được giới thiệu như một không gian làm việc kết hợp ghi chú, dự án và tài liệu. Hai năng lực nổi bật là tổ chức không gian tùy chỉnh và database liên kết với nhiều cách hiển thị.
+
+
+---
+## Slide 09 — Hệ sinh thái của Notion AI: Hơn cả một ứng dụng ghi chú
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+![Minh họa](assets/images/image-8-1.jpeg)
+
+
+---
+## Slide 10 — Notion AI: Trợ lý AI trong từng dòng chữ
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Q&A: Hỏi đáp trên toàn bộ workspace (bao gồm cả Slack/Google Drive được kết nối). Ví dụ: “Chính sách làm việc tại nhà nằm ở đâu?”
+- Viết & Chỉnh sửa: Thay đổi giọng văn (Tone), sửa lỗi ngữ pháp, dịch thuật, viết tiếp.
+- Database Autofill: Tự động tóm tắt hoặc trích xuất action items từ meeting notes vào cột dữ liệu.
+
+![Minh họa](assets/images/image-9-1.jpeg)
+
+
+---
+## Slide 11 — Notion AI: minh họa trải nghiệm trên thiết bị di động
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+![Minh họa](assets/images/image-1003-2.jpeg)
+
+
+---
+## Slide 12 — 3 Kịch bản "Ăn Tiền" nhất của Notion AI
+**Phần:**
+
+![Minh họa](assets/images/kịch bản ăn tiền của notion.png)
+
+
+---
+## Slide 13 — Gemini Notebook: tổng quan tính năng
+**Phần:**
+
+![Minh họa](assets/images/gemini-workflow-ai.png)
+
+**Ghi chú thuyết trình:**
+
+Minh họa khái quát luồng nguồn tài liệu → hỏi đáp có trích dẫn → 9 đầu ra Studio. Ảnh tạo bằng image_gen. Slide hiển thị tiêu đề và hình minh họa, không có đoạn diễn giải.
+
+
+---
+## Slide 14 — Gemini Notebook: nội dung và truyền đạt bằng AI
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Podcast & video: Truyền đạt, đào tạo nội bộ; nghe hoặc xem nhanh ý chính từ nguồn.
+- Bản trình bày: Tạo bản nháp slide để chuẩn bị họp, báo cáo và thuyết trình.
+- Bản đồ tư duy: Hệ thống hóa chủ đề, nhận diện quan hệ và lập dàn ý.
+- Báo cáo: Tổng hợp nhiều nguồn thành bản nháp phục vụ công việc.
+- Giá trị: Tái sử dụng tri thức từ cùng bộ nguồn cho nhiều mục đích; hỗ trợ đào tạo, truyền đạt và giảm công sức chuẩn bị nội dung.
+
+![Minh họa](assets/images/gemini-content-value-ai.png)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+Kết luận: Các dạng đầu ra AI giúp tái sử dụng cùng bộ nguồn cho đào tạo, thuyết trình và báo cáo; người dùng giảm thao tác tổng hợp, định dạng và tạo nội dung từ đầu, đồng thời vẫn cần rà soát độ chính xác và sự phù hợp.
+
+
+---
+## Slide 15 — Gemini Notebook: học liệu và dữ liệu bằng AI
+**Phần:**
+
+![Minh họa](assets/images/Gemini Notebook_ Công cụ học tập trực quan.png)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 16 — Ví dụ - Đồ họa thông tin: từ báo cáo đến ảnh tổng quan
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Đầu vào: Các nguồn được chọn và yêu cầu về nội dung cần tổng hợp.
+- Tùy chỉnh: Mô tả phong cách hình ảnh và trọng tâm trình bày mong muốn.
+- Đầu ra: Ảnh tổng quan giúp truyền đạt ý chính và mối liên hệ trực quan.
+- Minh họa: Tổng hợp hiện trạng, đối thủ, định vị và lộ trình MISA Note trong một đồ họa.
+
+![Minh họa](assets/images/gemini-infographic.png)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 17 — Ví dụ - Bảng dữ liệu: tổng hợp nhiều nguồn có cấu trúc
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Gom thông tin nằm rải rác trong nhiều tài liệu thành một bảng có cấu trúc.
+- Tùy chỉnh yêu cầu về hàng, cột và nội dung cần tổng hợp.
+- Đối chiếu, phân loại và phân tích dữ liệu mà không phải tổng hợp thủ công.
+- Xuất sang Google Trang tính để tiếp tục xử lý.
+- Minh họa: So sánh sản phẩm theo đối tượng, tính năng AI, phối hợp và ưu điểm.
+
+![Minh họa](assets/images/gemini-data-table.png)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 18 — Lark: hệ sinh thái làm việc tích hợp
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Tổng quan
+
+Lark được biết đến là một hệ sinh thái,  tích hợp các tính năng như Chat, Meeting… Trong đó nổi bật về tính năng của Chat(messager)
+
+
+---
+## Slide 19 — Lark: tích hợp AI vào luồng phối hợp và xử lý công việc
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+AI được tích hợp trong chat, cuộc họp và hoạt động phối hợp để hỗ trợ nhóm làm việc ngay trong môi trường quen thuộc.
+
+### Ghi nhận và chia sẻ
+
+Hỗ trợ ghi chú, tóm tắt nội dung thảo luận và gửi lại thông tin sau cuộc họp qua chat.
+
+### Xử lý thông tin
+
+Hỗ trợ viết lại nội dung, tổng hợp báo cáo và phân tích dữ liệu phục vụ công việc.
+
+### Kết nối phối hợp
+
+Kết nối thông tin với tài liệu và các công cụ trong hệ sinh thái để các thành viên cùng nắm bắt tiến độ, nội dung cần phối hợp.
+
+Giảm thao tác thủ công và chuyển đổi công cụ, giúp nhóm phối hợp nhanh và đồng bộ.
+
+**Ghi chú thuyết trình:**
+
+Lợi ích được nhóm theo ba hoạt động: ghi nhận/chia sẻ, xử lý thông tin và phối hợp. Các ý tăng tốc công việc, nâng hiệu suất và giảm thao tác lặp được gộp vào thông điệp giá trị chung, thay vì liệt kê lặp lại.
+
+
+---
+## Slide 20 — Ví dụ: Tích hợp AI summary trong cuộc họp
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Trong cuộc họp
+
+- Cho phép bật tắt AI Summary trong cuộc họp để tạo meeting notes, biên bản cuộc họp
+- Giúp tiết kiệm thời gian, hỗ trợ user ghi lại các ý tưởng, nội dung quan trọng trong buổi họp.
+
+### Sau cuộc họp
+
+- Sau mỗi cuộc họp, trợ lý AI sẽ gửi meeting notes qua chat messenger để user xem lại.
+- Đồng thời chuyển thành dạng docs để user chỉnh sửa.
+
+![Minh họa](assets/images/image-21-1.jpeg)
+
+![Minh họa](assets/images/image-21-2.jpeg)
+
+
+---
+## Slide 21 — Điểm nổi bật của Lark Docs
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Các tiện ích tích hợp
+
+Một số điểm nổi bật của Lark Docs như: tích hợp sẵn nhiều template, đặc biệt là vẽ mindmap,  cây tư duy (brain-tree), Lark base ….
+
+
+---
+## Slide 22 — Tích hợp nhiều công cụ tiện ích
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+Lark Docs tích hợp nhiều công cụ giúp người dùng có thể nhanh chóng tạo video, lưu đồ, mind map hay bảng tính (sheets) ngay trực tiếp trong tài liệu mà không cần sử dụng thêm các công cụ bên ngoài.
+
+![Minh họa](assets/images/image-24-1.jpeg)
+
+
+---
+## Slide 23 — Tích hợp với Lark Base
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Lark Docs còn tích hợp với Lark Base – một công cụ trong hệ sinh thái Lark dùng để tổng hợp và phân tích dữ liệu.
+- Nhờ đó, người dùng có thể chèn các bảng dữ liệu vào tài liệu một cách nhanh chóng, hỗ trợ hiệu quả cho việc làm báo cáo và nghiên cứu.
+
+![Minh họa](assets/images/image-25-1.jpeg)
+
+
+---
+## Slide 24 — Tích hợp với tính năng nhắc việc và thông báo
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+Người dùng cũng có thể mention các thành viên trong nhóm ngay trong tài liệu và gửi thông báo trực tiếp cho họ, giúp việc phối hợp và trao đổi công việc trở nên thuận tiện hơn.
+
+![Minh họa](assets/images/image-26-1.jpeg)
+
+
+---
+## Slide 25 — Tích hợp với Lark Clip
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### Nội dung chính
+
+- Cho phép người dùng lưu một bài viết từ trình duyệt vào tài liệu Docs mà vẫn giữ nguyên định dạng ban đầu.
+- Tính năng này đặc biệt hữu ích khi thu thập và lưu trữ tài liệu phục vụ cho nghiên cứu.
+
+![Minh họa](assets/images/image-27-1.jpeg)
+
+
+---
+## Slide 26 — Bài học cho MISA: biến tài liệu thành giá trị công việc
+**Phần:** Phần II: Nghiên cứu thị trường và đối thủ cạnh tranh
+
+### 1. Tri thức dễ kế thừa
+
+- Notion: Tổ chức tài liệu theo dự án và nhóm.
+- Giá trị: Giảm tìm kiếm, hỏi lại và làm lại; hỗ trợ nhân viên mới.
+- MISA: Ưu tiên cấu trúc rõ, tìm kiếm thuận tiện và chia sẻ dễ dùng.
+
+### 2. AI giảm công tổng hợp
+
+- Gemini Notebook: Hỏi đáp, tổng hợp và tạo nội dung từ nguồn.
+- Giá trị: Giảm tổng hợp thủ công; hỗ trợ báo cáo và đào tạo.
+- MISA: Ưu tiên hỏi đáp có trích dẫn, đúng quyền truy cập.
+
+### 3. Tăng cường phối hợp và chia sẻ tri thức
+
+- Lark: Kết hợp tài liệu, trao đổi và phối hợp trong một không gian làm việc thống nhất.
+- Giá trị: Giúp các thành viên cùng xây dựng, cập nhật và sử dụng thông tin, hạn chế tài liệu phân tán và trao đổi thiếu đồng bộ.
+- MISA: Phát triển khả năng cùng chỉnh sửa, bình luận và trao đổi trực tiếp trên tài liệu; hoàn thiện trải nghiệm chia sẻ và tận dụng hệ thống phân quyền hiện có.
+
+Ưu tiên: hoàn thiện nền tảng → thử AI trên việc lặp lại → đo hiệu quả nội bộ → xem xét thương mại hóa.
+
+**Ghi chú thuyết trình:**
+
+Thông điệp trình bày: Nghiên cứu ba nền tảng cho thấy ba hướng tạo giá trị bổ sung cho nhau: tổ chức tri thức để tìm và kế thừa; khai thác tri thức bằng AI; đưa tri thức vào công việc thực tế. Đây là tổng hợp và đề xuất cho MISA từ các năng lực đã trình bày trong Phần II, không phải kết quả đo năng suất hoặc doanh thu của đối thủ.
+
+1. Notion — tri thức dễ tìm, dễ kế thừa. Khi tài liệu gắn với dự án, nhóm và cấu trúc rõ ràng, người dùng có thể tiếp cận lại kiến thức thay vì tìm kiếm, hỏi đồng nghiệp hoặc làm lại. Với MISA, đây là lý do ưu tiên giải quyết hạn chế tìm kiếm và trải nghiệm chia sẻ đã nêu ở Phần I.
+
+2. Gemini Notebook — AI giảm công xử lý thông tin. Giá trị không nằm ở số định dạng đầu ra mà ở việc giảm thao tác đọc, đối chiếu, tổng hợp và biên soạn lại. Tình huống nên thử trong MISA: hỏi đáp quy trình có trích dẫn, tổng hợp báo cáo tuần và trích xuất kết luận từ biên bản. AI chỉ khai thác tài liệu người dùng được phép truy cập; nội dung quan trọng cần được đối chiếu nguồn.
+
+3. Lark — tài liệu đi cùng công việc. Khi kết quả cuộc họp và tài liệu liên quan được dùng tiếp trong phối hợp, ghi chú có vai trò trong quá trình thực hiện công việc. Với MISA, nên kiểm chứng các điểm kết nối có nhu cầu rõ trong luồng nội bộ trước khi mở rộng tích hợp.
+
+Hàm ý cho quyết định đầu tư: hoàn thiện nền tảng tổ chức, tìm kiếm và chia sẻ trước; thử AI có phạm vi trên các tác vụ lặp lại; chỉ mở rộng khi có bằng chứng hiệu quả nội bộ. Không cần triển khai đồng thời toàn bộ tính năng của ba nền tảng.
+
+Đánh giá bằng tác vụ thực tế với cùng đầu vào và tiêu chí chất lượng: thời gian tìm đúng tài liệu; thời gian hoàn thành bản tổng hợp đã rà soát; độ chính xác và khả năng kiểm tra nguồn; tỷ lệ sử dụng lại; phản hồi người dùng và chi phí phục vụ. Slide không đưa ra tỷ lệ tiết kiệm khi chưa có số liệu đo. Việc khảo sát nhu cầu, khả năng trả phí và mô hình kinh doanh thuộc bước thương mại hóa sau mục tiêu nội bộ.
+
+Câu chuyển sang Phần III: Từ ba bài học này, cần đối chiếu năng lực hiện tại để xác định khoảng cách và cơ hội phát triển phù hợp cho MISA Note.
+
+3. Tăng cường phối hợp và chia sẻ tri thức
+• Lark: Kết hợp tài liệu, trao đổi và phối hợp trong một không gian làm việc thống nhất.
+• Giá trị: Giúp các thành viên cùng xây dựng, cập nhật và sử dụng thông tin, hạn chế tài liệu phân tán và trao đổi thiếu đồng bộ.
+• MISA: Phát triển khả năng cùng chỉnh sửa, bình luận và trao đổi trực tiếp trên tài liệu; hoàn thiện trải nghiệm chia sẻ và tận dụng hệ thống phân quyền hiện có.
+
+
+---
+## Slide 27 — Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Phạm vi
+
+Đối chiếu các năng lực cốt lõi với đối thủ để xác định khoảng cách cạnh tranh, cơ hội khác biệt hóa và định vị phù hợp cho MISA Note.
+
+
+---
+## Slide 28 — So sánh tổng quan theo nhu cầu và năng lực
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+| Tính năng | Gemini Notebook | Notion | Lark |
+| --- | --- | --- | --- |
+| Nhu cầu chính | Nghiên cứu và phân tích nguồn | Sáng tạo và quản lý thông tin | Phối hợp và vận hành |
+| Nguồn dữ liệu | ✔ Upload (PDF, Docs, Web) | ✔ Workspace & Connected Apps | ✔ Chat, Base, Meeting |
+| Trích dẫn (Citations) | ✔ Có (Chính xác cao) | ✖ Không (Dựa trên context) | ✖ Không trực tiếp (AI dựa trên dữ liệu cuộc họp) |
+| Định dạng đầu ra | 9 đầu ra Studio: podcast, slide, video, sơ đồ, báo cáo, thẻ, quiz, infographic, bảng | ✔ Văn bản, Bảng, Code, Database | ✔ Chat summary, Meeting notes |
+| Chi phí | Miễn phí và các gói nâng cấp | $ Freemium + ~$10/tháng cho AI | $ Freemium + gói doanh nghiệp |
+| Độ khó | 😊 Dễ (giao diện đơn giản) | 😐 Trung bình (cần học cách setup) | 😊 Trung bình (tích hợp sẵn nhiều công cụ) |
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 29 — So sánh: Nghiên cứu và Phân tích
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Gemini Notebook: Deep Dives
+
+- Tốt nhất khi: Phân tích sâu một tập hợp tài liệu cụ thể (luận văn, báo cáo, tài liệu nghiên cứu).
+- Lý do: Có hệ thống trích dẫn nguồn và có thể xử lý nhiều nguồn tài liệu cùng lúc (PDF, Docs, Web).
+
+### Notion: Broad Knowledge
+
+- Tốt nhất khi: Tìm kiếm và quản lý thông tin rải rác trong nhiều dự án hoặc wiki kiến thức của cá nhân/doanh nghiệp.
+- Lý do: Kết nối dữ liệu từ workspace và nhiều ứng dụng, hỗ trợ quản lý kiến thức, database và hệ thống tài liệu.
+
+### Lark: Team Collaboration
+
+- Tốt nhất khi: Làm việc nhóm, giao tiếp, họp nội bộ và quản lý chung trong tổ chức hoặc doanh nghiệp.
+- Lý do: Nền tảng all-in-one tích hợp chat, tài liệu, họp video, lịch và quản lý công việc, giúp phối hợp và chia sẻ thông tin theo thời gian thực.
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 30 — So sánh: Quản lý và phối hợp
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+| Nền tảng | Vai trò chính | Đặc điểm | Phù hợp |
+| --- | --- | --- | --- |
+| Gemini Notebook | Khai thác tri thức từ nguồn | Chia sẻ notebook với quyền Viewer/Editor; cùng khai thác nguồn và đầu ra AI, không quản lý dự án. | Nghiên cứu, học tập và tổng hợp tài liệu theo nhóm. |
+| Notion | Phối hợp theo nhóm, doanh nhiệp | Hỗ trợ comment, @mention, giao task, theo dõi tiến độ theo thời gian thực. Có thể xây dựng database, wiki và workflow cho nhóm. | Quản lý dự án nhóm, xây dựng wiki nội bộ và tổ chức quy trình làm việc. |
+| Lark | Phối hợp doanh nghiệp | Tích hợp chat, tài liệu, họp video, lịch và quản lý công việc trong một nền tảng (khá giống hệ sinh thái Amis). Hỗ trợ phối hợp real-time và giao tiếp nội bộ. | Làm việc nhóm, quản lý dự án và vận hành công việc trong tổ chức/doanh nghiệp. |
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 31 — So sánh: Viết lách và sáng tạo
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Gemini Notebook: Tạo nội dung từ nguồn
+
+Tạo báo cáo, bản trình bày, video, podcast, đồ họa thông tin và bảng dữ liệu dựa trên bộ nguồn đã chọn.
+
+### Notion: Người viết nháp & Biên tập
+
+Hỗ trợ AI viết blog, email, social post; brainstorm ý tưởng, chỉnh sửa và thay đổi văn phong.
+
+### Lark: Thư ký
+
+Hỗ trợ tóm tắt hội thoại bằng AI trong meeting, gửi lại cho người dùng sau mỗi buổi họp quan trọng
+
+![Minh họa](assets/images/image-32-1.jpeg)
+
+![Minh họa](assets/images/image-32-2.jpeg)
+
+![Minh họa](assets/images/image-32-3.jpeg)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 32 — So sánh: Khả năng hỗ trợ tiếng Việt
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### NOTION AI
+Viết và chỉnh sửa mượt mà
+
+- Hỗ trợ viết và chỉnh sửa tiếng Việt tự nhiên.
+- Giao diện tích hợp trực tiếp trong không gian làm việc giúp soạn thảo, chỉnh sửa và quản lý tài liệu liền mạch.
+
+### Gemini Notebook
+Phân tích & tổng hợp tài liệu
+
+- Xuất sắc trong phân tích tài liệu tiếng Việt (PDF, Docs), xử lý tốt văn bản chuyên ngành
+- Có thể tạo podcast từ tài liệu nhưng ngữ điệu tiếng Việt đôi khi chưa thực sự tự nhiên như Tiếng Anh
+
+### LARK AI
+Soạn thảo & phối hợp nhóm
+
+- Hỗ trợ tóm tắt cuộc họp và cải thiện văn bản.
+- Cho phép chuyển đổi sang Tiếng Việt nhưng ngôn ngữ chưa được tự nhiên
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 33 — Khi nào dùng công cụ nào ?
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Gemini Notebook: Nghiên cứu chuyên sâu
+
+- Phù hợp khi cần phân tích, tổng hợp và đối chiếu nhiều tài liệu.
+- Hỏi đáp có trích dẫn để kiểm tra với nguồn.
+- Tạo nội dung, học liệu và bảng dữ liệu bằng 9 công cụ Studio.
+
+### Notion AI: Sáng tạo & Quản lý toàn diện
+
+- Mạnh trong việc viết lại, tóm tắt, và chỉnh sửa nội dung văn bản.
+- Công cụ đắc lực cho quản lý dự án, xây dựng database và wiki.
+- Hỗ trợ phối hợp hiệu quả trong không gian làm việc.
+
+### Lark: Phối hợp & Vận hành doanh nghiệp
+
+- Giải pháp tích hợp cho phối hợp nhóm, quản lý task, lịch và quy trình làm việc.
+- Hỗ trợ  tóm tắt cuộc họp trong môi trường làm việc tập trung.
+- Phù hợp cho các tổ chức cần một nền tảng all-in-one để vận hành hiệu quả.
+
+![Minh họa](assets/images/image-34-1.jpeg)
+
+![Minh họa](assets/images/image-34-2.jpeg)
+
+![Minh họa](assets/images/image-34-3.jpeg)
+
+**Ghi chú thuyết trình:**
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 34 — Khoảng cách cần ưu tiên: tìm được, chia sẻ được, rồi khai thác bằng AI
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+| Năng lực | Trọng tâm đánh giá | Khoảng cách cần giải quyết | Ưu tiên |
+| --- | --- | --- | --- |
+| Tìm kiếm | Người đề xuất phản ánh khó tìm | Đo tác vụ; tổ chức và tìm kiếm rõ ràng | Nội bộ trước |
+| Chia sẻ / quyền | Người đề xuất phản ánh khó dùng | Quyền dễ hiểu và được thực thi thật | Nội bộ trước |
+| Ghi chú / quản lý | Chuẩn hóa luồng tạo và tổ chức tài liệu | Lưu bền vững; ổn định; kiểm thử dùng thật | MVP nội bộ |
+| AI / tích hợp | Khai thác tri thức bằng AI | Nguồn đúng quyền; chất lượng; chi phí | Thử có kiểm soát |
+Đánh giá khoảng cách bằng tác vụ thực tế, không chỉ bằng bảng có/không tính năng.
+
+**Ghi chú thuyết trình:**
+
+Đánh giá từng năng lực theo nhu cầu công việc, trải nghiệm sử dụng và yêu cầu vận hành để xác định thứ tự ưu tiên phát triển.
+
+
+---
+## Slide 35 — Định vị MISA Note gắn tri thức với công việc của doanh nghiệp Việt Nam
+**Phần:** Phần III: Phân tích năng lực cạnh tranh và cơ hội phát triển
+
+### Ghi chú và tài liệu
+
+Một nơi để tạo, tổ chức và tìm lại tri thức công việc.
+
+### Chia sẻ dễ hiểu
+
+Người dùng biết tài liệu ở đâu, ai được xem và ai được sửa.
+
+### AI theo nguồn được phép
+
+Hỏi đáp, tổng hợp, tái sử dụng thông tin cùng đường dẫn nguồn.
+
+Nền tảng ghi chú và tri thức cho MISA trước, mở rộng khi có bằng chứng nhu cầu.
+
+**Ghi chú thuyết trình:**
+
+Định vị đề xuất: MISA Note giúp nhân viên tạo lập, tìm kiếm, chia sẻ và khai thác tri thức phục vụ công việc. Không cạnh tranh bằng cách sao chép toàn bộ Notion hay xây lại hệ sinh thái Lark. Khác biệt gắn nghiệp vụ và tích hợp MISA là giả thuyết cần xác thực.
+
+
+---
+## Slide 36 — Phần IV — Chiến lược và lộ trình phát triển MISA Note
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
+
+Từ kết quả đánh giá sản phẩm hiện tại và nghiên cứu các nền tảng hàng đầu, MISA Note cần được phát triển theo một định hướng rõ ràng: hoàn thiện năng lực ghi chú và quản lý tài liệu, đồng thời từng bước ứng dụng AI để nâng cao giá trị khai thác tri thức.
+
+Chiến lược tập trung vào hai mục tiêu: xây dựng sản phẩm đáp ứng hiệu quả nhu cầu nội bộ MISA và tạo nền tảng để phát triển thành giải pháp thương mại dành cho doanh nghiệp.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 37 — PHẦN IV: CHIẾN LƯỢC VÀ LỘ TRÌNH PHÁT TRIỂN SẢN PHẨM**
+
+**Tiêu đề:** Phần IV — Chiến lược và lộ trình phát triển MISA Note
+
+**Nội dung giới thiệu:**
+
+Từ kết quả đánh giá sản phẩm hiện tại và nghiên cứu các nền tảng hàng đầu, MISA Note cần được phát triển theo một định hướng rõ ràng: **hoàn thiện năng lực ghi chú và quản lý tài liệu, đồng thời từng bước ứng dụng AI để nâng cao giá trị khai thác tri thức.**
+
+Chiến lược tập trung vào hai mục tiêu: xây dựng sản phẩm đáp ứng hiệu quả nhu cầu nội bộ MISA và tạo nền tảng để phát triển thành giải pháp thương mại dành cho doanh nghiệp.
+
+
+---
+## Slide 37 — Định hướng chiến lược: từ ghi chú đến khai thác tri thức bằng AI
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
+
+Phát triển theo bốn năng lực kế thừa, từ quản lý thông tin đến khai thác và tái sử dụng tri thức bằng AI.
+
+| Năng lực chiến lược | Định hướng phát triển | Giá trị mang lại |
+| --- | --- | --- |
+| 1. Ghi chú và quản lý tài liệu | Tạo lập, chỉnh sửa, tổ chức, tìm kiếm và chia sẻ tài liệu trong một không gian thống nhất. | Nền tảng quản lý thông tin cho công việc hằng ngày. |
+| 2. AI tìm kiếm và hỏi đáp tri thức | Tìm kiếm ngữ nghĩa; trả lời dựa trên tài liệu, kèm trích dẫn nguồn. | Rút ngắn thời gian tìm kiếm, tiếp cận đúng thông tin. |
+| 3. AI phân tích và tổng hợp tài liệu | Phân tích một hoặc nhiều tài liệu; tổng hợp, so sánh và xác định điểm quan trọng. | Chuyển thông tin lớn thành nội dung phục vụ công việc và quyết định. |
+| 4. AI tạo nội dung đa định dạng | Chuyển tri thức thành báo cáo, bản trình bày, sơ đồ tư duy hoặc âm thanh. | Tái sử dụng thông tin, giảm công sức tạo nội dung từ đầu. |
+Bài học: Notion — tổ chức linh hoạt; Gemini Notebook — khai thác tài liệu bằng AI; Lark — kết nối tài liệu và phối hợp.
+
+Ghi chú tạo ra tri thức; AI giúp khai thác tri thức hiệu quả hơn.
+
+**Ghi chú thuyết trình:**
+
+**Thông điệp chính:** MISA Note cần phát triển theo bốn năng lực có tính kế thừa, từ quản lý thông tin cơ bản đến khai thác và tái sử dụng tri thức bằng AI.
+
+| Năng lực chiến lược | Định hướng phát triển | Giá trị mang lại |
+| --- | --- | --- |
+| 1. Ghi chú và quản lý tài liệu | Cho phép người dùng tạo lập, chỉnh sửa, tổ chức, tìm kiếm và chia sẻ tài liệu trong một không gian thống nhất. | Hình thành nền tảng quản lý thông tin phục vụ công việc hằng ngày. |
+| 2. AI tìm kiếm và hỏi đáp tri thức | Tìm kiếm theo ngữ nghĩa, trả lời câu hỏi dựa trên tài liệu và cung cấp trích dẫn nguồn. | Rút ngắn thời gian tìm kiếm, giúp người dùng tiếp cận đúng thông tin cần thiết. |
+| 3. AI phân tích và tổng hợp tài liệu | Phân tích một hoặc nhiều tài liệu, tổng hợp nội dung, so sánh thông tin và xác định các điểm quan trọng. | Chuyển khối lượng thông tin lớn thành nội dung có giá trị cho công việc và ra quyết định. |
+| 4. AI tạo nội dung đa định dạng | Chuyển đổi tri thức từ tài liệu thành báo cáo, bản trình bày, sơ đồ tư duy hoặc nội dung âm thanh. | Tăng khả năng tái sử dụng thông tin, giảm công sức tạo nội dung từ đầu. |
+
+**Cơ sở lựa chọn:** Kết quả nghiên cứu Notion cho thấy vai trò của tổ chức thông tin linh hoạt; Gemini Notebook nổi bật ở khả năng khai thác tài liệu bằng AI; Lark thể hiện giá trị của việc kết nối tài liệu với hoạt động phối hợp. MISA Note có thể kết hợp những bài học này theo lộ trình phù hợp với năng lực và nhu cầu thực tế.
+
+**Kết luận:** Quản lý ghi chú là nền tảng để người dùng tạo ra tri thức; AI là hướng phát triển giúp khai thác tri thức đó hiệu quả hơn.
+
+Nguồn cập nhật: https://blog.google/innovation-and-ai/products/gemini-notebook/notebooklm-gemini-notebook/ ; https://support.google.com/gemininotebook/answer/16206563?hl=en ; https://support.google.com/gemininotebook/answer/16757456?hl=en . Đối chiếu ngày 13/11/2026. Bản trình bày được mô tả là bộ slide; tài liệu trợ giúp hiện nêu xuất PDF, không khẳng định xuất PPTX trực tiếp.
+
+
+---
+## Slide 38 — Mục tiêu 1: công cụ làm việc thiết yếu trong nội bộ MISA
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
+
+Trước khi thương mại hóa, MISA Note cần chứng minh giá trị sử dụng thực tế ngay trong môi trường MISA.
+
+### Giải quyết hạn chế hiện tại
+
+- Chuyển từ tiếp nhận tài liệu có sẵn sang chủ động tạo lập, quản lý và khai thác thông tin.
+- Người dùng ghi lại nội dung công việc, xây dựng tài liệu, tổ chức và tìm kiếm khi cần.
+
+### Quản lý và chia sẻ tri thức
+
+- Tập trung tài liệu và ghi chú, giảm thông tin phân tán, khó tìm hoặc phải trao đổi nhiều lần.
+- Kế thừa phân quyền hiện có; cải thiện trải nghiệm chia sẻ và kiểm soát phạm vi truy cập.
+
+### Kiểm chứng trước khi mở rộng
+
+Triển khai cho các nhóm người dùng nội bộ và đánh giá:
+- Mức sử dụng, tỷ lệ quay lại.
+- Thời gian tìm và xử lý thông tin.
+- Hài lòng và phản hồi.
+- Ổn định, bảo mật, vận hành.
+
+Nội bộ là nơi hoàn thiện sản phẩm, kiểm chứng giá trị và tích lũy kinh nghiệm.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 39 — MỤC TIÊU 1: XÂY DỰNG MISA NOTE THÀNH CÔNG CỤ LÀM VIỆC THIẾT YẾU TRONG NỘI BỘ**
+
+**Thông điệp chính:** Trước khi thương mại hóa, MISA Note cần chứng minh giá trị sử dụng thực tế ngay trong môi trường MISA.
+
+### **1. Giải quyết những hạn chế của sản phẩm hiện tại**
+
+Chuyển từ mô hình người dùng chủ yếu tiếp nhận tài liệu có sẵn sang một nền tảng cho phép chủ động tạo lập, quản lý và khai thác thông tin.
+
+Người dùng có thể ghi lại nội dung công việc, xây dựng tài liệu, tổ chức thông tin và tìm kiếm khi cần.
+
+### **2. Nâng cao hiệu quả quản lý và chia sẻ tri thức nội bộ**
+
+Tập trung tài liệu và ghi chú trong không gian làm việc có tổ chức, giảm tình trạng thông tin phân tán, khó tìm kiếm hoặc phải trao đổi nhiều lần.
+
+Kế thừa khả năng phân quyền hiện có, đồng thời hoàn thiện trải nghiệm chia sẻ để người dùng dễ dàng phối hợp và kiểm soát phạm vi truy cập.
+
+### **3. Kiểm chứng giá trị trước khi mở rộng**
+
+Triển khai cho các nhóm người dùng nội bộ, đánh giá khả năng đáp ứng công việc thực tế thông qua:
+
+- Mức độ sử dụng và tỷ lệ quay lại.
+- Thời gian tìm kiếm, xử lý thông tin.
+- Mức độ hài lòng và phản hồi của người dùng.
+- Tính ổn định, bảo mật và khả năng vận hành.
+
+**Kết luận:** Nội bộ MISA là môi trường để hoàn thiện sản phẩm, kiểm chứng giá trị và tích lũy kinh nghiệm trước khi tiếp cận khách hàng bên ngoài.
+
+
+---
+## Slide 39 — Ưu tiên hoàn thiện nền tảng ghi chú và quản lý tài liệu
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
+
+AI có giá trị phải dựa trên năng lực tạo lập, lưu trữ và quản lý thông tin được hoàn thiện.
+
+### Tạo lập và chỉnh sửa
+
+- Trình soạn thảo linh hoạt, Quick Note và hệ thống mẫu.
+- Ghi lại ý tưởng, thông tin và nội dung công việc thuận tiện.
+
+### Tổ chức thông tin
+
+- Không gian cá nhân và nhóm; thư mục, tài liệu có cấu trúc.
+- Hỗ trợ tìm kiếm và truy cập nhanh.
+
+### Chia sẻ và phối hợp
+
+- Kế thừa phân quyền hiện có.
+- Cải thiện chia sẻ cho cá nhân, nhóm, không gian làm việc; nghiên cứu hình thức phối hợp phù hợp.
+
+### Vận hành tin cậy
+
+- Lưu trữ, bảo vệ dữ liệu và kiểm soát truy cập.
+- Giữ hiệu năng ổn định khi người dùng và tài liệu tăng.
+
+Một môi trường thống nhất cho toàn bộ luồng ghi chú → tổ chức → tìm kiếm → chia sẻ.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 40 — ƯU TIÊN HOÀN THIỆN NỀN TẢNG GHI CHÚ VÀ QUẢN LÝ TÀI LIỆU**
+
+**Thông điệp chính:** Muốn phát triển các năng lực AI có giá trị, MISA Note trước hết phải đáp ứng tốt nhu cầu tạo lập, lưu trữ và quản lý thông tin.
+
+**Tạo lập và chỉnh sửa nội dung**
+
+Phát triển trình soạn thảo tài liệu linh hoạt, ghi chú nhanh (Quick Note) và hệ thống mẫu, giúp người dùng dễ dàng ghi lại ý tưởng, thông tin và nội dung công việc.
+
+**Tổ chức và quản lý thông tin**
+
+Xây dựng không gian làm việc cá nhân và nhóm, quản lý thư mục, tài liệu theo cấu trúc rõ ràng, hỗ trợ tìm kiếm và truy cập nhanh.
+
+**Chia sẻ và phối hợp**
+
+Kế thừa tính năng phân quyền hiện có, cải thiện thao tác chia sẻ cho cá nhân, nhóm và không gian làm việc; nghiên cứu bổ sung các hình thức phối hợp phù hợp.
+
+**Nền tảng vận hành tin cậy**
+
+Đảm bảo khả năng lưu trữ, bảo vệ dữ liệu, kiểm soát truy cập và duy trì hiệu năng ổn định khi số lượng người dùng và tài liệu tăng.
+
+**Giá trị kỳ vọng:** Hình thành một môi trường làm việc thống nhất, nơi người dùng có thể hoàn thành toàn bộ quá trình từ ghi chú, tổ chức, tìm kiếm đến chia sẻ tài liệu.
+
+
+---
+## Slide 40 — Mục tiêu 2: tạo giá trị khác biệt để hướng tới thương mại hóa
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
+
+Sau khi hoàn thành mục tiêu nội bộ, phát triển giá trị khác biệt để thuyết phục khách hàng doanh nghiệp lựa chọn.
+
+### Định vị theo nhu cầu
+
+- Không chạy đua số lượng tính năng.
+- Tập trung quản lý, tìm kiếm và khai thác tri thức cho doanh nghiệp Việt Nam.
+
+### Khác biệt dựa trên AI
+
+Từ lưu trữ sang hỏi đáp, tổng hợp và tạo nội dung trực tiếp từ tri thức tổ chức.
+
+### Hệ sinh thái MISA
+
+- Nghiên cứu kết nối thông tin và tài liệu ngay trong quy trình làm việc quen thuộc.
+- Đánh giá nhu cầu, kỹ thuật và hiệu quả đầu tư.
 
 ### Kiểm chứng kinh doanh
-Nghiên cứu khách hàng ngoài MISA.  
-Xác định trường hợp sử dụng có giá trị trả phí.  
-Thử AI và tích hợp theo nhu cầu.
 
-**Thông điệp:** Nội bộ là nơi kiểm chứng sản phẩm; thương mại hóa cần bằng chứng riêng.
+- Xác định phân khúc, bài toán thực tế và giá trị sẵn sàng trả phí.
+- Thử với khách hàng phù hợp trước khi mở rộng.
 
-**Ghi chú thuyết trình:** Không suy ra nhu cầu thị trường chỉ từ nhu cầu nội bộ. Nhóm nghiên cứu cần phân biệt hiệu quả sử dụng tại MISA và mức sẵn sàng trả phí của doanh nghiệp khách hàng.
+Thương mại hóa cần giải pháp khác biệt, đáp ứng nhu cầu và tạo doanh thu bền vững.
 
----
-## Slide 04 — Công cụ ghi chú mở rộng sang cộng tác và khai thác tri thức bằng AI
-**Phần:** II · THỊ TRƯỜNG  
-**Trạng thái:** THAM CHIẾU NGUỒN CHÍNH THỨC  
-**Bố cục:** cards
+**Ghi chú thuyết trình:**
 
-### Ghi chú & tổ chức
-Notion: trang, tài liệu và cơ sở dữ liệu linh hoạt.  
-Giá trị: người dùng chủ động tổ chức thông tin.
+## **SLIDE 41 — MỤC TIÊU 2: PHÁT TRIỂN GIÁ TRỊ KHÁC BIỆT ĐỂ HƯỚNG TỚI THƯƠNG MẠI HÓA**
 
-### Cộng tác & vận hành
-Lark: tài liệu gắn với trao đổi và công việc nhóm.  
-Giá trị: giảm phân mảnh trong phối hợp.
+**Thông điệp chính:** MISA Note cần có giá trị vượt ra ngoài một ứng dụng ghi chú thông thường để tạo lý do thuyết phục khách hàng doanh nghiệp lựa chọn sản phẩm.
 
-### Khai thác nguồn bằng AI
-NotebookLM / Gemini Notebook: hỏi đáp, tổng hợp và trích dẫn nguồn.  
-Giá trị: hỗ trợ đọc hiểu tài liệu.
+### **1. Định vị sản phẩm theo nhu cầu doanh nghiệp**
 
-**Thông điệp:** Ba nhóm giá trị là khung tham chiếu, không phải ba thị trường tách biệt.
+Không cạnh tranh bằng số lượng tính năng với các nền tảng lớn. MISA Note tập trung giải quyết bài toán quản lý, tìm kiếm và khai thác tri thức trong môi trường làm việc của doanh nghiệp Việt Nam.
 
-**Ghi chú thuyết trình:** Đây là mô tả năng lực từ trang chính thức, không phải bằng chứng thị phần hoặc mức tăng trưởng. Các sản phẩm có chức năng giao nhau. Google hiện chuyển các đường dẫn NotebookLM sang Gemini Notebook. Có thể bổ sung ảnh giao diện thật đã kiểm tra quyền sử dụng; không dùng ảnh AI giả làm screenshot.
+### **2. Phát triển lợi thế cạnh tranh dựa trên AI**
 
-**Nguồn:** [Notion · tính năng và các gói dịch vụ](https://www.notion.com/pricing) — truy cập 12/11/2026.
-**Nguồn:** [Lark · Docs và các gói dịch vụ](https://www.larksuite.com/en_us/plans) — truy cập 12/11/2026.
-**Nguồn:** [Google · giới thiệu Gemini Notebook, trước đây NotebookLM](https://support.google.com/gemininotebook/answer/16164461?hl=en) — truy cập 12/11/2026.
----
-## Slide 05 — Mỗi sản phẩm thu hút người dùng bằng một trọng tâm giá trị khác nhau
-**Phần:** II · THỊ TRƯỜNG  
-**Trạng thái:** SO SÁNH ĐỊNH TÍNH · KHÔNG XẾP HẠNG THỊ PHẦN  
-**Bố cục:** table
+Thay vì chỉ lưu trữ tài liệu, MISA Note hướng tới khả năng giúp người dùng đặt câu hỏi, tổng hợp thông tin và tạo ra nội dung phục vụ công việc trực tiếp từ nguồn tri thức của tổ chức.
 
-| Tiêu chí | Lark | Notion | NotebookLM¹ |
-| --- | --- | --- | --- |
-| Khách hàng | Doanh nghiệp, đội nhóm | Cá nhân, nhóm, doanh nghiệp | Người làm việc với nhiều nguồn |
-| Bài toán | Phối hợp và trao đổi | Tổ chức thông tin linh hoạt | Đọc hiểu và tổng hợp tài liệu |
-| Năng lực | Chat, Docs, cộng tác | Trang, database, AI | Hỏi đáp có trích dẫn |
-| Giá trị | Kết nối luồng làm việc | Tùy biến không gian làm việc | Khai thác nội dung theo nguồn |
-| Thu phí² | Các gói dịch vụ phân tầng | Free và gói thuê bao | Cơ bản và các gói nâng cấp |
-| Bài học | Giảm phân mảnh | Cho người dùng tự tổ chức | Đặt độ tin cậy lên trước |
-**Thông điệp:** MISA Note cần chọn nhu cầu trọng tâm thay vì chạy đua độ dài danh sách tính năng.
+### **3. Khai thác tiềm năng hệ sinh thái MISA**
 
-**Ghi chú thuyết trình:** ¹ NotebookLM hiện được Google gọi là Gemini Notebook. ² Mô hình gói tham khảo từ trang chính thức; không đưa giá, không suy ra doanh thu hoặc thành công thương mại. Cơ chế nâng cấp Google phụ thuộc gói và tài khoản. Bài học là suy luận chiến lược của đề án, không phải tuyên bố của nhà cung cấp.
+Nghiên cứu khả năng kết nối với các sản phẩm MISA để người dùng tiếp cận thông tin và tài liệu ngay trong quy trình làm việc quen thuộc.
 
-**Nguồn:** [Notion · tính năng và các gói dịch vụ](https://www.notion.com/pricing) — truy cập 12/11/2026.
-**Nguồn:** [Lark · Docs và các gói dịch vụ](https://www.larksuite.com/en_us/plans) — truy cập 12/11/2026.
-**Nguồn:** [Google · giới thiệu Gemini Notebook, trước đây NotebookLM](https://support.google.com/gemininotebook/answer/16164461?hl=en) — truy cập 12/11/2026.
-**Nguồn:** [Google · các lựa chọn nâng cấp](https://notebook.google/plans) — truy cập 12/11/2026.
----
-## Slide 06 — Ưu tiên nghiên cứu doanh nghiệp nhỏ và vừa trong tập khách hàng MISA
-**Phần:** II · THỊ TRƯỜNG  
-**Trạng thái:** ĐỀ XUẤT NGHIÊN CỨU  
-**Bố cục:** table
+Đây là cơ hội khác biệt hóa cần được kiểm chứng về nhu cầu, tính khả thi kỹ thuật và hiệu quả đầu tư.
 
-| Phân khúc | Nhu cầu giả định | Cơ hội cần kiểm chứng | Ưu tiên nghiên cứu |
-| --- | --- | --- | --- |
-| Cá nhân | Ghi chú và lưu tài liệu | Dễ tiếp cận; cạnh tranh cao | Đối chiếu hành vi |
-| Nhóm / doanh nghiệp nhỏ | Chia sẻ và tìm tài liệu chung | Dùng lặp lại trong công việc | Ưu tiên phỏng vấn |
-| Khách hàng MISA | Tri thức gắn với nghiệp vụ | Kênh tiếp cận và tích hợp | Ưu tiên xác thực |
-| Câu hỏi quyết định | Vấn đề đủ thường xuyên? | Ai trả tiền, trả cho giá trị gì? | Có chấp nhận pilot? |
-**Thông điệp:** Ưu tiên một phân khúc để học nhanh, chưa khẳng định quy mô thị trường.
+### **4. Kiểm chứng mô hình kinh doanh**
 
-**Ghi chú thuyết trình:** Các phân khúc có thể chồng lấn. Chưa có TAM/SAM/SOM hoặc khảo sát khả năng trả phí. Thử nghiệm nên chọn người mua và người dùng riêng để tránh đánh đồng người thích sản phẩm với người có ngân sách.
+Xác định phân khúc khách hàng mục tiêu, những bài toán có nhu cầu thực tế và giá trị khách hàng sẵn sàng chi trả. Thử nghiệm với nhóm khách hàng phù hợp trước khi quyết định mở rộng.
+
+**Kết luận:** Thương mại hóa không đơn thuần là đưa sản phẩm nội bộ ra thị trường, mà là phát triển một giải pháp có giá trị khác biệt, đáp ứng nhu cầu và tạo được doanh thu bền vững.
+
 
 ---
-## Slide 07 — Hệ sinh thái MISA có thể tạo khác biệt nếu gắn với công việc thực tế
-**Phần:** II · THỊ TRƯỜNG  
-**Trạng thái:** LỢI THẾ TIỀM NĂNG · CẦN XÁC THỰC  
-**Bố cục:** hub
+## Slide 41 — AI tìm kiếm và hỏi đáp: biến tài liệu thành tri thức có thể khai thác
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
 
-### Hiểu nghiệp vụ Việt Nam
-Chọn tài liệu và tình huống sát công việc.
+Người dùng cần tìm được câu trả lời khi cần, thay vì chỉ có một nơi lưu trữ tài liệu.
 
-### Kết nối ứng dụng
-Nghiên cứu quyền truy cập, dữ liệu và điểm tích hợp.
+### Bài toán hiện tại
 
-### Tiếp cận khách hàng
-Thử nghiệm với nhóm người dùng hiện hữu phù hợp.
+- Thông tin nằm trong nhiều tài liệu.
+- Người dùng phải tìm, mở và đọc từng văn bản; chi phí thời gian tăng cùng quy mô kho tài liệu.
 
-**Thông điệp:** Tích hợp chỉ có giá trị khi giảm được một bước công việc cụ thể.
+### Giải pháp đề xuất
 
-**Ghi chú thuyết trình:** Tình huống giả định: nhân viên mở hướng dẫn nghiệp vụ, tìm thông tin, hỏi AI và quay lại nguồn liên quan. Chưa có kết nối API hoặc xác nhận quyền sử dụng dữ liệu. Cả ba lợi thế cần kiểm chứng bằng khả năng triển khai, nhu cầu và chi phí.
+- Tìm kiếm theo ngữ nghĩa.
+- Hỏi bằng ngôn ngữ tự nhiên.
+- Tổng hợp câu trả lời từ tài liệu được phép truy cập.
+- Trích dẫn và đường dẫn kiểm tra nguồn.
+
+### Tình huống ứng dụng
+
+- “Quy trình đề xuất và phê duyệt mua sắm thiết bị hiện tại như thế nào?”
+- AI trả về các bước tóm tắt, kèm tài liệu để đối chiếu.
+
+### Giá trị mang lại
+
+- Giảm thời gian tra cứu.
+- Tăng khả năng tiếp cận tri thức nội bộ.
+- Giảm phụ thuộc vào việc hỏi người nắm thông tin.
+
+Ưu tiên đánh giá triển khai sớm: giải quyết trực tiếp hạn chế tìm kiếm ở Phần I.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 42 — AI TÌM KIẾM VÀ HỎI ĐÁP: BIẾN KHO TÀI LIỆU THÀNH NGUỒN TRI THỨC CÓ THỂ KHAI THÁC**
+
+**Thông điệp chính:** Giá trị của tài liệu không chỉ nằm ở khả năng lưu trữ mà còn ở việc người dùng có thể tìm được câu trả lời chính xác khi cần.
+
+### **Bài toán hiện tại**
+
+Thông tin nằm trong nhiều tài liệu, người dùng phải tìm kiếm, mở và đọc từng tài liệu để xác định nội dung cần thiết. Quá trình này tiêu tốn thời gian, đặc biệt khi số lượng tài liệu ngày càng lớn.
+
+### **Giải pháp đề xuất**
+
+- Tìm kiếm theo ngữ nghĩa, không phụ thuộc hoàn toàn vào từ khóa.
+- Đặt câu hỏi trực tiếp bằng ngôn ngữ tự nhiên.
+- AI tổng hợp câu trả lời từ các tài liệu người dùng được phép truy cập.
+- Cung cấp trích dẫn và đường dẫn để kiểm tra lại thông tin gốc.
+
+### **Tình huống ứng dụng**
+
+Nhân viên đặt câu hỏi: *“Quy trình đề xuất và phê duyệt mua sắm thiết bị hiện tại như thế nào?”*
+
+Thay vì tự tìm và đọc nhiều văn bản, người dùng nhận được nội dung tóm tắt các bước thực hiện, kèm tài liệu nguồn để đối chiếu.
+
+### **Giá trị mang lại**
+
+Giảm thời gian tra cứu, nâng cao khả năng tiếp cận tri thức nội bộ và giảm sự phụ thuộc vào việc hỏi trực tiếp những người nắm giữ thông tin.
+
+**Định hướng ưu tiên:** Đây là một trong những năng lực AI nên được đánh giá triển khai sớm, bởi giải quyết trực tiếp hạn chế tìm kiếm đã xác định tại Phần I.
+
 
 ---
-## Slide 08 — Prototype giúp kiểm tra trải nghiệm; nền tảng vận hành vẫn phải hoàn thiện
-**Phần:** III · LỰA CHỌN CHIẾN LƯỢC  
-**Trạng thái:** PHÂN BIỆT PROTOTYPE / MÔ PHỎNG / ĐỀ XUẤT  
-**Bố cục:** table
+## Slide 42 — AI phân tích và tổng hợp: nâng cao giá trị sử dụng tài liệu
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
 
-| Năng lực | Bằng chứng trong prototype | Bước phát triển tiếp theo | Vai trò |
-| --- | --- | --- | --- |
-| Nền tảng | Editor, thư mục, tìm kiếm, mẫu, Quick Note | Lưu máy chủ, ổn định, kiểm thử sử dụng | Bắt buộc |
-| Cộng tác | Giao diện chia sẻ / vai trò mô phỏng | Xác thực, phân quyền thật, cộng tác | Cần phát triển |
-| Khác biệt | AI chưa được tích hợp thực tế | Hỏi đáp nguồn, ngữ nghĩa, tích hợp | Tiềm năng |
-| Giới hạn demo | Refresh trở về dữ liệu mockup | Chuyển sang lưu trữ bền vững | Chưa sẵn sàng vận hành |
-**Thông điệp:** Không đồng nhất giao diện đã làm với năng lực sẵn sàng đưa vào sử dụng.
+Hỗ trợ người dùng tổng hợp thông tin cần thiết cho công việc và ra quyết định, không chỉ đọc nhanh hơn.
 
-**Ghi chú thuyết trình:** Căn cứ: docs/feature-catalog.md và mã nguồn hiện tại. Danh mục demo không bao gồm đổi theme hay đổi biến thể sidebar như năng lực sản phẩm. Không suy diễn các hạn chế của prototype thành hạn chế của sản phẩm MISA Ghi Chú đang vận hành.
+### Bài toán người dùng
+
+- Phải xử lý nhiều báo cáo, biên bản và tài liệu cùng vấn đề.
+- Tổng hợp thủ công tốn thời gian, dễ bỏ sót thông tin quan trọng.
+
+### Giải pháp đề xuất
+
+- Tóm tắt tài liệu dài, tổng hợp đa nguồn.
+- So sánh giống/khác giữa phiên bản.
+- Trích xuất kết luận, quyết định, đầu việc.
+- Tham chiếu nguồn cho nội dung quan trọng.
+
+### Tình huống ứng dụng
+
+- Tổng hợp kết quả từ nhiều báo cáo tuần.
+- AI xây dựng báo cáo chung, chỉ ra vấn đề nổi bật, thay đổi và công việc cần theo dõi.
+
+### Giá trị mang lại
+
+- Giảm công tổng hợp thủ công.
+- Giúp quản lý nắm bắt thông tin nhanh.
+- Tăng khả năng sử dụng lại dữ liệu đã tạo.
+
+Thử trên tài liệu có cấu trúc và tình huống rõ ràng trước khi phân tích phức tạp.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 43 — AI PHÂN TÍCH VÀ TỔNG HỢP: NÂNG CAO GIÁ TRỊ SỬ DỤNG CỦA TÀI LIỆU**
+
+**Thông điệp chính:** MISA Note hướng tới hỗ trợ người dùng không chỉ đọc tài liệu nhanh hơn mà còn tổng hợp được thông tin cần thiết để phục vụ công việc và ra quyết định.
+
+### **Bài toán người dùng**
+
+Trong công việc, người dùng thường phải xử lý nhiều báo cáo, biên bản và tài liệu liên quan đến cùng một vấn đề. Việc tổng hợp thủ công mất thời gian và có nguy cơ bỏ sót thông tin quan trọng.
+
+### **Giải pháp đề xuất**
+
+- Tóm tắt nội dung chính của tài liệu dài.
+- Tổng hợp thông tin từ nhiều tài liệu.
+- So sánh các điểm giống và khác nhau giữa các phiên bản.
+- Trích xuất kết luận, quyết định và công việc cần thực hiện.
+- Cung cấp nguồn tham chiếu cho những nội dung quan trọng.
+
+### **Tình huống ứng dụng**
+
+Người quản lý cần tổng hợp kết quả công việc từ nhiều báo cáo tuần.
+
+AI hỗ trợ xây dựng báo cáo tổng hợp, xác định những vấn đề nổi bật, nội dung thay đổi và các công việc cần tiếp tục theo dõi.
+
+### **Giá trị mang lại**
+
+Giảm công việc tổng hợp thủ công, hỗ trợ người quản lý nắm bắt thông tin nhanh hơn và nâng cao khả năng sử dụng lại dữ liệu đã được tạo ra.
+
+**Định hướng ưu tiên:** Thử nghiệm với những loại tài liệu có cấu trúc và tình huống sử dụng rõ ràng trước khi mở rộng sang phân tích phức tạp.
+
 
 ---
-## Slide 09 — Chọn nền tảng doanh nghiệp, phát triển AI có chọn lọc
-**Phần:** III · LỰA CHỌN CHIẾN LƯỢC  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** table
+## Slide 43 — AI đa định dạng: mở rộng khả năng tái sử dụng tri thức
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
 
-| Phương án | Giá trị định hướng | Chi phí / rủi ro tương đối | Khuyến nghị |
-| --- | --- | --- | --- |
-| A · Ghi chú cá nhân | Nhu cầu đơn giản, phổ biến | Phạm vi hẹp hơn; khó khác biệt | Không làm hướng cạnh tranh chính |
-| B · Ghi chú doanh nghiệp | Tổ chức và chia sẻ tri thức | Cần quản trị và bảo mật | Làm nền tảng |
-| C · Tri thức tích hợp AI | Khai thác thông tin theo nghiệp vụ | Phức tạp dữ liệu, AI và tích hợp | Thử từng trường hợp có giá trị |
-**Thông điệp:** Xây nền theo B; mở rộng sang C khi có bằng chứng nhu cầu và hiệu quả.
+Chuyển cùng một nguồn tài liệu thành nhiều hình thức truyền đạt mà không phải biên soạn lại từ đầu.
 
-**Ghi chú thuyết trình:** Đánh giá chi phí/rủi ro là nhận định tương đối, không phải dự toán đã được lập. B không mặc nhiên rẻ; phạm vi cộng tác cần được giới hạn và thẩm định kỹ trước khi chốt nguồn lực.
+Bài toán: cùng nội dung cần biên soạn cho báo cáo, thuyết trình, đào tạo và truyền đạt thông tin.
+
+### Báo cáo
+
+Tổng hợp và trình bày nội dung theo cấu trúc báo cáo.
+
+### Slide
+
+Chuyển tài liệu thành dàn ý và nội dung thuyết trình.
+
+### Sơ đồ tư duy
+
+Trực quan hóa cấu trúc và mối liên hệ giữa thông tin.
+
+### Audio
+
+Chuyển tài liệu thành dạng nghe, thuận tiện tiếp cận.
+
+Giá trị: tăng hiệu suất tạo nội dung, đa dạng cách tiếp cận và mở rộng tình huống sử dụng trong doanh nghiệp.
+
+Phát triển có chọn lọc: ưu tiên đầu ra có giá trị rõ ràng và kiểm soát được chất lượng.
+
+**Ghi chú thuyết trình:**
+
+## **SLIDE 44 — AI ĐA ĐỊNH DẠNG: MỞ RỘNG KHẢ NĂNG TÁI SỬ DỤNG TRI THỨC**
+
+**Thông điệp chính:** Cùng một nguồn tài liệu có thể được chuyển đổi thành nhiều hình thức truyền đạt khác nhau, phù hợp với mục đích sử dụng mà không cần xây dựng lại nội dung từ đầu.
+
+### **Bài toán người dùng**
+
+Một nội dung thường phải được biên soạn lại cho nhiều mục đích: báo cáo, thuyết trình, đào tạo hoặc truyền đạt thông tin. Quá trình chuyển đổi thủ công làm tăng thời gian và chi phí thực hiện.
+
+### **Giải pháp đề xuất**
+
+**Báo cáo**
+
+Tổng hợp và trình bày nội dung theo cấu trúc báo cáo.
+
+**Slide**
+
+Chuyển tài liệu thành dàn ý và nội dung thuyết trình.
+
+**Sơ đồ tư duy**
+
+Trực quan hóa cấu trúc và mối liên hệ giữa các thông tin.
+
+**Audio**
+
+Chuyển nội dung tài liệu thành dạng nghe để tiếp cận thuận tiện hơn.
+
+### **Giá trị mang lại**
+
+Tăng hiệu suất tạo nội dung, đa dạng hóa cách tiếp cận tri thức và mở rộng những tình huống sử dụng MISA Note trong doanh nghiệp.
+
+**Định hướng ưu tiên:** Phát triển có chọn lọc theo nhu cầu thực tế. Không triển khai đồng thời tất cả định dạng; ưu tiên những đầu ra có khả năng tạo giá trị rõ ràng và kiểm soát được chất lượng.
+
 
 ---
-## Slide 10 — MISA Note được định vị là nền tảng ghi chú và quản lý tri thức thông minh
-**Phần:** III · LỰA CHỌN CHIẾN LƯỢC  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** pillars
+## Slide 44 — Lộ trình phát triển: hoàn thiện nội bộ, từng bước thương mại hóa
+**Phần:** Phần IV: Chiến lược và lộ trình phát triển sản phẩm
 
-### Tạo lập & tổ chức
-Ghi chú và tài liệu theo không gian làm việc.
+Đầu tư theo giai đoạn, gắn kết quả sản phẩm với giá trị sử dụng và tiềm năng kinh doanh để kiểm soát rủi ro.
 
-### Chia sẻ & cộng tác
-Thông tin đến đúng người, đúng quyền.
+### 1. Hoàn thiện nền tảng
 
-### Khai thác bằng AI
-Tìm, hỏi và tổng hợp dựa trên nguồn được phép.
+- Phát triển ghi chú, quản lý tài liệu, tìm kiếm, chia sẻ; đáp ứng vận hành nội bộ.
+- Kết quả: hoàn chỉnh các luồng cốt lõi, sẵn sàng triển khai nội bộ.
 
-**Thông điệp:** Một không gian thống nhất để tạo lập, chia sẻ và khai thác tri thức.
+### 2. Nội bộ và thử AI
 
-**Ghi chú thuyết trình:** Định vị đề xuất: MISA Note là nền tảng giúp cá nhân và doanh nghiệp tạo lập, tổ chức, chia sẻ và khai thác tri thức hiệu quả trên một không gian làm việc thống nhất. Ba trụ cột là định hướng, không khẳng định tất cả đã triển khai.
+- Mở rộng dùng trong MISA, nhận phản hồi, đo hiệu quả. Thử AI ứng dụng cao, ưu tiên tìm kiếm và khai thác tài liệu.
+- Kết quả: bằng chứng giá trị, chất lượng và tính khả thi AI.
 
----
-## Slide 11 — Hoàn thiện giá trị nội bộ trước, kiểm chứng thương mại hóa song song
-**Phần:** IV · PHÁT TRIỂN & ĐẦU TƯ  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** cards
+### 3. Xác thực thương mại
 
-### Ngắn hạn · Dùng được thật
-Hoàn thiện luồng tạo → lưu → tìm → chia sẻ.  
-Thử nghiệm nội bộ trên dữ liệu và quyền phù hợp.  
-Đo mức sử dụng và tác động công việc.
+- Nghiên cứu khách hàng; chọn bài toán và pilot có kiểm soát. Đo sử dụng, hiệu quả, chi phí, khả năng trả phí.
+- Kết quả: phân khúc tiềm năng, giá trị khác biệt và cơ sở mô hình kinh doanh.
 
-### Dài hạn · Trả phí có căn cứ
-Xác định người mua và tình huống trọng tâm.  
-Thử AI, quản trị và tích hợp theo nhu cầu.  
-Xác thực gói dịch vụ bằng pilot.
+### 4. Hoàn thiện và mở rộng
 
-**Thông điệp:** Không dùng kết quả dùng thử nội bộ thay cho bằng chứng khách hàng trả phí.
+- Phát triển năng lực đã kiểm chứng, tối ưu chi phí, nâng tích hợp và lập kế hoạch kinh doanh.
+- Kết quả: triển khai và kinh doanh bền vững nếu pilot đạt tiêu chí đầu tư.
 
-**Ghi chú thuyết trình:** Hai hướng liên kết: nghiên cứu người mua có thể bắt đầu trong khi hoàn thiện nền tảng, nhưng không mở rộng bán hàng trước khi có sản phẩm ổn định và mô hình hỗ trợ phù hợp.
+Nguyên tắc: mỗi giai đoạn có đầu ra và tiêu chí rõ; mở rộng đầu tư theo hiệu quả thực tế, không theo kỳ vọng công nghệ.
 
----
-## Slide 12 — MVP phải hoàn thành luồng tạo, lưu, tìm và chia sẻ có kiểm soát
-**Phần:** IV · PHÁT TRIỂN & ĐẦU TƯ  
-**Trạng thái:** PHẠM VI MVP ĐỀ XUẤT · CẦN CHỐT  
-**Bố cục:** mvp
+Thống nhất hai mục tiêu: hoàn thiện nội bộ và hình thành giải pháp tri thức có thể thương mại hóa.
 
-### Ghi chú
-Tạo/sửa nội dung, định dạng, Quick Note.
+**Ghi chú thuyết trình:**
 
-### Quản lý tài liệu
-Không gian, thư mục, tìm kiếm, gần đây.
+## **SLIDE 45 — LỘ TRÌNH PHÁT TRIỂN: HOÀN THIỆN NỘI BỘ, KIỂM CHỨNG GIÁ TRỊ, TỪNG BƯỚC THƯƠNG MẠI HÓA**
 
-### Chia sẻ
-Theo người/nhóm; quyền truy cập thực thi thật.
+**Thông điệp chính:** Đề xuất đầu tư theo từng giai đoạn, gắn kết quả phát triển sản phẩm với giá trị sử dụng và tiềm năng kinh doanh, nhằm kiểm soát rủi ro và tối ưu nguồn lực.
 
-### Hỗ trợ sử dụng
-Mẫu có preview, thao tác nhanh, hướng dẫn rõ.
+1. **Giai đoạn 1 — Hoàn thiện nền tảng MISA Note**
 
-### Bảo mật & vận hành
-Xác thực, lưu bền vững, kiểm soát quyền, sao lưu.
+   Phát triển các chức năng ghi chú, quản lý tài liệu, tìm kiếm và chia sẻ; đảm bảo hệ thống đáp ứng yêu cầu vận hành nội bộ.
 
-**Thông điệp:** Tiêu chí MVP là hoàn thành công việc, không phải hoàn thành giao diện.
+   Kết quả kỳ vọng: Sản phẩm hoàn chỉnh các luồng sử dụng cốt lõi, sẵn sàng triển khai nội bộ.
+2. **Giai đoạn 2 — Triển khai nội bộ và thử nghiệm AI**
 
-**Ghi chú thuyết trình:** Feature map là phạm vi ứng viên cần chốt, không cam kết toàn bộ vào một sprint. Prototype đã thử nhiều tương tác của nhóm ghi chú/quản lý/hỗ trợ. Chia sẻ mới mô phỏng; xác thực, backend, sao lưu và kiểm soát quyền phải bổ sung. Không coi theme/sidebar demo là tính năng MVP.
+   Mở rộng sử dụng trong MISA, thu thập phản hồi và đo lường hiệu quả. Thử nghiệm các năng lực AI có tính ứng dụng cao, ưu tiên tìm kiếm và khai thác tài liệu.
 
----
-## Slide 13 — AI chỉ đáng đầu tư khi hiệu quả công việc có thể đo lường
-**Phần:** IV · PHÁT TRIỂN & ĐẦU TƯ  
-**Trạng thái:** AI ĐỀ XUẤT · CHƯA TÍCH HỢP  
-**Bố cục:** cards
+   Kết quả kỳ vọng: Có bằng chứng về giá trị sử dụng, chất lượng sản phẩm và tính khả thi của AI.
+3. **Giai đoạn 3 — Xác thực nhu cầu và thử nghiệm thương mại**
 
-### Writing Assistant
-Tạo, viết lại, tóm tắt, dịch, đổi văn phong.  
-Đo: thời gian hoàn thành và mức chỉnh sửa lại.
+   Nghiên cứu khách hàng mục tiêu, lựa chọn bài toán phù hợp và triển khai pilot có kiểm soát. Đánh giá mức độ sử dụng, hiệu quả, chi phí và khả năng trả phí.
 
-### Knowledge Assistant
-Hỏi đáp theo nguồn được cấp quyền, kèm trích dẫn.  
-Đo: trả lời đúng nguồn và thời gian tìm thông tin.
+   Kết quả kỳ vọng: Xác định được phân khúc tiềm năng, giá trị khác biệt và cơ sở xây dựng mô hình kinh doanh.
+4. **Giai đoạn 4 — Hoàn thiện giải pháp và mở rộng thị trường**
 
-### Document Insights
-So sánh, trích xuất và tổng hợp nhiều tài liệu.  
-Đo: chất lượng kết quả và chi phí mỗi tác vụ.
+   Tiếp tục phát triển những năng lực đã được kiểm chứng, tối ưu chi phí, nâng cao khả năng tích hợp và xây dựng kế hoạch kinh doanh.
 
-**Thông điệp:** Thử từng tình huống; chưa có bằng chứng thì chưa khẳng định giá trị trả phí.
+   Kết quả kỳ vọng: Sản phẩm có khả năng triển khai và phát triển kinh doanh bền vững, nếu kết quả pilot đáp ứng tiêu chí đầu tư.
 
-**Ghi chú thuyết trình:** Các năng lực AI là đề xuất tương lai. Yêu cầu thử nghiệm: bộ câu hỏi chuẩn, đánh giá chất lượng, tuân thủ quyền nguồn, kiểm soát dữ liệu gửi mô hình và ghi nhận chi phí. Trích dẫn không tự bảo đảm đáp án đúng; cần đánh giá mức hỗ trợ từ nguồn.
+### **Nguyên tắc đầu tư**
 
----
-## Slide 14 — Chỉ tăng đầu tư sau khi vượt cổng đánh giá của từng giai đoạn
-**Phần:** IV · PHÁT TRIỂN & ĐẦU TƯ  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** roadmap
-
-### 01 · Hoàn thiện MVP
-Cốt lõi + lưu trữ + quyền thật.  
-Cổng: đạt kịch bản cốt lõi, rà soát bảo mật.
-
-### 02 · Xác thực nhu cầu
-Đo sử dụng, phỏng vấn, thử AI.  
-Cổng: vấn đề lặp lại, có giá trị đo được.
-
-### 03 · Pilot thương mại
-Gói thử nghiệm và khách hàng pilot.  
-Cổng: bằng chứng trả phí, chi phí khả thi.
-
-### 04 · Mở rộng
-Tối ưu vận hành, AI, tích hợp.  
-Cổng: khả năng giữ chân và hỗ trợ bền vững.
-
-**Thông điệp:** Mỗi cổng có ba lựa chọn: tiếp tục, điều chỉnh hoặc dừng.
-
-**Ghi chú thuyết trình:** Không đặt ngày bắt đầu/kết thúc, số nhân sự hoặc ngân sách khi chưa có dự toán. Trước mỗi giai đoạn cần thống nhất người chịu trách nhiệm, chỉ số, ngưỡng và nguồn dữ liệu; các ngưỡng chưa được phê duyệt không được trình bày như cam kết.
-
----
-## Slide 15 — Đánh giá đầu tư bằng cả lợi ích nội bộ và khả năng kinh doanh
-**Phần:** IV · PHÁT TRIỂN & ĐẦU TƯ  
-**Trạng thái:** MINH HỌA GIẢ ĐỊNH · KPI CHƯA CÓ BASELINE  
-**Bố cục:** roi
-
-### 1.833 giờ/tháng
-GIẢ ĐỊNH MINH HỌA  
-1.000 người × 5 phút/ngày × 22 ngày ÷ 60  
-Không phải kết quả sử dụng thực tế.
-
-### Hiệu quả nội bộ
-Đo thời gian tìm/soạn; tái sử dụng tri thức.  
-Theo dõi WAU, quay lại, tài liệu tạo/chia sẻ.
-
-### Khả năng kinh doanh
-Đo mức sẵn sàng trả phí và chuyển đổi pilot.  
-Đối chiếu chi phí phát triển, vận hành, AI.
-
-**Thông điệp:** Thời gian tiết kiệm chưa phải doanh thu hay tiền mặt tiết kiệm thực tế.
-
-**Ghi chú thuyết trình:** Công thức: 1000×5×22/60=1833,33 giờ/tháng. Đây là giả định do đầu bài yêu cầu, không phải baseline hoặc ROI thực tế. Cần đo trước/sau và tránh tính trùng thời gian. Bổ sung tỷ lệ sử dụng AI cho từng tình huống, chi phí mỗi kết quả hữu ích; lợi ích bán chéo và hệ sinh thái là giả thuyết cần theo dõi.
-
----
-## Slide 16 — Giới hạn phạm vi và kiểm chứng sớm giúp kiểm soát rủi ro
-**Phần:** V · PHÊ DUYỆT  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** table
-
-| Rủi ro | Biện pháp kiểm soát |
-| --- | --- |
-| Không dùng thường xuyên | Thử nội bộ; đo quay lại và tình huống sử dụng lặp lại. |
-| Phát triển dàn trải | Chốt luồng MVP; đưa yêu cầu ngoài phạm vi về backlog. |
-| AI tốn kém, ít giá trị | Đo chất lượng và chi phí mỗi tác vụ trước khi mở rộng. |
-| Không sẵn sàng trả phí | Phỏng vấn người mua; pilot và kiểm chứng cam kết trả phí. |
-| Lộ dữ liệu / sai quyền | Thiết kế quyền từ đầu; kiểm thử truy cập chéo và dữ liệu gửi AI. |
-**Thông điệp:** Bảo mật là điều kiện qua cổng; không phải hạng mục chờ đến lúc mở rộng.
-
-**Ghi chú thuyết trình:** Bảng định tính không tự gán xác suất hay thiệt hại chưa có dữ liệu. Cần bổ sung chủ sở hữu rủi ro và tiêu chí dừng khi lập kế hoạch triển khai chi tiết.
-
----
-## Slide 17 — Đề nghị phê duyệt chủ trương và giai đoạn nghiên cứu, hoàn thiện MVP
-**Phần:** V · PHÊ DUYỆT  
-**Trạng thái:** ĐỀ XUẤT CHIẾN LƯỢC  
-**Bố cục:** approval
-
-### 01 · Định hướng
-MISA Note: nền tảng ghi chú và tri thức.  
-Nội bộ trước, kiểm chứng thương mại sau.
-
-### 02 · Giai đoạn MVP
-Chốt phạm vi cốt lõi và thử nghiệm nội bộ.  
-Chưa cam kết toàn bộ roadmap.
-
-### 03 · Nghiên cứu
-Phỏng vấn thị trường và thử AI có đo lường.  
-Xác định giá trị thực tế cho người dùng.
-
-### 04 · Cơ chế đầu tư
-Lập dự toán nguồn lực, thời gian, ngân sách.  
-Đánh giá Go / Điều chỉnh / No-Go trước mở rộng.
-
-**Thông điệp:** Phê duyệt định hướng hôm nay; giải ngân theo dự toán và bằng chứng từng giai đoạn.
-
-**Ghi chú thuyết trình:** Đề nghị Ban lãnh đạo giao đầu mối lập kế hoạch và dự toán; không xin phê duyệt một ngân sách chưa tồn tại. MISA Note có thể nâng hiệu quả nội bộ và kiểm chứng cơ hội quản lý tri thức doanh nghiệp Việt Nam, với rủi ro được kiểm soát bằng đầu tư theo giai đoạn. Kết thúc bằng tên chữ MISA Note; thay bằng logo chính thức khi được cung cấp.
+Mỗi giai đoạn cần có kết quả đầu ra và tiêu chí đánh giá rõ ràng. Việc mở rộng phạm vi phát triển và đầu tư chỉ được quyết định dựa trên hiệu quả thực tế, không dựa trên kỳ vọng về công nghệ.
 
 
-## Những dữ liệu cần bổ sung trước buổi trình bày chính thức
-- Screenshot và xác nhận phạm vi sản phẩm MISA Ghi Chú đang vận hành.
-- Baseline người dùng, luồng sử dụng, thời gian tìm tài liệu và vấn đề đã được xác thực.
-- Chủ sở hữu dự án, phạm vi MVP được duyệt, dự toán và ngưỡng Go/No-Go.
-- Kết quả phỏng vấn khách hàng/người mua và đánh giá bảo mật.
-- Logo chính thức nếu muốn thay tên chữ; ảnh đối thủ chỉ dùng khi kiểm tra nguồn và quyền sử dụng.
 
-Các thông tin bổ sung này là phần chuẩn bị, không phải slide thứ 18.
+**Kết luận:** Đề xuất Ban lãnh đạo thống nhất định hướng phát triển MISA Note theo hai mục tiêu: hoàn thiện sản phẩm phục vụ nội bộ và từng bước hình thành giải pháp quản lý tri thức thông minh có tiềm năng thương mại hóa.

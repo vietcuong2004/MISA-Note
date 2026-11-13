@@ -1,0 +1,11 @@
+# Minh họa Gemini Notebook — slide 14 và 15
+
+Tạo bằng công cụ image_gen tích hợp, ngày 13/11/2026. Hai ảnh là minh họa khái niệm, không phải giao diện sản phẩm. Nội dung thời gian nằm trong các khung chữ chỉnh sửa được của slide và ghi chú, không nhúng vào ảnh.
+
+## Slide 14 — gemini-workflow-ai.png
+
+Use case: productivity-visual. Create a polished corporate infographic illustration for a Gemini Notebook strategy presentation, landscape 16:9. White background, navy typography, royal blue and soft cyan accents, refined dimensional paper/document illustrations with gentle shadows, minimal executive design, large readable Vietnamese labels. Not a screenshot, no slide frame or footer. Left: scattered PDF, document and web source cards labelled "NGUỒN TÀI LIỆU". Center: luminous blue AI research hub labelled "HỎI ĐÁP • TRÍCH DẪN". Right: neatly grouped nine output icons in 3 rows labelled exactly "Podcast", "Slide", "Video", "Bản đồ tư duy", "Báo cáo", "Thẻ ghi nhớ", "Bài kiểm tra", "Đồ họa thông tin", "Bảng dữ liệu". Clear directional flow left to right. Bottom small visual value strip with three concise labels "Hiểu nhanh" "Tái sử dụng tri thức" "Giảm tổng hợp thủ công". Elegant spacious composition, accurate Vietnamese, no invented metrics or logos, no extra text.
+
+## Slide 15 — gemini-content-value-ai.png
+
+Use case: productivity-visual. Create a polished corporate infographic illustration for Gemini Notebook content creation benefits, landscape 16:9. Pure white background, navy typography, royal blue and pale cyan accents, dimensional paper illustrations and soft shadows matching a modern corporate strategy deck. One central organized source dossier labelled "BỘ NGUỒN ĐÃ CHỌN" branches with elegant blue connectors into five large distinct output illustrations: headphones with waveform labelled "Podcast", presentation slide cards labelled "Bản trình bày", video play frame labelled "Video giải thích", connected idea nodes labelled "Bản đồ tư duy", executive report pages labelled "Báo cáo". Along bottom show three tasteful value cards labelled "Đào tạo nội bộ", "Chuẩn bị thuyết trình", "Tổng hợp báo cáo". Large readable accurate Vietnamese labels. Balanced spacious composition, clean illustration rather than app screenshot, no logo, no numerical savings claims, no watermark, no footer, no extra text.

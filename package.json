@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx --test src/app/router/router.test.ts src/app/pages/pages.test.tsx src/app/navigation.test.tsx src/utils/importDocument.test.ts src/utils/folders.test.ts src/components/layout/FolderTree.test.tsx src/utils/dateTime.test.ts"
+    "test": "node --import tsx --test src/app/router/router.test.ts src/app/pages/pages.test.tsx src/app/navigation.test.tsx src/utils/importDocument.test.ts src/utils/folders.test.ts src/components/layout/FolderTree.test.tsx src/utils/dateTime.test.ts",
+    "slides:build": "python3 scripts/build-presentation.py --pdf",
+    "slides:watch": "python3 scripts/build-presentation.py --pdf --watch",
+    "slides:test": "python3 -m unittest discover -s scripts -p test_build_presentation.py"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
